@@ -1,0 +1,1071 @@
+/* Copyright (C) 2015 Cotton Seed
+   
+   This file is part of arachne-pnr.  Arachne-pnr is free software;
+   you can redistribute it and/or modify it under the terms of the GNU
+   General Public License version 2 as published by the Free Software
+   Foundation.
+   
+   This program is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+   
+   You should have received a copy of the GNU General Public License
+   along with this program. If not, see <http://www.gnu.org/licenses/>. */
+
+#include "util.hh"
+#include "netlist.hh"
+#include "casting.hh"
+
+#include <cassert>
+#include <cstring>
+#include <iostream>
+#include <iomanip>
+
+static void
+write_string_escaped(std::ostream &s, const std::string &str)
+{
+  s << '"';
+  for (char ch : str)
+    {
+      if (ch == '"'
+	  || ch == '\\')
+	s << '\\' << ch;
+      else if (isprint(ch))
+	s << ch;
+      else if (ch == '\n')
+	s << "\n";
+      else if (ch == '\t')
+	s << "\t";
+      else
+	s << fmt(std::oct << std::setw(3) << std::setfill('0') << (int)ch);
+    }
+  s << '"';
+}
+
+std::ostream &
+operator<<(std::ostream &s, const Const &c)
+{
+  if (c.m_is_bits)
+    {
+      for (int i = c.m_bitval.size() - 1; i >= 0; --i)
+	s << (c.m_bitval[i] ? '1' : '0');
+    }
+  else
+    write_string_escaped(s, c.m_strval);
+  return s;
+}
+
+Direction
+opposite_direction(Direction d)
+{
+  switch(d)
+    {
+    case Direction::IN:
+      return Direction::OUT;
+    case Direction::OUT:
+      return Direction::IN;
+    case Direction::INOUT:
+      return Direction::INOUT;
+    default:
+      abort();
+      return Direction::IN;
+    }
+}
+
+void
+Const::write_verilog(std::ostream &s) const
+{
+  if (m_is_bits)
+    {
+      s << m_bitval.size()
+	<< "'b";
+      for (int i = m_bitval.size() - 1; i >= 0; --i)
+	s << (m_bitval[i] ? '1' : '0');
+    }
+  else
+    write_string_escaped(s, m_strval);
+}
+
+void
+Net::replace(Net *new_n)
+{
+  assert(new_n != this);
+  
+  for (auto i = m_connections.begin();
+       i != m_connections.end();)
+    {
+      Port *p = *i;
+      ++i;
+      p->connect(new_n);
+    }
+  assert(m_connections.empty());
+}
+
+void
+Port::disconnect()
+{
+  if (m_connection)
+    {
+      m_connection->m_connections.erase(this);
+      m_connection = nullptr;
+    }
+}
+
+void
+Port::connect(Net *n)
+{
+  if (m_connection)
+    disconnect();
+  
+  assert(!m_connection);
+  m_connection = n;
+  if (n)
+    n->m_connections.insert(this);
+}
+
+Port *
+Port::connection_other_port() const
+{
+  Net *n = connection();
+  if (!n
+      || n->connections().size() != 2)
+    return nullptr;
+  
+  auto i = n->connections().begin();
+  if (*i == this)
+    ++i;
+  return *i;
+}
+
+bool
+Port::is_output() const
+{
+  assert(m_node
+	 && (isa<Model>(m_node)
+	     || isa<Instance>(m_node)));
+  return (isa<Instance>(m_node)
+	  ? m_dir == Direction::OUT
+	  : m_dir == Direction::IN); // model
+}
+
+bool
+Port::is_input() const
+{
+  assert(m_node
+	 && (isa<Model>(m_node)
+	     || isa<Instance>(m_node)));
+  return (isa<Instance>(m_node)
+	  ? m_dir == Direction::IN
+	  : m_dir == Direction::OUT); // model
+}
+
+Node::~Node()
+{
+  for (const auto &p : m_ports)
+    {
+      p.second->disconnect();
+      delete p.second;
+    }
+  m_ports.clear();
+}
+
+Port *
+Node::add_port(Port *t)
+{
+  Port *new_port = new Port(this, t->name(), t->direction(), t->undriven());
+  extend(m_ports, new_port->name(), new_port);
+  return new_port;
+}
+
+Port *
+Node::add_port(const std::string &n, Direction dir)
+{
+  Port *new_port = new Port(this, n, dir);
+  extend(m_ports, new_port->name(), new_port);
+  return new_port;
+}
+
+Port *
+Node::add_port(const std::string &n, Direction dir, Value u)
+{
+  Port *new_port = new Port(this, n, dir, u);
+  extend(m_ports, new_port->name(), new_port);
+  return new_port;
+}
+
+Port *
+Node::find_port(const std::string &n)
+{
+  return lookup_or_default(m_ports, n, nullptr);
+}
+
+Instance::Instance(Model *p, Model *inst_of)
+  : Node(Node::Kind::instance),
+    m_parent(p),
+    m_instance_of(inst_of)
+{
+  for (const auto &p : m_instance_of->m_ports)
+    add_port(p.second);
+}
+
+void
+Instance::merge_attrs(const Instance *inst)
+{
+  auto i = inst->m_attrs.find("src");
+  if (i != inst->m_attrs.end())
+    {
+      auto j = m_attrs.find("src");
+      if (j != m_attrs.end())
+	j->second = Const(j->second.as_string() + "|" + i->second.as_string());
+      else
+	m_attrs.insert(*i);
+    }
+}
+
+bool
+Instance::has_param(const std::string &id) const
+{ 
+  return (contains_key(m_params, id)
+	  || m_instance_of->has_param(id));
+}
+
+const Const &
+Instance::get_param(const std::string &id) const
+{
+  auto i = m_params.find(id);
+  if (i == m_params.end())
+    return m_instance_of->get_param(id);  // default
+  else
+    return i->second;
+}
+
+void
+Instance::remove()
+{
+  m_parent->m_instances.erase(this);
+  for (const auto &p : ports())
+    p.second->disconnect();
+}
+
+void
+Instance::write_blif(std::ostream &s,
+		     const std::unordered_map<Net *, std::string> &net_name) const
+{
+  s << ".gate " << m_instance_of->name();
+  for (const auto &p : m_ports)
+    {
+      s << " " << p.first << "=";
+      if (p.second->connected())
+	s << net_name.at(p.second->connection());
+    }
+  s << "\n";
+  
+  for (const auto &p : m_attrs)
+    s << ".attr " << p.first << " " << p.second << "\n";
+  for (const auto &p : m_params)
+    s << ".param " << p.first << " " << p.second << "\n";
+}
+
+static void
+write_verilog_name(std::ostream &s, const std::string &name)
+{
+  bool quote = false;
+  for (char ch : name)
+    {
+      if (! (isalnum(ch)
+	     || ch == '_'
+	     || ch == '$'))
+	{
+	  quote = true;
+	  break;
+	}
+    }
+  if (quote)
+    s << '\\';
+  s << name;
+  if (quote)
+    s << ' ';
+}
+
+void
+Instance::write_verilog(std::ostream &s,
+			const std::unordered_map<Net *, std::string> &net_name,
+			const std::string &inst_name) const
+{
+  if (!m_attrs.empty())
+    {
+      s << "  (* ";
+      bool first = true;
+      for (const auto &p : m_attrs)
+	{
+	  if (first)
+	    first = false;
+	  else
+	    s << ", ";
+	  s << p.first << "=";
+	  p.second.write_verilog(s);
+	}
+      s << " *)\n";
+    }
+  
+  s << "  ";
+  write_verilog_name(s, m_instance_of->name());
+  
+  if (!m_params.empty())
+    {
+      s << " #(";
+      bool first = true;
+      for (const auto &p : m_params)
+	{
+	  if (first)
+	    first = false;
+	  else
+	    s << ", ";
+	      
+	  s << "\n    .";
+	  write_verilog_name(s, p.first);
+	  s << "(";
+	  p.second.write_verilog(s);
+	  s << ")";
+	}
+      s << "\n  ) ";
+    }
+  
+  write_verilog_name(s, inst_name);
+  s << " (";
+  bool first = true;
+  for (const auto &p : m_ports)
+    {
+      Net *conn = p.second->connection();
+      if (conn)
+	{
+	  if (first)
+	    first = false;
+	  else
+	    s << ",";
+	  s << "\n    .";
+	  write_verilog_name(s, p.first);
+	  s << "(";
+	  write_verilog_name(s, conn->name());
+	  s << ")";
+	}
+    }
+  s << "\n  );\n";
+}
+
+int Model::counter = 0;
+
+Model::Model(Design *d, const std::string &n)
+  : Node(Node::Kind::model),
+    m_name(n)
+{
+  extend(d->m_models, n, this);
+}
+
+Model::~Model()
+{
+  for (Instance *inst : m_instances)
+    delete inst;
+  m_instances.clear();
+  
+  // disconnect ports before deleting nets
+  for (const auto &p : m_ports)
+    p.second->disconnect();
+  
+  for (const auto &p : m_nets)
+    delete p.second;
+  m_nets.clear();
+}
+
+Net *
+Model::find_net(const std::string &n)
+{
+  return lookup_or_default(m_nets, n, (Net *)nullptr);
+}
+
+Net *
+Model::find_or_add_net(const std::string &n)
+{
+  assert(!n.empty());
+  return lookup_or_create(m_nets, n, [&n]() { return new Net(n); });
+}
+
+Net *
+Model::add_net()
+{
+ L:
+  std::string name = fmt("$temp$" << counter);
+  ++counter;
+  if (contains_key(m_nets, name))
+    goto L;
+  
+  Net *new_n = new Net(name);
+  extend(m_nets, name, new_n);
+  return new_n;
+}
+
+Net *
+Model::add_net(const std::string &orig)
+{
+  int i = 2;
+  std::string name = orig;
+ L:
+  if (contains_key(m_nets, name))
+    {
+      name = fmt(orig << "$" << i);
+      ++i;
+      goto L;
+    }
+  
+  Net *new_n = new Net(name);
+  extend(m_nets, name, new_n);
+  return new_n;
+}
+
+void
+Model::remove_net(Net *n)
+{
+  assert(n->connections().empty());
+  m_nets.erase(n->name());
+}
+
+Instance *
+Model::add_instance(Model *inst_of)
+{
+  Instance *new_inst = new Instance(this, inst_of);
+  m_instances.insert(new_inst);
+  return new_inst;
+}
+
+std::unordered_set<Net *>
+Model::boundary_nets(const Design *d) const
+{
+  Model *io_model = d->find_model("SB_IO");
+  std::unordered_set<Net *> bnets;
+  for (const auto &p : m_ports)
+    {
+      Net *n = p.second->connection();
+      if (n)
+	{
+	  Port *q = p.second->connection_other_port();
+	  if (q
+	      && isa<Instance>(q->node())
+	      && cast<Instance>(q->node())->instance_of() == io_model
+	      && q->name() == "PACKAGE_PIN")
+	    extend(bnets, n);
+	}
+    }
+  return bnets;
+}
+
+std::pair<std::vector<Net *>, std::unordered_map<Net *, int>>
+Model::index_nets() const
+{
+  int n_nets = 0;
+  std::vector<Net *> nets;
+  std::unordered_map<Net *, int> net_idx;
+  for (const auto &p : m_nets)
+    {
+      Net *n = p.second;
+      
+      nets.push_back(n);
+      extend(net_idx, n, n_nets);
+      ++n_nets;
+    }
+  return std::make_pair(nets, net_idx);
+}
+
+std::pair<std::vector<Net *>, std::unordered_map<Net *, int>>
+Model::index_internal_nets(const Design *d) const
+{
+  std::unordered_set<Net *> bnets = boundary_nets(d);
+  
+  std::vector<Net *> nets;
+  std::unordered_map<Net *, int> net_idx;
+  
+  int n_nets = 0;
+  for (const auto &p : m_nets)
+    {
+      Net *n = p.second;
+      if (contains(bnets, n))
+	continue;
+      
+      nets.push_back(n);
+      extend(net_idx, n, n_nets);
+      ++n_nets;
+    }
+  return std::make_pair(nets, net_idx);
+}
+
+std::pair<std::vector<Instance *>, std::unordered_map<Instance *, int>>
+Model::index_instances() const
+{
+  std::vector<Instance *> gates;
+  std::unordered_map<Instance *, int> gate_idx;
+  
+  int n_gates = 0;
+  gates.push_back(nullptr);
+  ++n_gates;
+  for (Instance *inst : m_instances)
+    {
+      gates.push_back(inst);
+      extend(gate_idx, inst, n_gates);
+      ++n_gates;
+    }
+  return std::make_pair(gates, gate_idx);
+}
+
+void
+Model::prune()
+{
+  for (auto i = m_nets.begin(); i != m_nets.end();)
+    {
+      Net *n = i->second;
+      auto t = i;
+      ++i;
+      
+      int n_distinct = n->connections().size();
+      bool driver = false,
+	input = false;
+      if (n->is_constant())
+	{
+	  driver = true;
+	  ++n_distinct;
+	}
+      for (Port *p : n->connections())
+	{
+	  if (p->is_input()
+	      || p->is_bidir())
+	    input = true;
+	  if (p->is_output()
+	      || p->is_bidir())
+	    driver = true;
+	  if (input && driver)
+	    break;
+	}
+      
+      if (input && driver && n_distinct > 1)
+	continue;
+      
+      // remove n
+      for (auto j = n->connections().begin();
+	   j != n->connections().end();)
+	{
+	  Port *p = *j;
+	  ++j;
+	  p->disconnect();
+	}
+      m_nets.erase(t);
+      delete n;
+    }
+}
+
+void
+Model::rename_net(Net *n, const std::string &new_name)
+{
+  const std::string &old_name = n->name();
+  
+  int i = 2;
+  std::string name = new_name;
+ L:
+  if (contains(m_nets, name)
+      || name == old_name)
+    {
+      name = fmt(new_name << "$" << i);
+      ++i;
+      goto L;
+    }
+  
+  m_nets.erase(old_name);
+  
+  n->m_name = name;
+  extend(m_nets, name, n);
+}
+
+#ifndef NDEBUG
+void
+Model::check(const Design *d) const
+{
+  Model *io_model = d->find_model("SB_IO");
+  
+  for (const auto &p : m_ports)
+    {
+      if (p.second->is_bidir())
+	{
+	  Net *n = p.second->connection();
+	  if (n)
+	    {
+	      Port *q = p.second->connection_other_port();
+	      assert (q
+		      && isa<Instance>(q->node())
+		      && cast<Instance>(q->node())->instance_of() == io_model
+		      && q->name() == "PACKAGE_PIN");
+	    }
+	}
+    }
+  
+  std::unordered_set<Net *> boundary_nets;
+  for (Instance *inst : m_instances)
+    {
+      if (inst->instance_of() == io_model)
+	{
+	  Port *p = inst->find_port("PACKAGE_PIN");
+	  
+	  Net *n = p->connection();
+	  extend(boundary_nets, n);
+	  
+	  Port *q = p->connection_other_port();
+	  assert(n
+		 && q
+		 && isa<Model>(q->node()));
+	}
+    }
+  
+  for (const auto &p : m_nets)
+    {
+      Net *n = p.second;
+      assert(p.first == n->name());
+      assert(!n->connections().empty());
+      
+      if (contains(boundary_nets, n))
+	continue;
+      
+      int n_drivers = 0;
+      bool input = false;
+      if (n->is_constant())
+	++n_drivers;
+      for (Port *p : n->connections())
+	{
+	  assert(!p->is_bidir());
+	  if (p->is_input())
+	    input = true;
+	  if (p->is_output())
+	    ++n_drivers;
+	}
+      
+      assert(n_drivers == 1 && input);
+    }
+}
+#endif
+
+std::pair<std::unordered_map<Net *, std::string>,
+	  std::unordered_set<Net *>>
+Model::shared_names() const
+{
+  std::unordered_set<std::string> names;
+  std::unordered_map<Net *, std::string> net_name;
+  std::unordered_set<Net *> is_port;
+  for (auto i : m_ports)
+    {
+      Net *n = i.second->connection();
+      extend(names, i.first);
+      if (n
+	  && n->name() == i.first)
+	{
+	  extend(net_name, n, i.first);
+	  extend(is_port, n);
+	}
+    }
+  for (const auto &p : m_nets)
+    {
+      if (contains(is_port, p.second))
+	continue;
+      
+      int i = 2;
+      std::string name = p.first;
+    L:
+      if (contains(names, name))
+	{
+	  name = fmt(p.first << "$" << i);
+	  ++i;
+	  goto L;
+	}
+      extend(names, name);
+      extend(net_name, p.second, name);
+    }
+  return std::make_pair(net_name, is_port);
+}
+
+void
+Model::write_blif(std::ostream &s) const
+{
+  s << ".model " << m_name << "\n";
+  
+  s << ".inputs";
+  for (auto i : m_ports)
+    {
+      if (i.second->direction() == Direction::IN
+	  || i.second->direction() == Direction::INOUT)
+	s << " " << i.second->name();
+    }
+  s << "\n";
+  
+  s << ".outputs";
+  for (auto i : m_ports)
+    {
+      if (i.second->direction() == Direction::OUT
+	  || i.second->direction() == Direction::INOUT)
+	s << " " << i.second->name();
+    }
+  s << "\n";
+  
+  std::unordered_map<Net *, std::string> net_name;
+  std::unordered_set<Net *> is_port;
+  std::tie(net_name, is_port) = shared_names();
+  
+  for (const auto &p : net_name)
+    {
+      if (p.second != p.first->name())
+	s << "# " << p.first->name() << " -> " << p.second << "\n";
+    }
+  
+  for (const auto &p : m_nets)
+    {
+      if (p.second->is_constant())
+	{
+	  s << ".names " << p.first << "\n";
+	  if (p.second->constant() == Value::ONE)
+	    s << "1\n";
+	  else
+	    assert(p.second->constant() == Value::ZERO);
+	}
+    }
+  
+  for (auto i : m_instances)
+    i->write_blif(s, net_name);
+  
+  for (auto i : m_ports)
+    {
+      Net *n = i.second->connection();
+      if (n
+	  && n->name() != i.first)
+	{
+	  if (i.second->is_input())
+	    s << ".names " << net_name.at(n) << " " << i.first << "\n";
+	  else
+	    {
+	      assert(i.second->is_output());
+	      s << ".names " << i.first << " " << net_name.at(n) << "\n";
+	    }
+	  s << "1 1\n";
+	}
+    }
+  
+  s << ".end\n";
+}
+
+void
+Model::write_verilog(std::ostream &s) const
+{
+  s << "module ";
+  write_verilog_name(s, m_name);
+  s << "(";
+  bool first = true;
+  for (auto i : m_ports)
+    {
+      if (first)
+	first = false;
+      else
+	s << ", ";
+      switch(i.second->direction())
+	{
+	case Direction::IN:
+	  s << "input ";
+	  break;
+	case Direction::OUT:
+	  s << "output ";
+	  break;
+	case Direction::INOUT:
+	  s << "inout ";
+	  break;
+	}
+      write_verilog_name(s, i.first);
+    }
+  s << ");\n";
+  
+  std::unordered_map<Net *, std::string> net_name;
+  std::unordered_set<Net *> is_port;
+  std::tie(net_name, is_port) = shared_names();
+  
+  for (const auto &p : net_name)
+    {
+      if (p.second != p.first->name())
+	s << "  // " << p.first->name() << " -> " << p.second << "\n";
+    }
+  
+  for (const auto &p : m_nets)
+    {
+      if (contains(is_port, p.second))
+	continue;
+      
+      s << "  wire ";
+      write_verilog_name(s, net_name.at(p.second));
+      if (p.second->is_constant())
+	{
+	  s << " = ";
+	  if (p.second->constant() == Value::ONE)
+	    s << "1";
+	  else
+	    {
+	      assert(p.second->constant() == Value::ZERO);
+	      s << "0";
+	    }
+	}
+      s << ";\n";
+    }
+  
+  for (auto i : m_ports)
+    {
+      Net *n = i.second->connection();
+      if (n
+	  && n->name() != i.first)
+	{
+	  if (i.second->is_input())
+	    {
+	      s << "  assign ";
+	      write_verilog_name(s, net_name.at(n));
+	      s << " = " << i.first << ";\n";
+	    }
+	  else
+	    {
+	      assert(i.second->is_output());
+	      s << "  assign " << i.first << " = ";
+	      write_verilog_name(s, net_name.at(n));
+	      s << ";\n";
+	    }
+	}
+      else
+	assert(contains(is_port, n));
+    }
+  
+  int k = 0;
+  for (Instance *inst : m_instances)
+    {
+      inst->write_verilog(s, net_name, fmt("$inst" << k));
+      ++k;
+    }
+  
+  s << "endmodule\n";
+}
+
+void
+Design::set_top(Model *t)
+{
+  assert(m_top == nullptr);
+  m_top = t;
+}
+
+Design::Design()
+  : m_top(nullptr)
+{
+}
+
+Design::~Design()
+{
+  for (const auto &p : m_models)
+    delete p.second;
+  m_models.clear();
+}
+
+void
+Design::create_standard_models()
+{
+  Model *lc = new Model(this, "ICESTORM_LC");
+  lc->add_port("I0", Direction::IN, Value::ZERO);
+  lc->add_port("I1", Direction::IN, Value::ZERO);
+  lc->add_port("I2", Direction::IN, Value::ZERO);
+  lc->add_port("I3", Direction::IN, Value::ZERO);
+  lc->add_port("CIN", Direction::IN, Value::ZERO);
+  lc->add_port("CLK", Direction::IN, Value::ZERO);
+  lc->add_port("CEN", Direction::IN, Value::ONE);
+  lc->add_port("SR", Direction::IN, Value::ZERO);
+  lc->add_port("O", Direction::OUT);
+  lc->add_port("COUT", Direction::OUT);
+  
+  lc->set_param("LUT_INIT", BitVector(1, 0));
+  lc->set_param("NEG_CLK", BitVector(1, 0));
+  lc->set_param("CARRY_ENABLE", BitVector(1, 0));
+  lc->set_param("DFF_ENABLE", BitVector(1, 0));
+  lc->set_param("SET_NORESET", BitVector(1, 0));
+  lc->set_param("SET_ASYNC", BitVector(1, 0));
+  lc->set_param("ASYNC_SR", BitVector(1, 0));
+  
+  Model *io = new Model(this, "SB_IO");
+  io->add_port("PACKAGE_PIN", Direction::INOUT);
+  io->add_port("LATCH_INPUT_VALUE", Direction::IN, Value::ZERO);
+  io->add_port("CLOCK_ENABLE", Direction::IN, Value::ONE);
+  io->add_port("INPUT_CLK", Direction::IN, Value::ZERO);
+  io->add_port("OUTPUT_CLK", Direction::IN, Value::ZERO);
+  io->add_port("OUTPUT_ENABLE", Direction::IN, Value::ZERO);
+  io->add_port("D_OUT_0", Direction::IN, Value::ZERO);
+  io->add_port("D_OUT_1", Direction::IN, Value::ZERO);
+  io->add_port("D_IN_0", Direction::OUT, Value::ZERO);
+  io->add_port("D_IN_1", Direction::OUT, Value::ZERO);
+  
+  io->set_param("PIN_TYPE", BitVector(6, 0)); // 000000
+  io->set_param("PULLUP", BitVector(1, 0));  // default NO pullup
+  io->set_param("NEG_TRIGGER", BitVector(1, 0));
+  io->set_param("IO_STANDARD", "SB_LVCMOS");
+  
+  Model *gb = new Model(this, "SB_GB");
+  gb->add_port("USER_SIGNAL_TO_GLOBAL_BUFFER", Direction::IN);
+  gb->add_port("GLOBAL_BUFFER_OUTPUT", Direction::OUT);
+  
+  Model *lut = new Model(this, "SB_LUT4");
+  lut->add_port("O", Direction::OUT);
+  lut->add_port("I0", Direction::IN, Value::ZERO);
+  lut->add_port("I1", Direction::IN, Value::ZERO);
+  lut->add_port("I2", Direction::IN, Value::ZERO);
+  lut->add_port("I3", Direction::IN, Value::ZERO);
+  
+  lut->set_param("LUT_INIT", BitVector(1, 0));
+  
+  Model *carry = new Model(this, "SB_CARRY");
+  carry->add_port("CO", Direction::OUT);
+  carry->add_port("I0", Direction::IN, Value::ZERO);
+  carry->add_port("I1", Direction::IN, Value::ZERO);
+  carry->add_port("CI", Direction::IN, Value::ZERO);
+  
+  for (int neg_clk = 0; neg_clk <= 1; ++neg_clk)
+    for (int cen = 0; cen <= 1; ++cen)
+      for (int sr = 0; sr <= 4; ++sr)
+	{
+	  std::string name = "SB_DFF";
+	  if (neg_clk)
+	    name.push_back('N');
+	  if (cen)
+	    name.push_back('E');
+	  switch(sr)
+	    {
+	    case 0:  break;
+	    case 1:
+	      name.append("SR");
+	      break;
+	    case 2:
+	      name.append("R");
+	      break;
+	    case 3:
+	      name.append("SS");
+	      break;
+	    case 4:
+	      name.append("S");
+	      break;
+	    default:
+	      abort();
+	    }
+	
+	  Model *dff = new Model(this, name);
+	  dff->add_port("Q", Direction::OUT);
+	  dff->add_port("C", Direction::IN, Value::ZERO);
+	  if (cen)
+	    dff->add_port("E", Direction::IN, Value::ONE);
+	  switch(sr)
+	    {
+	    case 0:  break;
+	    case 1:
+	    case 2:
+	      dff->add_port("R", Direction::IN, Value::ZERO);
+	      break;
+	    case 3:
+	    case 4:
+	      dff->add_port("S", Direction::IN, Value::ZERO);
+	      break;
+	    default:
+	      abort();
+	    }
+	  dff->add_port("D", Direction::IN, Value::ZERO);
+	}
+  
+  for (int nr = 0; nr <= 1; ++nr)
+    for (int nw = 0; nw <= 1; ++nw)
+      {
+	std::string name = "SB_RAM40_4K";
+	
+	if (nr)
+	  name.append("NR");
+	if (nw)
+	  name.append("NW");
+	Model *bram = new Model(this, name);
+	
+	for (int i = 0; i <= 15; ++i)
+	  bram->add_port(fmt("RDATA[" << i << "]"), Direction::OUT);
+	for (int i = 0; i <= 10; ++i)
+	  bram->add_port(fmt("RADDR[" << i << "]"), Direction::IN, Value::ZERO);
+	
+	for (int i = 0; i <= 10; ++i)
+	  bram->add_port(fmt("WADDR[" << i << "]"), Direction::IN, Value::ZERO);
+	for (int i = 0; i <= 15; ++i)
+	  bram->add_port(fmt("MASK[" << i << "]"), Direction::IN, Value::ZERO);
+	for (int i = 0; i <= 15; ++i)
+	  bram->add_port(fmt("WDATA[" << i << "]"), Direction::IN, Value::ZERO);
+	
+	bram->add_port("RCLKE", Direction::IN, Value::ONE);
+	bram->add_port("RCLK", Direction::IN, Value::ZERO);
+	bram->add_port("RE", Direction::IN, Value::ONE);
+	
+	bram->add_port("WCLKE", Direction::IN, Value::ONE);
+	bram->add_port("WCLK", Direction::IN, Value::ZERO);
+	bram->add_port("WE", Direction::IN, Value::ONE);
+	
+	for (int i = 0; i <= 15; ++i)
+	  bram->set_param(fmt("INIT_" << (i < 10 ? '0' + i : 'A' + (i - 10))), "0");
+	bram->set_param("READ_MODE", BitVector(2, 0));
+	bram->set_param("WRITE_MODE", BitVector(2, 0));
+      }
+}
+
+Model *
+Design::find_model(const std::string &n) const
+{
+  return lookup_or_default(m_models, n, (Model *)nullptr);
+}
+
+void
+Design::prune()
+{
+  for (const auto &p : m_models)
+    p.second->prune();
+}
+
+#ifndef NDEBUG
+void
+Design::check() const
+{
+  for (const auto &p : m_models)
+    p.second->check(this);
+}
+#endif
+
+void
+Design::write_blif(std::ostream &s) const
+{
+  assert(m_top);
+  m_top->write_blif(s);
+}
+
+void
+Design::write_verilog(std::ostream &s) const
+{
+  assert(m_top);
+  m_top->write_verilog(s);
+}
+
+void
+Design::dump() const
+{
+  write_blif(*logs);
+}
+
+Models::Models(Design *d)
+{
+  lut4 = d->find_model("SB_LUT4");
+  carry = d->find_model("SB_CARRY");
+  lc = d->find_model("ICESTORM_LC");
+  io = d->find_model("SB_IO");
+  gb = d->find_model("SB_GB");
+  ram = d->find_model("SB_RAM40_4K");
+  ramnr = d->find_model("SB_RAM40_4KNR");
+  ramnw = d->find_model("SB_RAM40_4KNW");
+  ramnrnw = d->find_model("SB_RAM40_4KNRNW");
+}

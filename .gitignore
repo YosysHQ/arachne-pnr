@@ -1,0 +1,7 @@
+*.d
+*~
+*.o
+/bin/arachne-pnr
+/tests/test_bv
+/diff
+save

@@ -1,0 +1,626 @@
+/* Copyright (C) 2015 Cotton Seed
+   
+   This file is part of arachne-pnr.  Arachne-pnr is free software;
+   you can redistribute it and/or modify it under the terms of the GNU
+   General Public License version 2 as published by the Free Software
+   Foundation.
+   
+   This program is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+   
+   You should have received a copy of the GNU General Public License
+   along with this program. If not, see <http://www.gnu.org/licenses/>. */
+
+#include "util.hh"
+#include "casting.hh"
+#include "netlist.hh"
+#include "chipdb.hh"
+#include "carry.hh"
+
+#include <unordered_set>
+#include <cstring>
+
+class Packer
+{
+  const ChipDB *chipdb;
+  Design *d;
+  
+  Models models;
+  Model *top;
+  
+  CarryChains &chains;
+  
+  int n_dff_pass_through,
+    n_carry_pass_through;
+  
+  Net *const0;
+  Net *const1;
+  
+  std::unordered_set<Instance *> ready;
+  
+  void lc_from_dff(Instance *lc_inst, Instance *dff_inst);
+  void lc_from_lut(Instance *lc_inst, Instance *lut_inst);
+  void pass_through_lc(Instance *lc_inst, Port *in);
+  void carry_pass_through_lc(Instance *lc_inst, Port *cout);
+  void lc_from_carry(Instance *lc_inst, Instance *carry_inst);
+  
+  Port *driver(Net *n);
+  Instance *find_carry_lc(Instance *c);
+
+  void pack_dffs();
+  void pack_luts();
+  void pack_carries_from(Instance *f);
+  void pack_carries();
+  
+public:
+  Packer(const ChipDB *cdb, Design *d_, CarryChains &chains_);
+  
+  void pack();
+};
+
+Packer::Packer(const ChipDB *cdb, Design *d_, CarryChains &chains_)
+  : chipdb(cdb), 
+    d(d_), 
+    models(d),
+    top(d->top()),
+    chains(chains_),
+    n_dff_pass_through(0), 
+    n_carry_pass_through(0),
+    const0(nullptr), 
+    const1(nullptr)
+{
+  for (const auto &p : top->nets())
+    {
+      if (p.second->is_constant())
+	{
+	  if (p.second->constant() == Value::ONE)
+	    const1 = p.second;
+	  else
+	    {
+	      assert(p.second->constant() == Value::ZERO);
+	      const0 = p.second;
+	    }
+	}
+      if (const0 && const1)
+	break;
+    }
+  
+  // will prune
+  if (!const0)
+    {
+      const0 = top->add_net("$false");
+      const0->set_is_constant(true);
+      const0->set_constant(Value::ZERO);
+    }
+  if (!const1)
+    {
+      const1 = top->add_net("$true");
+      const1->set_is_constant(true);
+      const1->set_constant(Value::ONE);
+    }
+}
+
+void
+Packer::lc_from_dff(Instance *lc_inst,
+		    Instance *dff_inst)
+{
+  const std::string &dff_name = dff_inst->instance_of()->name();
+  const char *suffix = &dff_name[6];
+  
+  bool neg_clk = false;
+  if (*suffix == 'N')
+    {
+      neg_clk = true;
+      ++suffix;
+    }
+  
+  bool cen = false;
+  if (*suffix == 'E')
+    {
+      cen = true;
+      ++suffix;
+    }
+  
+  bool async_sr = false;
+  bool set_noreset = false;
+  bool sr = false;
+  if (!strcmp(suffix, "S"))
+    {
+      set_noreset = true;
+      async_sr = true;
+      sr = true;
+    }
+  else if (!strcmp(suffix, "SS"))
+    {
+      set_noreset = true;
+      sr = true;
+    }
+  else if (!strcmp(suffix, "R"))
+    {
+      async_sr = true;
+      sr = true;
+    }
+  else if (!strcmp(suffix, "SR"))
+    {
+      sr = true;
+    }
+  else
+    assert(*suffix == '\0');
+  
+  lc_inst->find_port("O")->connect(dff_inst->find_port("Q")->connection());
+  lc_inst->find_port("CLK")->connect(dff_inst->find_port("C")->connection());
+  
+  if (neg_clk)
+    lc_inst->set_param("NEG_CLK", BitVector(1, 1));
+  
+  if (cen)
+    lc_inst->find_port("CEN")->connect(dff_inst->find_port("E")->connection());
+  else
+    lc_inst->find_port("CEN")->connect(const1);
+  
+  if (sr)
+    {
+      if (set_noreset)
+	{
+	  lc_inst->find_port("SR")->connect(dff_inst->find_port("S")->connection());
+	  lc_inst->set_param("SET_NORESET", BitVector(1, 1));
+	}
+      else
+	{
+	  lc_inst->find_port("SR")->connect(dff_inst->find_port("R")->connection());
+	}
+      
+      if (async_sr)
+	lc_inst->set_param("ASYNC_SR", BitVector(1, 1));
+    }
+  else
+    {
+      lc_inst->find_port("SR")->connect(const0);
+    }
+  
+  lc_inst->set_param("DFF_ENABLE", BitVector(1, 1));
+  
+  lc_inst->merge_attrs(dff_inst);
+}
+
+void
+Packer::lc_from_lut(Instance *lc_inst,
+		    Instance *lut_inst)
+{
+  lc_inst->find_port("I0")->connect(lut_inst->find_port("I0")->connection());
+  lc_inst->find_port("I1")->connect(lut_inst->find_port("I1")->connection());
+  lc_inst->find_port("I2")->connect(lut_inst->find_port("I2")->connection());
+  lc_inst->find_port("I3")->connect(lut_inst->find_port("I3")->connection());
+  
+  if (lut_inst->self_has_param("LUT_INIT"))
+    lc_inst->set_param("LUT_INIT", lut_inst->self_get_param("LUT_INIT"));
+  
+  lc_inst->merge_attrs(lut_inst);
+}
+
+void
+Packer::pass_through_lc(Instance *lc_inst, Port *in)
+{
+  lc_inst->find_port("I0")->connect(in->connection());
+  lc_inst->find_port("I1")->connect(const0);
+  lc_inst->find_port("I2")->connect(const0);
+  lc_inst->find_port("I3")->connect(const0);
+  
+  lc_inst->set_param("LUT_INIT", BitVector(2, 2));
+  
+  ++n_dff_pass_through;
+}
+
+void
+Packer::carry_pass_through_lc(Instance *lc_inst, Port *cout)
+{
+  Net *n = cout->connection();
+  Net *t = top->add_net(n);
+  
+  cout->connect(t);
+  
+  lc_inst->find_port("I3")->connect(t);
+  lc_inst->find_port("O")->connect(n);
+  lc_inst->set_param("LUT_INIT", BitVector(16, 0xff00)); // 1111111100000000
+  
+  ++n_carry_pass_through;
+}
+
+void
+Packer::lc_from_carry(Instance *lc_inst,
+		      Instance *carry_inst)
+{
+  assert((lc_inst->find_port("I1")->connection()
+	  == carry_inst->find_port("I0")->connection())
+	 && (lc_inst->find_port("I2")->connection()
+	     == carry_inst->find_port("I1")->connection()));
+  
+  lc_inst->find_port("CIN")->connect(carry_inst->find_port("CI")->connection());
+  lc_inst->find_port("COUT")->connect(carry_inst->find_port("CO")->connection());
+  
+  lc_inst->set_param("CARRY_ENABLE", BitVector(1, 1));
+}
+
+void
+Packer::pack_dffs()
+{
+  const auto &instances = top->instances();
+  for (auto i = instances.begin(); i != instances.end();)
+    {
+      Instance *inst = *i;
+      ++i;
+      
+      if (models.is_dff(inst))
+	{
+	  Instance *lc_inst = top->add_instance(models.lc);
+	  
+	  Port *d_port = inst->find_port("D");
+	  
+	  Port *d_driver = d_port->connection_other_port();
+	  
+	  Instance *lut_inst = nullptr;
+	  if (d_driver)
+	    {
+	      if (Instance *d_driver_inst = dyn_cast<Instance>(d_driver->node()))
+		{
+		  if (models.is_lut4(d_driver_inst))
+		    {
+		      assert(d_driver->name() == "O");
+		      lut_inst = d_driver_inst;
+		    }
+		}
+	    }
+	  
+	  lc_from_dff(lc_inst, inst);
+	  
+	  if (lut_inst)
+	    lc_from_lut(lc_inst, lut_inst);
+	  else
+	    pass_through_lc(lc_inst, d_port);
+	  
+	  inst->remove();
+	  delete inst;
+	  
+	  if (lut_inst)
+	    {
+	      if (i != instances.end()
+		  && *i == lut_inst)
+		++i;
+	      
+	      lut_inst->remove();
+	      delete lut_inst;
+	    }
+	}
+    }
+}
+
+void
+Packer::pack_luts()
+{
+  const auto &instances = top->instances();
+  for (auto i = instances.begin(); i != instances.end();)
+    {
+      Instance *inst = *i;
+      ++i;
+      if (models.is_lut4(inst))
+	{
+	  Instance *lc_inst = top->add_instance(models.lc);
+	  
+	  lc_from_lut(lc_inst, inst);
+ 	  
+	  lc_inst->find_port("O")->connect(inst->find_port("O")->connection());
+	  
+ 	  inst->remove();
+ 	  delete inst;
+	}
+    }      
+}
+
+Port *
+Packer::driver(Net *n)
+{
+  if (!n)
+    return nullptr;
+  for (Port *p : n->connections())
+    {
+      if (p->is_output()
+	  || p->is_bidir())
+	return p;
+    }
+  return nullptr;
+}
+
+Instance *
+Packer::find_carry_lc(Instance *c)
+{
+  Port *ci = c->find_port("CI");
+  Net *ci_conn = ci->connection();
+  
+  if (!ci_conn
+      || ci_conn->is_constant()
+      || ci_conn->connections().size() != 3)
+    return nullptr;
+  
+  // driver is previous COUT
+  
+  Net *i0_conn = c->find_port("I0")->connection(),
+    *i1_conn = c->find_port("I1")->connection();
+  
+  for (Port *p : ci_conn->connections())
+    {
+      if (Instance *p_inst = dyn_cast<Instance>(p->node()))
+	{
+	  if (models.is_lc(p_inst)
+	      && p->name() == "I3"
+	      && i0_conn == p_inst->find_port("I1")->connection()
+	      && i1_conn == p_inst->find_port("I2")->connection())
+	    return p_inst;
+	}
+    }
+  
+  return nullptr;
+}
+
+void
+Packer::pack_carries_from(Instance *f)
+{
+  unsigned max_chain_length = (chipdb->height - 2)*8;
+  
+  std::vector<Instance *> chain;
+  
+  Net *global_clk = nullptr,
+    *global_cen = nullptr,
+    *global_sr = nullptr;
+  for (Instance *c = f; c;)
+    {
+      Port *in = c->find_port("CI");
+      Net *in_conn = in->connection();
+      
+      Port *out = c->find_port("CO");
+      Net *out_conn = out->connection();
+      if (out_conn
+	  && chain.size() == max_chain_length - 1)
+	{
+	  // break chain
+	  Instance *out_lc_inst = top->add_instance(models.lc);
+	  
+	  carry_pass_through_lc(out_lc_inst, chain.back()->find_port("COUT"));
+	  chain.push_back(out_lc_inst);
+	  
+	  chains.chains.push_back(chain);
+	  chain.clear();
+	}
+      
+      if (chain.size() % 8 == 0)
+	{
+	  global_clk = nullptr;
+	  global_cen = nullptr;
+	  global_sr = nullptr;
+	}
+      
+      if (chain.empty()
+	  && in_conn
+	  && !in_conn->is_constant())
+	{
+	  // carry in
+	  Instance *in_lc_inst = top->add_instance(models.lc);
+	  
+	  Net *t = top->add_net(in_conn);
+	  
+	  in_lc_inst->find_port("COUT")->connect(t);
+	  in_lc_inst->find_port("I0")->connect(const0);
+	  in_lc_inst->find_port("I1")->connect(in_conn);
+	  in_lc_inst->find_port("I2")->connect(const0);
+	  in_lc_inst->find_port("I3")->connect(const0);
+	  in_lc_inst->find_port("CIN")->connect(const1);
+	  
+	  in_lc_inst->set_param("CARRY_ENABLE", BitVector(1, 1));
+	  
+	  chain.push_back(in_lc_inst);
+	  
+	  in->connect(t);
+	  in_conn = t;
+	  
+	  ++n_carry_pass_through;
+	}
+      
+      Instance *lc_inst = find_carry_lc(c);
+      if (lc_inst)
+	{
+	  Net *clk = lc_inst->find_port("CLK")->connection(),
+	    *cen = lc_inst->find_port("CEN")->connection(),
+	    *sr = lc_inst->find_port("SR")->connection();
+	  
+	  if ((global_clk
+	       && global_clk != clk)
+	      || (global_cen
+		  && global_cen != cen)
+	      || (global_sr
+		  && global_sr != sr))
+	    {
+	      lc_inst = nullptr;
+	      goto L;
+	    }
+	  if (!global_clk)
+	    global_clk = clk;
+	  if (!global_cen)
+	    global_cen = cen;
+	  if (!global_sr)
+	    global_sr = sr;
+	}
+      
+      if (!lc_inst)
+	{
+	L:
+	  lc_inst = top->add_instance(models.lc);
+	  
+	  lc_inst->find_port("I1")->connect(c->find_port("I0")->connection());
+	  lc_inst->find_port("I2")->connect(c->find_port("I1")->connection());
+	  
+	  if (!in_conn
+	      || in_conn->is_constant()
+	      || in_conn->connections().size() == 2)
+	    {
+	      // could try to pack lut here
+	    }
+	  else
+	    {
+	      Port *d = chain.back()->find_port("COUT");
+	      assert(d && d->connection() == in_conn);
+	      carry_pass_through_lc(lc_inst, d);
+	    }
+	}
+      
+      lc_from_carry(lc_inst, c);
+      chain.push_back(lc_inst);
+      
+      Instance *next_c = nullptr;
+      if (out_conn)
+	{
+	  for (Port *p : out_conn->connections())
+	    {
+	      if (Instance *inst = dyn_cast<Instance>(p->node()))
+		{
+		  if (models.is_carry(inst)
+		      && p->name() == "CI")
+		    {
+		      if (next_c)
+			extend(ready, inst);
+		      else
+			next_c = inst;
+		    }
+		}
+	    }
+	}
+      
+      if (!next_c
+	  && out_conn)
+	{
+	  assert(chain.size() < max_chain_length);
+	  
+	  Instance *lc2_inst = top->add_instance(models.lc);
+	  
+	  Port *d = chain.back()->find_port("COUT");
+	  assert(d && d->connection() == out_conn);
+	  carry_pass_through_lc(lc2_inst, d);
+	  
+	  chain.push_back(lc2_inst);
+	}
+      
+      c->remove();
+      delete c;
+      
+      c = next_c;
+    }
+  
+  chains.chains.push_back(chain);
+  chain.clear();
+}
+
+void
+Packer::pack_carries()
+{
+  const auto &instances = top->instances();
+  
+  for (Instance *inst : instances)
+    {
+      if (models.is_carry(inst))
+	{
+	  Port *in = inst->find_port("CI");
+	  Net *in_conn = in->connection();
+	  Port *d = driver(in_conn);
+	  if (!d
+	      || !isa<Instance>(d->node())
+	      || !models.is_carry(cast<Instance>(d->node())))
+	    extend(ready, inst);
+	}
+    }
+  
+  while (!ready.empty())
+    {
+      Instance *inst = front(ready);
+      ready.erase(inst);
+      pack_carries_from(inst);
+    }
+}
+
+void
+Packer::pack()
+{
+  pack_dffs();
+  pack_luts();
+  pack_carries();
+  
+  d->prune();
+  // d->dump();
+  
+  int n_ramt_tiles = 0;
+  for (int i = 0; i < chipdb->n_tiles; ++i)
+    {
+      if (chipdb->tile_type[i] == TileType::RAMT_TILE)
+	++n_ramt_tiles;
+    }
+  
+  int n_io = 0,
+    n_lc = 0,
+    n_lc_carry = 0,
+    n_lc_dff = 0,
+    n_lc_carry_dff = 0,
+    n_gb = 0,
+    n_bram = 0;
+  for (Instance *inst : top->instances())
+    {
+      if (models.is_lc(inst))
+	{
+	  ++n_lc;
+	  if (inst->get_param("DFF_ENABLE").get_bit(0))
+	    {
+	      if (inst->get_param("CARRY_ENABLE").get_bit(0))
+		++n_lc_carry_dff;
+	      else
+		++n_lc_dff;
+	    }
+	  else
+	    {
+	      if (inst->get_param("CARRY_ENABLE").get_bit(0))
+		++n_lc_carry;
+	    }
+	}
+      else if (models.is_io(inst))
+	++n_io;
+      else if (models.is_gb(inst))
+	++n_gb;
+      else
+	{ 
+	  assert(models.is_ramX(inst));
+	  ++n_bram;
+	}
+    }
+  
+  int n_logic_tiles = 0;
+  for (int i = 0; i < chipdb->n_tiles; ++i)
+    {
+      if (chipdb->tile_type[i] == TileType::LOGIC_TILE)
+	++n_logic_tiles;
+    }
+  
+  *logs << "\nAfter packing:\n"
+	<< "IOs          " << n_io << " / " << chipdb->pin_loc.size() << "\n"
+	<< "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
+	<< "  DFF        " << n_lc_dff << "\n"
+	<< "  CARRY      " << n_lc_carry << "\n"
+	<< "  CARRY, DFF " << n_lc_carry_dff << "\n"
+	<< "  DFF PASS   " << n_dff_pass_through << "\n"
+	<< "  CARRY PASS " << n_carry_pass_through << "\n"
+	<< "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
+	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n\n";
+}
+
+void
+pack(const ChipDB *chipdb, Design *d, CarryChains &chains)
+{
+  Packer packer(chipdb, d, chains);
+  packer.pack();
+}
