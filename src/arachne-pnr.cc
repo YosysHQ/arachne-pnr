@@ -269,14 +269,22 @@ main(int argc, const char **argv)
     
     if (pack_blif)
       {
-	std::ofstream fs(expand_filename(pack_blif));
 	*logs << "write_blif " << pack_blif << "\n";
+	std::string expanded = expand_filename(pack_blif);
+	std::ofstream fs(expanded);
+	if (fs.fail())
+	  fatal(fmt("write_blif: failed to open `" << expanded << "': "
+		    << strerror(errno)));
 	d->write_blif(fs);
       }
     if (pack_verilog)
       {
-	std::ofstream fs(expand_filename(pack_verilog));
 	*logs << "write_verilog " << pack_verilog << "\n";
+	std::string expanded = expand_filename(pack_verilog);
+	std::ofstream fs(expanded);
+	if (fs.fail())
+	  fatal(fmt("write_verilog: failed to open `" << expanded << "': "
+		    << strerror(errno)));
 	d->write_verilog(fs);
       }
     
@@ -307,8 +315,12 @@ main(int argc, const char **argv)
     
     if (post_place_pcf)
       {
-	*logs << "writing " << post_place_pcf << "...\n";
-	std::ofstream fs(expand_filename(post_place_pcf));
+	*logs << "write_pcf " << post_place_pcf << "...\n";
+	std::string expanded = expand_filename(post_place_pcf);
+	std::ofstream fs(expanded);
+	if (fs.fail())
+	  fatal(fmt("write_pcf: failed to open `" << expanded << "': "
+		    << strerror(errno)));
 	for (const auto &p : placement)
 	  {
 	    if (models.is_io(p.first))
@@ -333,8 +345,12 @@ main(int argc, const char **argv)
     
     if (output_file)
       {
-	*logs << "write_txt " << output_file << "...\n";	
-	std::ofstream fs(expand_filename(output_file));
+	*logs << "write_txt " << output_file << "...\n";
+	std::string expanded = expand_filename(output_file);
+	std::ofstream fs(expanded);
+	if (fs.fail())
+	  fatal(fmt("write_txt: failed to open `" << expanded << "': "
+		    << strerror(errno)));
 	conf.write_txt(fs, chipdb, d, placement, cnet_net);
       }
     else

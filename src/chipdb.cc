@@ -678,9 +678,11 @@ ChipDB::find_switch(int in, int out) const
 ChipDB *
 read_chipdb(const std::string &filename)
 {
-  std::ifstream fs(expand_filename(filename));
-  if (!fs.is_open())
-    fatal(fmt("failed to open chipdb: " << filename));
+  std::string expanded = expand_filename(filename);
+  std::ifstream fs(expanded);
+  if (fs.fail())
+    fatal(fmt("read_chipdb: failed to open `" << expanded << "': "
+	      << strerror(errno)));
   ChipDBParser parser(filename, fs);
   return parser.parse();
 }

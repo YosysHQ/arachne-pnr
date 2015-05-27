@@ -366,7 +366,11 @@ BlifParser::parse()
 Design *
 read_blif(const std::string &filename)
 {
-  std::ifstream fs(expand_filename(filename));
+  std::string expanded = expand_filename(filename);
+  std::ifstream fs(expanded);
+  if (fs.fail())
+    fatal(fmt("read_blif: failed to open `" << expanded << "': "
+	      << strerror(errno)));
   BlifParser parser(filename, fs);
   return parser.parse();
 }

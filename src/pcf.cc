@@ -86,7 +86,11 @@ read_pcf(const std::string &filename,
 	 Design *d,
 	 Constraints &constraints)
 {
-  std::ifstream fs(expand_filename(filename));
+  std::string expanded = expand_filename(filename);
+  std::ifstream fs(expanded);
+  if (fs.fail())
+    fatal(fmt("read_pcf: failed to open `" << expanded << "': "
+	      << strerror(errno)));
   PCFParser parser(filename, fs, d, constraints);
   return parser.parse();
 }
