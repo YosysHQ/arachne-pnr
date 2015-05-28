@@ -18,6 +18,7 @@
 #include "pcf.hh"
 #include "line_parser.hh"
 
+#include <cstring>
 #include <istream>
 #include <fstream>
 
