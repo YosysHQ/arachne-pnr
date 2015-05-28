@@ -20,6 +20,7 @@
 #include "casting.hh"
 
 #include <cctype>
+#include <cstring>
 #include <istream>
 #include <fstream>
 #include <iostream>

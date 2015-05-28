@@ -18,6 +18,7 @@
 #include "line_parser.hh"
 
 #include <cassert>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 
