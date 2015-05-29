@@ -46,7 +46,11 @@ should also install Yosys to synthesize designs.
 To install, just go to the arachne-pnr directory and run
 
 ```
-$ make && sudo make install
+$ mkdir build
+$ cd build
+$ cmake ../
+$ make
+$ sudo make install
 ```
 
 ## Invoking/Example
