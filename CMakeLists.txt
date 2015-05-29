@@ -25,6 +25,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake")
 
 project(arachne-pnr)
 
+set(arachne_pnr_TITLE arachne-pnr)
+set(arachne_pnr_DESCRIPTION "An FPGA Place-and-Route compilation step.")
+
+set(arachne_pnr_VERSION_MAJOR 0)
+set(arachne_pnr_VERSION_MINOR 1)
+set(arachne_pnr_VERSION_MICRO 0)
+
 #
 # Sources
 #
