@@ -1,7 +1,6 @@
 *.d
 *~
 *.o
-/bin/arachne-pnr
 
 arachne-pnr
 
