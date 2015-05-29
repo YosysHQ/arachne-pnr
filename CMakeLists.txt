@@ -73,3 +73,9 @@ add_executable(${PROJECT_NAME}
 	${arachne_pnr_SOURCES})
 
 target_link_libraries(${PROJECT_NAME} ${arachne_pnr_LINK_LIBS})
+
+#
+# Installation
+#
+
+install(TARGETS ${PROJECT_NAME} DESTINATION bin/)
