@@ -33,6 +33,29 @@ set(arachne_pnr_VERSION_MINOR 1)
 set(arachne_pnr_VERSION_MICRO 0)
 
 #
+# Dependencies
+#
+
+function(require_program name)
+	string(TOUPPER ${name} var)
+	message("-- Finding program ${name}")
+	find_program(${var} ${name})
+	if(${${var}} MATCHES NOTFOUND)
+		message(FATAL_ERROR "-- Failed to find ${name}")
+	endif()	
+	message("-- Finding program ${name}... ${${var}}")
+endfunction()
+
+find_program(GNU_ENV env)
+
+require_program(bash)
+require_program(icebox_vlog)
+require_program(icepack)
+require_program(python)
+require_program(yosys)
+require_program(valgrind)
+
+#
 # Sources
 #
 
@@ -61,6 +84,7 @@ set(arachne_pnr_SOURCES
 add_definitions(-std=c++11)
 add_definitions(-MD)
 add_definitions(-Wall -Werror)
+add_definitions(-I${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 #
 # Linker Configuration
@@ -73,6 +97,40 @@ add_executable(${PROJECT_NAME}
 	${arachne_pnr_SOURCES})
 
 target_link_libraries(${PROJECT_NAME} ${arachne_pnr_LINK_LIBS})
+
+#
+# Tests
+#
+
+function(add_arachne_pnr_test_script name subdir command)
+	add_test(NAME ${name}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${subdir}
+		COMMAND ${GNU_ENV}
+		ARACHNE_PNR=${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}
+		ICEBOX_VLOG=${ICEBOX_VLOG}
+		ICEPACK=${ICEPACK}
+		PYTHON=${PYTHON}
+		VALGRIND=${VALGRIND}
+		YOSYS=${YOSYS}
+		${BASH}
+		${command})
+endfunction(add_arachne_pnr_test_script)
+
+add_executable(test_bv
+	tests/test_bv.cc)
+
+enable_testing()
+
+add_test(test_bv ${CMAKE_CURRENT_BINARY_DIR}/test_bv)
+add_arachne_pnr_test_script(simple tests/simple "run-test.sh")
+add_arachne_pnr_test_script(regression tests/regression "run-test.sh")
+add_arachne_pnr_test_script(simple-valgrind
+	tests/simple "run-valgrind-test.sh")
+add_arachne_pnr_test_script(fsm tests/fsm "run-test.sh")
+
+add_custom_target(simpletest ${CMAKE_CTEST_COMMAND} -R '^\(test_bv|simple\)$$'
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR}/test_bv
+	${CMAKE_CURRENT_SOURCE_DIR}/tests/simple/run-test.sh)
 
 #
 # Installation

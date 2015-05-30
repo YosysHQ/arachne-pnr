@@ -2,10 +2,11 @@
 
 set -ex
 
-arachne_pnr=../../bin/arachne-pnr
+: ${ARACHNE_PNR:=../../build/arachne-pnr}
+: ${ICEPACK:=icepack}
 
 for i in *.blif; do
     base=${i%.*}
-    $arachne_pnr $i -o ${base}.txt
-    icepack ${base}.txt ${base}.bin
+    $ARACHNE_PNR $i -o ${base}.txt
+    $ICEPACK ${base}.txt ${base}.bin
 done
