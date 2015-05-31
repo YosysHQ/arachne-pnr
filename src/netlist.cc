@@ -1013,6 +1013,198 @@ Design::create_standard_models()
 	bram->set_param("READ_MODE", BitVector(2, 0));
 	bram->set_param("WRITE_MODE", BitVector(2, 0));
       }
+  
+  Model *warmboot = new Model(this, "SB_WARMBOOT");
+  warmboot->add_port("BOOT", Direction::IN);
+  warmboot->add_port("S0", Direction::IN);
+  warmboot->add_port("S1", Direction::IN);
+  
+  // FIXME defaults
+  Model *pll_core = new Model(this, "SB_PLL40_CORE");
+  pll_core->add_port("REFERENCECLK", Direction::IN);
+  pll_core->add_port("RESETB", Direction::IN);
+  pll_core->add_port("BYPASS", Direction::IN);
+  pll_core->add_port("EXTFEEDBACK", Direction::IN);
+  pll_core->add_port("DYNAMICDELAY_0", Direction::IN);
+  pll_core->add_port("DYNAMICDELAY_1", Direction::IN);
+  pll_core->add_port("DYNAMICDELAY_2", Direction::IN);
+  pll_core->add_port("DYNAMICDELAY_3", Direction::IN);
+  pll_core->add_port("DYNAMICDELAY_4", Direction::IN);
+  pll_core->add_port("DYNAMICDELAY_5", Direction::IN);
+  pll_core->add_port("DYNAMICDELAY_6", Direction::IN);
+  pll_core->add_port("DYNAMICDELAY_7", Direction::IN);
+  pll_core->add_port("LATCHINPUTVALUE", Direction::IN);
+  pll_core->add_port("SCLK", Direction::IN);
+  pll_core->add_port("SDI", Direction::IN);
+  pll_core->add_port("SDO", Direction::IN);
+  pll_core->add_port("LOCK", Direction::OUT);
+  pll_core->add_port("PLLOUTGLOBAL", Direction::OUT);
+  pll_core->add_port("PLLOUTCORE", Direction::OUT);
+  
+  pll_core->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_core->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_core->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_core->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_core->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_core->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_core->set_param("PLLOUT_SELECT", "SHIFTREG_0deg");
+  pll_core->set_param("DIVR", BitVector(4, 0));
+  pll_core->set_param("DIVF", BitVector(6, 0));
+  pll_core->set_param("DIVQ", BitVector(3, 0));
+  pll_core->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_core->set_param("ENABLE_ICEGATE", BitVector(1, 0));
+  
+  Model *pll_pad = new Model(this, "SB_PLL40_PAD");
+  pll_pad->add_port("PACKAGEPIN", Direction::IN);
+  pll_pad->add_port("RESETB", Direction::IN);
+  pll_pad->add_port("BYPASS", Direction::IN);
+  pll_pad->add_port("EXTFEEDBACK", Direction::IN);
+  pll_pad->add_port("DYNAMICDELAY_0", Direction::IN);
+  pll_pad->add_port("DYNAMICDELAY_1", Direction::IN);
+  pll_pad->add_port("DYNAMICDELAY_2", Direction::IN);
+  pll_pad->add_port("DYNAMICDELAY_3", Direction::IN);
+  pll_pad->add_port("DYNAMICDELAY_4", Direction::IN);
+  pll_pad->add_port("DYNAMICDELAY_5", Direction::IN);
+  pll_pad->add_port("DYNAMICDELAY_6", Direction::IN);
+  pll_pad->add_port("DYNAMICDELAY_7", Direction::IN);
+  pll_pad->add_port("LATCHINPUTVALUE", Direction::IN);
+  pll_pad->add_port("SCLK", Direction::IN);
+  pll_pad->add_port("SDI", Direction::IN);
+  pll_pad->add_port("SDO", Direction::IN);
+  pll_pad->add_port("LOCK", Direction::OUT);
+  pll_pad->add_port("PLLOUTGLOBAL", Direction::OUT);
+  pll_pad->add_port("PLLOUTCORE", Direction::OUT);
+  
+  pll_pad->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_pad->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_pad->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_pad->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_pad->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_pad->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_pad->set_param("PLLOUT_SELECT", "SHIFTREG_0deg");
+  pll_pad->set_param("DIVR", BitVector(4, 0));
+  pll_pad->set_param("DIVF", BitVector(6, 0));
+  pll_pad->set_param("DIVQ", BitVector(3, 0));
+  pll_pad->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_pad->set_param("ENABLE_ICEGATE", BitVector(1, 0));
+
+  Model *pll_pad_2 = new Model(this, "SB_PLL40_PAD_2");
+  pll_pad_2->add_port("PACKAGEPIN", Direction::IN);
+  pll_pad_2->add_port("RESETB", Direction::IN);
+  pll_pad_2->add_port("BYPASS", Direction::IN);
+  pll_pad_2->add_port("EXTFEEDBACK", Direction::IN);
+  pll_pad_2->add_port("DYNAMICDELAY_0", Direction::IN);
+  pll_pad_2->add_port("DYNAMICDELAY_1", Direction::IN);
+  pll_pad_2->add_port("DYNAMICDELAY_2", Direction::IN);
+  pll_pad_2->add_port("DYNAMICDELAY_3", Direction::IN);
+  pll_pad_2->add_port("DYNAMICDELAY_4", Direction::IN);
+  pll_pad_2->add_port("DYNAMICDELAY_5", Direction::IN);
+  pll_pad_2->add_port("DYNAMICDELAY_6", Direction::IN);
+  pll_pad_2->add_port("DYNAMICDELAY_7", Direction::IN);
+  pll_pad_2->add_port("LATCHINPUTVALUE", Direction::IN);
+  pll_pad_2->add_port("SCLK", Direction::IN);
+  pll_pad_2->add_port("SDI", Direction::IN);
+  pll_pad_2->add_port("SDO", Direction::IN);
+  pll_pad_2->add_port("LOCK", Direction::OUT);
+  pll_pad_2->add_port("PLLOUTGLOBALA", Direction::OUT);
+  pll_pad_2->add_port("PLLOUTCOREA", Direction::OUT);
+  pll_pad_2->add_port("PLLOUTGLOBALB", Direction::OUT);
+  pll_pad_2->add_port("PLLOUTCOREB", Direction::OUT);
+  
+  pll_pad_2->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_pad_2->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_pad_2->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_pad_2->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_pad_2->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_pad_2->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_pad_2->set_param("PLLOUT_SELECT_PORTB", "SHIFTREG_0deg");
+  pll_pad_2->set_param("DIVR", BitVector(4, 0));
+  pll_pad_2->set_param("DIVF", BitVector(6, 0));
+  pll_pad_2->set_param("DIVQ", BitVector(3, 0));
+  pll_pad_2->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_pad_2->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_pad_2->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
+  pll_pad_2->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
+
+  Model *pll_2f_core = new Model(this, "SB_PLL40_2F_CORE");
+  pll_2f_core->add_port("REFERENCECLK", Direction::IN);
+  pll_2f_core->add_port("RESETB", Direction::IN);
+  pll_2f_core->add_port("BYPASS", Direction::IN);
+  pll_2f_core->add_port("EXTFEEDBACK", Direction::IN);
+  pll_2f_core->add_port("DYNAMICDELAY_0", Direction::IN);
+  pll_2f_core->add_port("DYNAMICDELAY_1", Direction::IN);
+  pll_2f_core->add_port("DYNAMICDELAY_2", Direction::IN);
+  pll_2f_core->add_port("DYNAMICDELAY_3", Direction::IN);
+  pll_2f_core->add_port("DYNAMICDELAY_4", Direction::IN);
+  pll_2f_core->add_port("DYNAMICDELAY_5", Direction::IN);
+  pll_2f_core->add_port("DYNAMICDELAY_6", Direction::IN);
+  pll_2f_core->add_port("DYNAMICDELAY_7", Direction::IN);
+  pll_2f_core->add_port("LATCHINPUTVALUE", Direction::IN);
+  pll_2f_core->add_port("SCLK", Direction::IN);
+  pll_2f_core->add_port("SDI", Direction::IN);
+  pll_2f_core->add_port("SDO", Direction::IN);
+  pll_2f_core->add_port("LOCK", Direction::OUT);
+  pll_2f_core->add_port("PLLOUTGLOBALA", Direction::OUT);
+  pll_2f_core->add_port("PLLOUTCOREA", Direction::OUT);
+  pll_2f_core->add_port("PLLOUTGLOBALB", Direction::OUT);
+  pll_2f_core->add_port("PLLOUTCOREB", Direction::OUT);
+  
+  pll_2f_core->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_2f_core->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_2f_core->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_2f_core->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_2f_core->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_2f_core->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_2f_core->set_param("PLLOUT_SELECT_PORTA", "SHIFTREG_0deg");
+  pll_2f_core->set_param("PLLOUT_SELECT_PORTB", "SHIFTREG_0deg");
+  pll_2f_core->set_param("DIVR", BitVector(4, 0));
+  pll_2f_core->set_param("DIVF", BitVector(6, 0));
+  pll_2f_core->set_param("DIVQ", BitVector(3, 0));
+  pll_2f_core->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_2f_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_2f_core->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
+  pll_2f_core->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
+
+  Model *pll_2f_pad = new Model(this, "SB_PLL40_2F_PAD");
+  pll_2f_pad->add_port("PACKAGEPIN", Direction::IN);
+  pll_2f_pad->add_port("RESETB", Direction::IN);
+  pll_2f_pad->add_port("BYPASS", Direction::IN);
+  pll_2f_pad->add_port("EXTFEEDBACK", Direction::IN);
+  pll_2f_pad->add_port("DYNAMICDELAY_0", Direction::IN);
+  pll_2f_pad->add_port("DYNAMICDELAY_1", Direction::IN);
+  pll_2f_pad->add_port("DYNAMICDELAY_2", Direction::IN);
+  pll_2f_pad->add_port("DYNAMICDELAY_3", Direction::IN);
+  pll_2f_pad->add_port("DYNAMICDELAY_4", Direction::IN);
+  pll_2f_pad->add_port("DYNAMICDELAY_5", Direction::IN);
+  pll_2f_pad->add_port("DYNAMICDELAY_6", Direction::IN);
+  pll_2f_pad->add_port("DYNAMICDELAY_7", Direction::IN);
+  pll_2f_pad->add_port("LATCHINPUTVALUE", Direction::IN);
+  pll_2f_pad->add_port("SCLK", Direction::IN);
+  pll_2f_pad->add_port("SDI", Direction::IN);
+  pll_2f_pad->add_port("SDO", Direction::IN);
+  pll_2f_pad->add_port("LOCK", Direction::OUT);
+  pll_2f_pad->add_port("PLLOUTGLOBALA", Direction::OUT);
+  pll_2f_pad->add_port("PLLOUTCOREA", Direction::OUT);
+  pll_2f_pad->add_port("PLLOUTGLOBALB", Direction::OUT);
+  pll_2f_pad->add_port("PLLOUTCOREB", Direction::OUT);
+  
+  pll_2f_pad->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_2f_pad->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_2f_pad->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_2f_pad->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_2f_pad->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_2f_pad->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_2f_pad->set_param("PLLOUT_SELECT_PORTA", "SHIFTREG_0deg");
+  pll_2f_pad->set_param("PLLOUT_SELECT_PORTB", "SHIFTREG_0deg");
+  pll_2f_pad->set_param("DIVR", BitVector(4, 0));
+  pll_2f_pad->set_param("DIVF", BitVector(6, 0));
+  pll_2f_pad->set_param("DIVQ", BitVector(3, 0));
+  pll_2f_pad->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_2f_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_2f_pad->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
+  pll_2f_pad->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
 }
 
 Model *
