@@ -53,7 +53,8 @@ require_program(icebox_vlog)
 require_program(icepack)
 require_program(python)
 require_program(yosys)
-require_program(valgrind)
+
+find_program(VALGRIND valgrind)
 
 #
 # Sources
@@ -124,12 +125,18 @@ enable_testing()
 add_test(test_bv ${CMAKE_CURRENT_BINARY_DIR}/test_bv)
 add_arachne_pnr_test_script(simple tests/simple "run-test.sh")
 add_arachne_pnr_test_script(regression tests/regression "run-test.sh")
-add_arachne_pnr_test_script(simple-valgrind
-	tests/simple "run-valgrind-test.sh")
 add_arachne_pnr_test_script(fsm tests/fsm "run-test.sh")
 
+if(${VALGRIND} MATCHES NOTFOUND)
+	message(WARNING "-- valgrind not found. Skipping valgrind-based tests")
+else()
+	add_arachne_pnr_test_script(simple-valgrind
+		tests/simple "run-valgrind-test.sh")
+endif()
+
 add_custom_target(simpletest ${CMAKE_CTEST_COMMAND} -R '^\(test_bv|simple\)$$'
-	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR}/test_bv
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}
+        ${CMAKE_CURRENT_BINARY_DIR}/test_bv
 	${CMAKE_CURRENT_SOURCE_DIR}/tests/simple/run-test.sh)
 
 #
