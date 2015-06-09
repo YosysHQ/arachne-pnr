@@ -645,10 +645,8 @@ Router::route()
 	if (p.first < chipdb->n_global_nets)
 	  {
 	    int cb_t = chipdb->tile_colbuf_tile.at(sw.tile);
-	    assert(chipdb->tile_type[cb_t] == TileType::LOGIC_TILE);
-	    
 	    const CBit &colbuf_cbit = (chipdb->tile_nonrouting_cbits
-				       .at(TileType::LOGIC_TILE)
+				       .at(chipdb->tile_type[cb_t])
 				       .at(fmt("ColBufCtrl.glb_netwk_" << p.first))
 				       [0]);
 	    conf.set_cbit(CBit(chipdb->tile_x(cb_t),

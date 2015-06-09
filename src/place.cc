@@ -710,7 +710,7 @@ Placer::place_initial()
 	}
       fatal(fmt("failed to place: placed " 
 		<< i
-		<< " of " << v.size()
+		<< " of " << chains.chains.size()
 		<< " carry chains"));
       
     placed_chain:;
