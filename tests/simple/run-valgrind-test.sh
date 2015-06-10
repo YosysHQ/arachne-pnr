@@ -2,7 +2,9 @@
 
 set -ex
 
-arachne_pnr=../../bin/arachne-pnr
+: ${ARACHNE_PNR:=../../build/arachne-pnr}
+: ${ICEPACK:=icepack}
+: ${VALGRIND:=valgrind}
 
-valgrind $arachne_pnr sb_up3down5.blif -o sb_up3down5_valgrind.txt
-icepack sb_up3down5_valgrind.txt sb_up3down5_valgrind.bin
+$VALGRIND $ARACHNE_PNR sb_up3down5.blif -o sb_up3down5_valgrind.txt
+$ICEPACK sb_up3down5_valgrind.txt sb_up3down5_valgrind.bin

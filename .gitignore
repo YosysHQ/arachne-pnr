@@ -1,7 +1,15 @@
 *.d
 *~
 *.o
-/bin/arachne-pnr
+
+arachne-pnr
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+*.cmake
+
 /tests/test_bv
 /diff
 save
