@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-: ${ARACHNE_PNR:=../../build/arachne-pnr}
+: ${ARACHNE_PNR:=../../arachne-pnr}
 : ${ICEBOX_BLOG:=icebox_vlog}
 : ${ICEPACK:=icepack}
 : ${PYTHON:=python}

@@ -2,7 +2,7 @@
 
 set -ex
 
-: ${ARACHNE_PNR:=../../build/arachne-pnr}
+: ${ARACHNE_PNR:=../../arachne-pnr}
 : ${ICEPACK:=icepack}
 
 for i in *.blif; do

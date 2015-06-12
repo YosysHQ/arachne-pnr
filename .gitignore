@@ -3,13 +3,14 @@
 *.o
 
 arachne-pnr
+test_bv
 
 # CMake files
 CMakeCache.txt
 CMakeFiles/
 Makefile
 *.cmake
+Testing/
 
-/tests/test_bv
 /diff
 save

@@ -2,26 +2,26 @@
 
 set -ex
 
-make clean
-make CC=clang CXX=clang++ OPTDEBUGFLAGS='-O0 -fno-inline -g' simpletest
+rm -rf build
 
-make clean
-make CC=gcc CXX=g++ OPTDEBUGFLAGS='-O0 -fno-inline -g' simpletest
+function build_test {
+    cc=$1
+    cxx=$2
+    build=$3
+    target=$4
+    dir=${cc}-${debug}
+    
+    mkdir build/$dir
+    cd build/$dir
+    cmake -DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DCMAKE_BUILD_TYPE=$build ../..
+    make VERBOSE=1 $target
+    cd ../..
+}
 
-make clean
-make CC=clang CXX=clang++ OPTDEBUGFLAGS='-O2' simpletest
+build_test clang clang++ Debug simpletest
+build_test clang clang++ Release simpletest
+build_test clang clang++ RelWithDebug simpletest
 
-make clean
-make CC=gcc CXX=g++ OPTDEBUGFLAGS='-O2' simpletest
-
-make clean
-make CC=clang CXX=clang++ OPTDEBUGFLAGS='-O2 -DNDEBUG' simpletest
-
-make clean
-make CC=gcc CXX=g++ OPTDEBUGFLAGS='-O2 -DNDEBUG' simpletest
-
-# full test with default options
-make clean
-make test
-
-make clean
+build_test gcc g++ Debug simpletest
+build_test gcc g++ Release simpletest
+build_test gcc g++ RelWithDebug test # build default

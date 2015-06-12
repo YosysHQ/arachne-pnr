@@ -2,13 +2,20 @@
 
 set -ex
 
-make clean
-make OPTDEBUGFLAGS='-O0 -fno-inline -g' simpletest
+rm -rf build
 
-make clean
-make OPTDEBUGFLAGS='-O2' simpletest
+function build_test {
+    build="$1"
+    args="$2"
+    
+    mkdir -p build/$build
+    cd build/$build
+    cmake -DCMAKE_BUILD_TYPE=$build ../..
+    make VERBOSE=1
+    make VERBOSE=1 ARGS="-V $args" test
+    cd ../..
+}
 
-make clean
-make OPTDEBUGFLAGS='-O2 -DNDEBUG' simpletest
-
-make clean
+build_test Debug "-E fsm"
+build_test Release "-E fsm"
+build_test RelWithDebug "" # default
