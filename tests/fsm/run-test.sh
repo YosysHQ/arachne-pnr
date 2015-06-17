@@ -1,17 +1,16 @@
 #!/bin/bash
 set -ex
 
-: ${ARACHNE_PNR:=../../arachne-pnr}
-: ${ICEBOX_BLOG:=icebox_vlog}
+: ${CURRENT_SOURCE_DIR:=.}
+: ${ARACHNE_PNR:=arachne-pnr}
+: ${ICEBOX_VLOG:=icebox_vlog}
 : ${ICEPACK:=icepack}
 : ${PYTHON:=python}
 : ${YOSYS:=yosys}
 
-rm -rf temp
-mkdir temp
-$PYTHON generate.py
+$PYTHON $CURRENT_SOURCE_DIR/generate.py
 
-for i in temp/uut_?????.v; do
+for i in uut_?????.v; do
     pf=${i%.*}
     base=${pf##*/}
     $YOSYS -q -p "synth_ice40 -blif ${pf}_gate.blif" ${pf}.v

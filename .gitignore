@@ -5,12 +5,7 @@
 arachne-pnr
 test_bv
 
-# CMake files
-CMakeCache.txt
-CMakeFiles/
-Makefile
-*.cmake
-Testing/
+build/
 
 /diff
 save

@@ -15,8 +15,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+# FIXME test or disallow in-source builds
 # FIXME test without yosys
-# FIXME put binaries in bin/
 
 cmake_minimum_required(VERSION 2.8.6)
 
@@ -37,6 +37,8 @@ endif()
 #
 
 project(arachne-pnr)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 
 set(arachne_pnr_TITLE arachne-pnr)
 set(arachne_pnr_DESCRIPTION "An FPGA Place-and-Route compilation step.")
@@ -61,17 +63,22 @@ function(require_program name)
 	message("-- Finding program ${name}... ${${var}}")
 endfunction()
 
-find_program(GNU_ENV env)
+function(find_program_verbose var name)
+	message("-- Finding program ${name}")
+	find_program(${var} ${name})
+	message("-- Finding program ${name}... ${${var}}")
+endfunction()
+
+find_program_verbose(GNU_ENV env)
 
 require_program(bash)
 require_program(icebox_vlog)
 require_program(icepack)
 require_program(python)
 
-# FIXME messages
-find_program(YOSYS yosys)
+find_program_verbose(YOSYS yosys)
 
-find_program(VALGRIND valgrind)
+find_program_verbose(VALGRIND valgrind)
 
 #
 # Sources
@@ -99,9 +106,13 @@ set(arachne_pnr_SOURCES
 # Definitions
 #
 
+# FIXME not portable, see https://stackoverflow.com/questions/10984442/how-to-detect-c11-support-of-a-compiler-with-cmake
 add_definitions(-std=c++11)
+
 add_definitions(-MD)
 add_definitions(-Wall -Werror)
+
+# FIXME include dir instead of definition?
 add_definitions(-I${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 #
@@ -120,19 +131,23 @@ target_link_libraries(${PROJECT_NAME} ${arachne_pnr_LINK_LIBS})
 # Tests
 #
 
+add_custom_target(simpletest
+  ctest -L fast "$(ARGS)")
+
 function(add_arachne_pnr_test_script name subdir command)
-        # FIXME run in build tree
+	file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${subdir})
 	add_test(NAME ${name}
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${subdir}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${subdir}
 		COMMAND ${GNU_ENV}
-		ARACHNE_PNR=${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}
+		CURRENT_SOURCE_DIR=${CMAKE_SOURCE_DIR}/${subdir}
+		ARACHNE_PNR=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}
 		ICEBOX_VLOG=${ICEBOX_VLOG}
 		ICEPACK=${ICEPACK}
 		PYTHON=${PYTHON}
 		VALGRIND=${VALGRIND}
 		YOSYS=${YOSYS}
-		${BASH}
-		${command})
+		${BASH} 
+		${CMAKE_SOURCE_DIR}/${subdir}/${command})
 endfunction(add_arachne_pnr_test_script)
 
 add_executable(test_bv
@@ -140,14 +155,20 @@ add_executable(test_bv
 
 enable_testing()
 
-add_test(test_bv ${CMAKE_CURRENT_BINARY_DIR}/test_bv)
+add_test(test_bv ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_bv)
+set_tests_properties(test_bv PROPERTIES LABELS fast)
+
 add_arachne_pnr_test_script(simple tests/simple "run-test.sh")
+set_tests_properties(simple PROPERTIES LABELS fast)
+
 add_arachne_pnr_test_script(regression tests/regression "run-test.sh")
+set_tests_properties(regression PROPERTIES LABELS fast)
 
 if(${YOSYS} MATCHES NOTFOUND)
 	message(WARNING "-- yosys not found. Skipping yosys-based tests")
 else()
         add_arachne_pnr_test_script(fsm tests/fsm "run-test.sh")
+	add_arachne_pnr_test_script(combinatorial tests/combinatorial "run-test.sh")
 endif()
 
 if(${VALGRIND} MATCHES NOTFOUND)

@@ -16,6 +16,6 @@ function build_test {
     cd ../..
 }
 
-build_test Debug "-E fsm"
-build_test Release "-E fsm"
+build_test Debug "-L fast"
+build_test Release "-L fast"
 build_test RelWithDebug "" # default
