@@ -215,9 +215,8 @@ Promoter::promote(bool do_promote)
       assert(promote_q.empty()
 	     || promote_q.begin()->first <= p.first);
       
-      int i = p.second;
-      Net *n = nets[i];
-      uint8_t gc = net_gc.at(i);
+      Net *n = nets[p.second];
+      uint8_t gc = net_gc.at(p.second);
       
       for (int gc2 : global_classes)
 	{

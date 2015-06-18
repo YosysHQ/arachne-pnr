@@ -35,8 +35,8 @@ public:
   Location()
     : m_x(0), m_y(0), m_pos(0)
   {}
-  Location(int x, int y, int pos)
-    : m_x(x), m_y(y), m_pos(pos)
+  Location(int x_, int y_, int pos_)
+    : m_x(x_), m_y(y_), m_pos(pos_)
   {}
   
   bool operator==(const Location &loc2) const

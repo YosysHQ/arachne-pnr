@@ -33,8 +33,8 @@ class PCFParser : public LineParser
   Constraints &constraints;
   
 public:
-  PCFParser(const std::string &f, std::istream &s, Design *d_, Constraints &c)
-    : LineParser(f, s),
+  PCFParser(const std::string &f, std::istream &s_, Design *d_, Constraints &c)
+    : LineParser(f, s_),
       d(d_),
       top(d->top()),
       constraints(c)
