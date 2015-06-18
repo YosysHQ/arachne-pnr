@@ -653,6 +653,45 @@ ChipDBParser::parse()
 			 std::make_tuple(bank_num, addr_x, addr_y));
 		}
 	    }
+	  else if (cmd == ".extra_cell")
+	    {
+	      if (words.size() != 4)
+		fatal("wrong number of arguments to .extra_cell");
+	      
+	      int t = chipdb->tile(std::stoi(words[1]),
+				   std::stoi(words[2]));
+	      chipdb->extra_cell_tile.push_back(t);
+	      chipdb->extra_cell_name.push_back(words[3]);
+	      
+	      std::map<std::string, std::pair<int, std::string>> mfvs;
+	      for (;;)
+		{
+		  if (eof())
+		    {
+		      chipdb->extra_cell_mfvs.push_back(mfvs);
+		      return chipdb;
+		    }
+		  
+		  read_line();
+		  if (words.empty())
+		    continue;
+		  
+		  if (line[0] == '.')
+		    {
+		      chipdb->extra_cell_mfvs.push_back(mfvs);
+		      goto L;
+		    }
+		  
+		  if (words.size() != 4)
+		    fatal("invalid .extra_cell entry");
+		  
+		  int mfv_t = chipdb->tile(std::stoi(words[1]),
+					   std::stoi(words[2]));
+		  extend(mfvs, words[0],
+			 std::make_pair(mfv_t,
+					words[3]));
+		}
+	    }
 	  else
 	    fatal(fmt("unknown directive '" << cmd << "'"));
 	}

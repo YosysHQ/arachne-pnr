@@ -164,6 +164,11 @@ public:
   std::unordered_map<TileType,
 		     std::unordered_map<std::string, std::vector<CBit>>> tile_nonrouting_cbits;
   
+  std::vector<int> extra_cell_tile;
+  std::vector<std::string> extra_cell_name;
+  std::vector<std::map<std::string, std::pair<int, std::string>>>
+    extra_cell_mfvs;
+  
   // buffers and routing
   std::vector<Switch> switches;
   
