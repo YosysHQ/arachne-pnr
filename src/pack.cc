@@ -467,9 +467,9 @@ Packer::pack_carries_from(Instance *f)
 	    }
 	  else
 	    {
-	      Port *d = chain.back()->find_port("COUT");
-	      assert(d && d->connection() == in_conn);
-	      carry_pass_through_lc(lc_inst, d);
+	      Port *p = chain.back()->find_port("COUT");
+	      assert(p && p->connection() == in_conn);
+	      carry_pass_through_lc(lc_inst, p);
 	    }
 	}
       
@@ -502,9 +502,9 @@ Packer::pack_carries_from(Instance *f)
 	  
 	  Instance *lc2_inst = top->add_instance(models.lc);
 	  
-	  Port *d = chain.back()->find_port("COUT");
-	  assert(d && d->connection() == out_conn);
-	  carry_pass_through_lc(lc2_inst, d);
+	  Port *p = chain.back()->find_port("COUT");
+	  assert(p && p->connection() == out_conn);
+	  carry_pass_through_lc(lc2_inst, p);
 	  
 	  chain.push_back(lc2_inst);
 	}
@@ -530,10 +530,10 @@ Packer::pack_carries()
 	{
 	  Port *in = inst->find_port("CI");
 	  Net *in_conn = in->connection();
-	  Port *d = driver(in_conn);
-	  if (!d
-	      || !isa<Instance>(d->node())
-	      || !models.is_carry(cast<Instance>(d->node())))
+	  Port *p = driver(in_conn);
+	  if (!p
+	      || !isa<Instance>(p->node())
+	      || !models.is_carry(cast<Instance>(p->node())))
 	    extend(ready, inst);
 	}
     }

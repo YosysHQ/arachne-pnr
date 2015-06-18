@@ -28,24 +28,24 @@
 
 class BlifParser : public LineParser
 {
-  BitVector stobv(const std::string &s);
+  BitVector stobv(const std::string &s_);
   
 public:
-  BlifParser(const std::string &f, std::istream &s)
-    : LineParser(f, s)
+  BlifParser(const std::string &f, std::istream &s_)
+    : LineParser(f, s_)
   {}
   
   Design *parse();
 };
 
 BitVector
-BlifParser::stobv(const std::string &s)
+BlifParser::stobv(const std::string &s_)
 {
-  int n = words[2].size();
+  int n = s_.size();
   BitVector bv(n);
   for (int i = 0; i < n; ++i)
     {
-      char c = words[2][(n - 1) - i];
+      char c = s_[(n - 1) - i];
       if (c == '1')
 	bv[i] = true;
       else if (c == '0'
@@ -327,11 +327,11 @@ BlifParser::parse()
     }
   
   std::unordered_set<Net *> boundary_nets;
-  for (Instance *inst : top->instances())
+  for (Instance *inst2 : top->instances())
     {
-      if (inst->instance_of() == io_model)
+      if (inst2->instance_of() == io_model)
 	{
-	  Port *p = inst->find_port("PACKAGE_PIN");
+	  Port *p = inst2->find_port("PACKAGE_PIN");
 	  Net *n = p->connection();
 	  Port *q = p->connection_other_port();
 	  if (!n
@@ -352,9 +352,9 @@ BlifParser::parse()
       int n_drivers = 0;
       if (n->is_constant())
 	++n_drivers;
-      for (Port *p : n->connections())
+      for (Port *p2 : n->connections())
 	{
-	  if (p->is_output())
+	  if (p2->is_output())
 	    ++n_drivers;
 	}
       if (n_drivers > 1)

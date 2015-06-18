@@ -110,7 +110,7 @@ set(arachne_pnr_SOURCES
 add_definitions(-std=c++11)
 
 add_definitions(-MD)
-add_definitions(-Wall -Werror)
+add_definitions(-Wall -Wshadow -Werror)
 
 # FIXME include dir instead of definition?
 add_definitions(-I${CMAKE_CURRENT_SOURCE_DIR}/src)

@@ -175,15 +175,15 @@ ChipDB::dump(std::ostream &s) const
 	s << "\n";
       }
   
-  std::vector<std::vector<std::pair<int, std::string>>> net_tile_name(n_nets);
+  std::vector<std::vector<std::pair<int, std::string>>> net_tile_names(n_nets);
   for (int i = 0; i < n_tiles; ++i)
     for (const auto &p : tile_nets[i])
-      net_tile_name[p.second].push_back(std::make_pair(i, p.first));
+      net_tile_names[p.second].push_back(std::make_pair(i, p.first));
   
   for (int i = 0; i < n_nets; ++i)
     {
       s << ".net " << i << "\n";
-      for (const auto &p : net_tile_name[i])
+      for (const auto &p : net_tile_names[i])
 	s << tile_x(p.first) << " " << tile_y(p.first) << " " << p.second << "\n";
       s << "\n";
     }
@@ -242,26 +242,26 @@ class ChipDBParser : public LineParser
   CBit parse_cbit(int x, int y, const std::string &s);
   
 public:
-  ChipDBParser(const std::string &f, std::istream &s)
-    : LineParser(f, s)
+  ChipDBParser(const std::string &f, std::istream &s_)
+    : LineParser(f, s_)
   {}
   
   ChipDB *parse();
 };
 
 CBit
-ChipDBParser::parse_cbit(int x, int y, const std::string &s)
+ChipDBParser::parse_cbit(int x, int y, const std::string &s_)
 {
-  std::size_t lbr = s.find('['),
-    rbr = s.find(']');
+  std::size_t lbr = s_.find('['),
+    rbr = s_.find(']');
   
-  if (s[0] != 'B'
+  if (s_[0] != 'B'
       || lbr == std::string::npos
       || rbr == std::string::npos)
     fatal("invalid cbit spec");
   
-  std::string rows(&s[1], &s[lbr]),
-    cols(&s[lbr + 1], &s[rbr]);
+  std::string rows(&s_[1], &s_[lbr]),
+    cols(&s_[lbr + 1], &s_[rbr]);
   
   int r = std::stoi(rows),
     c = std::stoi(cols);
@@ -488,16 +488,17 @@ ChipDBParser::parse()
 		  
 		  if (line[0] == '.')
 		    {
-		      int s = chipdb->switches.size();
+		      // FIXME
+		      int s2 = chipdb->switches.size();
 		      chipdb->switches.push_back(Switch(cmd == ".routing",
 							t,
 							n,
 							in_val,
 							cbits));
 		      
-		      extend(chipdb->out_switches[n], s);
+		      extend(chipdb->out_switches[n], s2);
 		      for (const auto &p : in_val)
-			extend(chipdb->in_switches[p.first], s);
+			extend(chipdb->in_switches[p.first], s2);
 		      
 		      goto L;
 		    }
