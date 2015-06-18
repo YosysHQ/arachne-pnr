@@ -200,9 +200,9 @@ Node::find_port(const std::string &n)
   return lookup_or_default(m_ports, n, nullptr);
 }
 
-Instance::Instance(Model *parent, Model *inst_of)
+Instance::Instance(Model *parent_, Model *inst_of)
   : Node(Node::Kind::instance),
-    m_parent(parent),
+    m_parent(parent_),
     m_instance_of(inst_of)
 {
   for (const auto &p : m_instance_of->m_ports)

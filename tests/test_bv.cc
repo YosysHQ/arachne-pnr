@@ -6,10 +6,8 @@
 #include <vector>
 #include <cassert>
 
-std::default_random_engine rg;
-
 void
-test(int n)
+test(int n, std::default_random_engine &rg)
 {
   std::vector<bool> a(n);
   BitVector b(n);
@@ -62,7 +60,9 @@ test(int n)
 int
 main()
 {
+  std::default_random_engine rg;
+  
   for (int n = 0; n <= 1000; ++n)
-    test(n);
-  test(10000);
+    test(n, rg);
+  test(10000, rg);
 }
