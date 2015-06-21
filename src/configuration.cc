@@ -26,20 +26,20 @@ Configuration::Configuration()
 }
 
 void
-Configuration::set_cbit(const CBit &cbit, bool value)
+Configuration::set_cbit(const CBit &value_cbit, bool value)
 {
-  assert(!contains_key(cbits, cbit)
-	 || cbits.at(cbit) == value);
-  cbits[cbit] = value;
+  assert(!contains_key(cbits, value_cbit)
+	 || cbits.at(value_cbit) == value);
+  cbits[value_cbit] = value;
 }
 
 void
-Configuration::set_cbits(const std::vector<CBit> &cbits,
+Configuration::set_cbits(const std::vector<CBit> &value_cbits,
 			 const std::vector<bool> &value)
 {
-  assert(cbits.size() == value.size());
-  for (unsigned i = 0; i < cbits.size(); i ++)
-    set_cbit(cbits[i], value[i]);
+  assert(value_cbits.size() == value.size());
+  for (unsigned i = 0; i < value_cbits.size(); i ++)
+    set_cbit(value_cbits[i], value[i]);
 }
 
 void
@@ -98,11 +98,11 @@ Configuration::write_txt(std::ostream &s,
 	      init_i.resize(256);
 	      for (int j = 63; j >= 0; --j)
 		{
-		  int d = (((int)init_i[j*4 + 3] << 3)
+		  int x = (((int)init_i[j*4 + 3] << 3)
 			   | ((int)init_i[j*4 + 2] << 2)
 			   | ((int)init_i[j*4 + 1] << 1)
 			   | ((int)init_i[j*4 + 0]));
-		  s << hexdigit(d);
+		  s << hexdigit(x);
 		}
 	      s << "\n";
 	    }

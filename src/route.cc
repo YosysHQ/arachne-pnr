@@ -230,11 +230,11 @@ Router::check()
 Router::Router(const ChipDB *cdb, 
 	       Design *d_, 
 	       Configuration &c,
-	       const std::unordered_map<Instance *, Location> &p)
+	       const std::unordered_map<Instance *, Location> &placement_)
   : chipdb(cdb),
     d(d_),
     conf(c),
-    placement(p),
+    placement(placement_),
     models(d),
     cnet_net(chipdb->n_nets, nullptr),
     cnet_tiles(chipdb->n_nets),
@@ -359,7 +359,6 @@ Router::visit(int cn)
 	}
       
       int h = 0;
-#if 1
       if (!contains(unrouted, cn2))
 	{
 	  ++h; // local
@@ -370,10 +369,10 @@ Router::visit(int cn)
 	      int tx = chipdb->tile_x(t),
 		ty = chipdb->tile_y(t);
 	      
-	      for (int s : net_targets[current_net])
+	      for (int s2 : net_targets[current_net])
 		{
-		  assert(cnet_tiles[s].size() == 1);
-		  int t2 = cnet_tiles[s][0];
+		  assert(cnet_tiles[s2].size() == 1);
+		  int t2 = cnet_tiles[s2][0];
 		  if (t2 == t)
 		    goto L;
 		  
@@ -401,8 +400,6 @@ Router::visit(int cn)
 	}
       
     L:
-#endif
-      
       int new_cost = cost[cn] + cn2_cost + h;
       
       if (contains(frontier, cn2))
@@ -490,21 +487,21 @@ Router::route()
 	  Value v = n->constant();
 	  assert(v == Value::ZERO || v == Value::ONE);
 	  
-	  for (auto p : n->connections())
+	  for (auto p2 : n->connections())
 	    {
-	      Instance *inst = cast<Instance>(p->node());
+	      Instance *inst = cast<Instance>(p2->node());
 	      
 	      if (models.is_lc(inst)
-		  && p->name() == "CIN")
+		  && p2->name() == "CIN")
 		{
 		  const Location &loc = placement.at(inst);
 		  if (loc.pos() == 0)
 		    continue;
 		}
 	      
-	      assert(p->is_input()
-		     && !p->is_bidir()
-		     && p->undriven() == v);
+	      assert(p2->is_input()
+		     && !p2->is_bidir()
+		     && p2->undriven() == v);
 	    }
 	}
 #endif
@@ -514,13 +511,13 @@ Router::route()
       
       // *logs << n->name() << "\n";
       
-      for (auto p : n->connections())
+      for (auto p2 : n->connections())
 	{
-	  assert(p->connection() == n);
-	  assert(isa<Instance>(p->node()));
+	  assert(p2->connection() == n);
+	  assert(isa<Instance>(p2->node()));
 	  
-	  Instance *inst = cast<Instance>(p->node());
-	  int cn = port_cnet(inst, p);
+	  Instance *inst = cast<Instance>(p2->node());
+	  int cn = port_cnet(inst, p2);
 	  
 	  // like lutff_i/cin
 	  if (cn < 0)
@@ -531,15 +528,15 @@ Router::route()
 		 || cnet_net[cn] == n);
 	  cnet_net[cn] = n;
 	  
-	  assert(!p->is_bidir());
-	  if (p->is_output())
+	  assert(!p2->is_bidir());
+	  if (p2->is_output())
 	    {
 	      assert(source < 0);
 	      source = cn;
 	    }
 	  else
 	    {
-	      assert(p->is_input());
+	      assert(p2->is_input());
 	      targets.push_back(cn);
 	    }
 	}
@@ -645,10 +642,8 @@ Router::route()
 	if (p.first < chipdb->n_global_nets)
 	  {
 	    int cb_t = chipdb->tile_colbuf_tile.at(sw.tile);
-	    assert(chipdb->tile_type[cb_t] == TileType::LOGIC_TILE);
-	    
 	    const CBit &colbuf_cbit = (chipdb->tile_nonrouting_cbits
-				       .at(TileType::LOGIC_TILE)
+				       .at(chipdb->tile_type[cb_t])
 				       .at(fmt("ColBufCtrl.glb_netwk_" << p.first))
 				       [0]);
 	    conf.set_cbit(CBit(chipdb->tile_x(cb_t),

@@ -7,7 +7,7 @@
 # OPTDEBUGFLAGS = -O0 -fno-inline -g
 OPTDEBUGFLAGS = -O2 # -DNDEBUG
 
-CXXFLAGS = -Isrc -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Werror
+CXXFLAGS = -Isrc -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow	-Werror
 LIBS = -lm
 
 .PHONY: all

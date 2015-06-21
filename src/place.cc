@@ -165,16 +165,16 @@ Placer::chain_random_loc(int c)
   int new_start = random_int(1, chipdb->height - 2 - (nt - 1), rg);
   int new_end = new_start + nt - 1;
   
-  for (unsigned d = 0; d < chains.chains.size(); ++d)
+  for (unsigned e = 0; e < chains.chains.size(); ++e)
     {
-      if (chain_x[d] != new_x)  // including self
+      if (chain_x[e] != new_x)  // including self
 	continue;
       
-      int d_nt = (chains.chains[d].size() + 7) / 8;
-      int d_start = chain_start[d],
-	d_end = d_start + d_nt - 1;
-      if ((new_start > d_start && new_start <= d_end)
-	  || (new_end >= d_start && new_end < d_end))
+      int e_nt = (chains.chains[e].size() + 7) / 8;
+      int e_start = chain_start[e],
+	e_end = e_start + e_nt - 1;
+      if ((new_start > e_start && new_start <= e_end)
+	  || (new_end >= e_start && new_end < e_end))
 	return std::make_pair(Location(), false);
     }
   
@@ -196,17 +196,17 @@ Placer::move_gate(int g, const Location &new_loc)
 }
 
 void
-Placer::move_chain(int c, const Location &new_loc)
+Placer::move_chain(int c, const Location &new_base)
 {
-  assert(new_loc.pos() == 0);
+  assert(new_base.pos() == 0);
   
   int nt = (chains.chains[c].size() + 7) / 8;
   
   int x = chain_x[c],
     start = chain_start[c];
   
-  int new_x = new_loc.x(),
-    new_start = new_loc.y();
+  int new_x = new_base.x(),
+    new_start = new_base.y();
   if (new_x == x
       && new_start == start)
     return;
@@ -335,10 +335,10 @@ Placer::restore()
     net_length[p.first] = p.second;
   for (const auto &t : restore_chain)
     {
-      int d, x, start;
-      std::tie(d, x, start) = t;
-      chain_x[d] = x;
-      chain_start[d] = start;
+      int e, x, start;
+      std::tie(e, x, start) = t;
+      chain_x[e] = x;
+      chain_start[e] = start;
     }
 }
 
@@ -710,7 +710,7 @@ Placer::place_initial()
 	}
       fatal(fmt("failed to place: placed " 
 		<< i
-		<< " of " << v.size()
+		<< " of " << chains.chains.size()
 		<< " carry chains"));
       
     placed_chain:;
@@ -1036,11 +1036,10 @@ Placer::configure()
 	}
       else if (models.is_io(inst))
 	{
-	  int p = loc.pos();
 	  const BitVector &pin_type = inst->get_param("PIN_TYPE").as_bits();
 	  for (int i = 0; i < 6; ++i)
 	    {
-	      const CBit &cbit = func_cbits.at(fmt("IOB_" << p << ".PINTYPE_" << i))[0];
+	      const CBit &cbit = func_cbits.at(fmt("IOB_" << loc.pos() << ".PINTYPE_" << i))[0];
 	      conf.set_cbit(CBit(loc.x(), loc.y(), cbit.row, cbit.col),
 			    pin_type[i]);
 	    }

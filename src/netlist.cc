@@ -200,9 +200,9 @@ Node::find_port(const std::string &n)
   return lookup_or_default(m_ports, n, nullptr);
 }
 
-Instance::Instance(Model *p, Model *inst_of)
+Instance::Instance(Model *parent_, Model *inst_of)
   : Node(Node::Kind::instance),
-    m_parent(p),
+    m_parent(parent_),
     m_instance_of(inst_of)
 {
   for (const auto &p : m_instance_of->m_ports)
@@ -395,13 +395,13 @@ Net *
 Model::add_net()
 {
  L:
-  std::string name = fmt("$temp$" << counter);
+  std::string net_name = fmt("$temp$" << counter);
   ++counter;
-  if (contains_key(m_nets, name))
+  if (contains_key(m_nets, net_name))
     goto L;
   
-  Net *new_n = new Net(name);
-  extend(m_nets, name, new_n);
+  Net *new_n = new Net(net_name);
+  extend(m_nets, net_name, new_n);
   return new_n;
 }
 
@@ -409,17 +409,17 @@ Net *
 Model::add_net(const std::string &orig)
 {
   int i = 2;
-  std::string name = orig;
+  std::string net_name = orig;
  L:
-  if (contains_key(m_nets, name))
+  if (contains_key(m_nets, net_name))
     {
-      name = fmt(orig << "$" << i);
+      net_name = fmt(orig << "$" << i);
       ++i;
       goto L;
     }
   
-  Net *new_n = new Net(name);
-  extend(m_nets, name, new_n);
+  Net *new_n = new Net(net_name);
+  extend(m_nets, net_name, new_n);
   return new_n;
 }
 
@@ -463,17 +463,17 @@ std::pair<std::vector<Net *>, std::unordered_map<Net *, int>>
 Model::index_nets() const
 {
   int n_nets = 0;
-  std::vector<Net *> nets;
+  std::vector<Net *> vnets;
   std::unordered_map<Net *, int> net_idx;
   for (const auto &p : m_nets)
     {
       Net *n = p.second;
       
-      nets.push_back(n);
+      vnets.push_back(n);
       extend(net_idx, n, n_nets);
       ++n_nets;
     }
-  return std::make_pair(nets, net_idx);
+  return std::make_pair(vnets, net_idx);
 }
 
 std::pair<std::vector<Net *>, std::unordered_map<Net *, int>>
@@ -481,7 +481,7 @@ Model::index_internal_nets(const Design *d) const
 {
   std::unordered_set<Net *> bnets = boundary_nets(d);
   
-  std::vector<Net *> nets;
+  std::vector<Net *> vnets;
   std::unordered_map<Net *, int> net_idx;
   
   int n_nets = 0;
@@ -491,11 +491,11 @@ Model::index_internal_nets(const Design *d) const
       if (contains(bnets, n))
 	continue;
       
-      nets.push_back(n);
+      vnets.push_back(n);
       extend(net_idx, n, n_nets);
       ++n_nets;
     }
-  return std::make_pair(nets, net_idx);
+  return std::make_pair(vnets, net_idx);
 }
 
 std::pair<std::vector<Instance *>, std::unordered_map<Instance *, int>>
@@ -567,20 +567,20 @@ Model::rename_net(Net *n, const std::string &new_name)
   const std::string &old_name = n->name();
   
   int i = 2;
-  std::string name = new_name;
+  std::string net_name = new_name;
  L:
-  if (contains(m_nets, name)
-      || name == old_name)
+  if (contains(m_nets, net_name)
+      || net_name == old_name)
     {
-      name = fmt(new_name << "$" << i);
+      net_name = fmt(new_name << "$" << i);
       ++i;
       goto L;
     }
   
   m_nets.erase(old_name);
   
-  n->m_name = name;
-  extend(m_nets, name, n);
+  n->m_name = net_name;
+  extend(m_nets, net_name, n);
 }
 
 #ifndef NDEBUG
@@ -605,7 +605,8 @@ Model::check(const Design *d) const
 	}
     }
   
-  std::unordered_set<Net *> boundary_nets;
+  // FIXME call boundary_nets?
+  std::unordered_set<Net *> bnets;
   for (Instance *inst : m_instances)
     {
       if (inst->instance_of() == io_model)
@@ -613,7 +614,7 @@ Model::check(const Design *d) const
 	  Port *p = inst->find_port("PACKAGE_PIN");
 	  
 	  Net *n = p->connection();
-	  extend(boundary_nets, n);
+	  extend(bnets, n);
 	  
 	  Port *q = p->connection_other_port();
 	  assert(n
@@ -628,19 +629,19 @@ Model::check(const Design *d) const
       assert(p.first == n->name());
       assert(!n->connections().empty());
       
-      if (contains(boundary_nets, n))
+      if (contains(bnets, n))
 	continue;
       
       int n_drivers = 0;
       bool input = false;
       if (n->is_constant())
 	++n_drivers;
-      for (Port *p : n->connections())
+      for (Port *p2 : n->connections())
 	{
-	  assert(!p->is_bidir());
-	  if (p->is_input())
+	  assert(!p2->is_bidir());
+	  if (p2->is_input())
 	    input = true;
-	  if (p->is_output())
+	  if (p2->is_output())
 	    ++n_drivers;
 	}
       
@@ -673,16 +674,16 @@ Model::shared_names() const
 	continue;
       
       int i = 2;
-      std::string name = p.first;
+      std::string shared_net_name = p.first;
     L:
-      if (contains(names, name))
+      if (contains(names, shared_net_name))
 	{
-	  name = fmt(p.first << "$" << i);
+	  shared_net_name = fmt(p.first << "$" << i);
 	  ++i;
 	  goto L;
 	}
-      extend(names, name);
-      extend(net_name, p.second, name);
+      extend(names, shared_net_name);
+      extend(net_name, p.second, shared_net_name);
     }
   return std::make_pair(net_name, is_port);
 }
