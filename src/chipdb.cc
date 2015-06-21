@@ -450,7 +450,10 @@ ChipDBParser::parse()
 		      chipdb->net_tile_name[n] = std::make_pair(t, words[2]);
 		      first = false;
 		    }
-		  extend(chipdb->tile_nets[t], words[2], n);
+		  if (words[2] == "wire_gbuf/in")
+		    extend(chipdb->tile_nets[t], "fabout", n);
+		  else
+		    extend(chipdb->tile_nets[t], words[2], n);
 		}
 	    }
 	  else if (cmd == ".buffer"

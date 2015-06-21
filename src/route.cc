@@ -181,7 +181,7 @@ Router::port_cnet(Instance *inst, Port *p)
   else if (models.is_gb(inst))
     {
       if (p_name == "USER_SIGNAL_TO_GLOBAL_BUFFER")
-	tile_net_name = fmt("wire_gbuf/in");
+	tile_net_name = fmt("fabout");
       else
 	{
 	  assert(p_name == "GLOBAL_BUFFER_OUTPUT");
