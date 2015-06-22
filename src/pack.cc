@@ -569,7 +569,8 @@ Packer::pack()
     n_lc_dff = 0,
     n_lc_carry_dff = 0,
     n_gb = 0,
-    n_bram = 0;
+    n_bram = 0,
+    n_pll = 0;
   for (Instance *inst : top->instances())
     {
       if (models.is_lc(inst))
@@ -592,10 +593,12 @@ Packer::pack()
 	++n_io;
       else if (models.is_gb(inst))
 	++n_gb;
+      else if (models.is_ramX(inst))
+	  ++n_bram;
       else
 	{ 
-	  assert(models.is_ramX(inst));
-	  ++n_bram;
+	  assert(models.is_pllX(inst));
+	  ++n_pll;
 	}
     }
   
@@ -615,7 +618,9 @@ Packer::pack()
 	<< "  DFF PASS   " << n_dff_pass_through << "\n"
 	<< "  CARRY PASS " << n_carry_pass_through << "\n"
 	<< "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
-	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n\n";
+	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
+    // FIXME
+	<< "PLLs         " << n_pll << " / 1\n\n";
 }
 
 void

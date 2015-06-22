@@ -92,9 +92,8 @@ Promoter::port_gc(Port *conn, bool indirect)
 	  || conn->name() == "OUTPUT_CLOCK")
 	return gc_clk;
     }
-  else
+  else if (models.is_ramX(inst))
     {
-      assert(models.is_ramX(inst));
       if (conn->name() == "WCLK"
 	  || conn->name() == "RCLK")
 	return gc_clk;
@@ -106,6 +105,12 @@ Promoter::port_gc(Port *conn, bool indirect)
 	return gc_rclke;
       else if (conn->name() == "RE")
 	return gc_re;
+    }
+  else
+    {
+      assert(models.is_pllX(inst));
+      // FIXME any?
+      return 0;
     }
   
   return 0;

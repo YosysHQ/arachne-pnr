@@ -62,6 +62,7 @@ class Router
   Models models;
   
   std::unordered_map<std::string, std::pair<std::string, bool>> ram_gate_chip;
+  std::unordered_map<std::string, std::string> pll_gate_chip;
   
   std::vector<Net *> cnet_net;
   std::vector<std::vector<int>> cnet_tiles;
@@ -190,10 +191,8 @@ Router::port_cnet(Instance *inst, Port *p)
 	  tile_net_name = fmt("glb_netwk_" << g);
 	}
     }
-  else
+  else if (models.is_ramX(inst))
     {
-      assert(models.is_ramX(inst));
-      
       auto r = ram_gate_chip.at(p_name);
       tile_net_name = r.first;
       if (r.second)
@@ -201,8 +200,37 @@ Router::port_cnet(Instance *inst, Port *p)
 	t = chipdb->tile(loc.x(),
 			 loc.y() - 1);
     }
+  else
+    {
+      assert(models.is_pllX(inst));
+      // FIXME
+      std::string r = lookup_or_default(pll_gate_chip, p_name, p_name);
+      for (int i = 0; i < chipdb->extra_cell_tile.size(); ++i)
+	{
+	  if (t != chipdb->extra_cell_tile[i]
+	      || chipdb->extra_cell_name[i] != "PLL")
+	    continue;
+	  
+	  const auto &p2 = chipdb->extra_cell_mfvs[i].at(r);
+	  t = p2.first;
+	  if (r == "PLLOUT_A"
+	      || r == "PLLOUT_B")
+	    tile_net_name = fmt("io_" << p2.second << "/D_IN_0");
+	  else
+	    tile_net_name = p2.second;
+	  
+	  *logs << p_name << " aka " << r
+		<< " -> (" << chipdb->tile_x(t) << " " << chipdb->tile_y(t) << ") "
+		<< tile_net_name << "\n";
+	  
+	  goto L;
+	}
+      assert(false);
+    L:;
+    }
   
   int n = chipdb->tile_nets[t].at(tile_net_name);
+  *logs << "n=" << n << "\n";
   return n;
 }
 
@@ -307,6 +335,13 @@ Router::Router(const ChipDB *cdb,
   for (int t = 0; t < chipdb->n_tiles; ++t)
     for (const auto &p : chipdb->tile_nets[t])
       cnet_tiles[p.second].push_back(t);
+  
+  for (int i = 0; i < 8; ++i)
+    extend(pll_gate_chip, 
+	   fmt("DYNAMICDELAY[" << i << "]"),
+	   fmt("DYNAMICDELAY_" << i));
+  extend(pll_gate_chip, "PLLOUTCOREA", "PLLOUT_A");
+  extend(pll_gate_chip, "PLLOUTCOREB", "PLLOUT_B");
 }
 
 void
@@ -522,6 +557,14 @@ Router::route()
 	  // like lutff_i/cin
 	  if (cn < 0)
 	    continue;
+	  
+	  if (cnet_net[cn] != nullptr
+	      && cnet_net[cn] != n)
+	    {
+	      *logs << "cn=" << cn
+		    << ", cnet_net[cn]=" << cnet_net[cn]->name()
+		    << ", n=" << n->name() << "\n";
+	    }
 	  
 	  assert(cnet_net[cn] == nullptr
 		 // like lutff_global/clk

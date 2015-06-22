@@ -373,27 +373,31 @@ public:
 public:
   Models(Design *d);
   
-  bool is_dff(Instance *inst) const
+  bool is_dff(const Instance *inst) const
   {
     return is_prefix("SB_DFF", inst->instance_of()->name());
   }
-  bool is_lut4(Instance *inst) const { return inst->instance_of() == lut4; }
-  bool is_carry(Instance *inst) const { return inst->instance_of() == carry; }
+  bool is_lut4(const Instance *inst) const { return inst->instance_of() == lut4; }
+  bool is_carry(const Instance *inst) const { return inst->instance_of() == carry; }
   
-  bool is_lc(Instance *inst) const { return inst->instance_of() == lc; }
-  bool is_io(Instance *inst) const { return inst->instance_of() == io; }
-  bool is_gb(Instance *inst) const { return inst->instance_of() == gb; }
-  bool is_ram(Instance *inst) const { return inst->instance_of() == ram; }
-  bool is_ramnr(Instance *inst) const { return inst->instance_of() == ramnr; }
-  bool is_ramnw(Instance *inst) const { return inst->instance_of() == ramnw; }
-  bool is_ramnrnw(Instance *inst) const { return inst->instance_of() == ramnrnw; }
+  bool is_lc(const Instance *inst) const { return inst->instance_of() == lc; }
+  bool is_io(const Instance *inst) const { return inst->instance_of() == io; }
+  bool is_gb(const Instance *inst) const { return inst->instance_of() == gb; }
+  bool is_ram(const Instance *inst) const { return inst->instance_of() == ram; }
+  bool is_ramnr(const Instance *inst) const { return inst->instance_of() == ramnr; }
+  bool is_ramnw(const Instance *inst) const { return inst->instance_of() == ramnw; }
+  bool is_ramnrnw(const Instance *inst) const { return inst->instance_of() == ramnrnw; }
   
-  bool is_ramX(Instance *inst) const
+  bool is_ramX(const Instance *inst) const
   { 
     return (inst->instance_of() == ram
 	    || inst->instance_of() == ramnr
 	    || inst->instance_of() == ramnw
 	    || inst->instance_of() == ramnrnw);
+  }
+  bool is_pllX(const Instance *inst) const
+  {
+    return is_prefix("SB_PLL40_", inst->instance_of()->name());
   }
 };
 

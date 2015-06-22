@@ -47,6 +47,7 @@ public:
   std::vector<int> logic_tiles,
     ramt_tiles;
   std::vector<Location> gb_locs;
+  std::vector<Location> pll_locs;
   
   Design *d;
   CarryChains &chains;
@@ -145,13 +146,17 @@ Placer::gate_random_loc(int g)
     return random_element(free_io_locs, rg);
   else if (models.is_gb(inst))
     return random_element(gb_locs, rg);
-  else
+  else if (models.is_ramX(inst))
     {
-      assert(models.is_ramX(inst));
       int t = random_element(ramt_tiles, rg);
       return Location(chipdb->tile_x(t),
 		      chipdb->tile_y(t),
 		      0);
+    }
+  else
+    {
+      assert(models.is_pllX(inst));
+      return random_element(pll_locs, rg);
     }
 }
 
@@ -642,6 +647,17 @@ Placer::Placer(const ChipDB *cdb,
 				 p.first.second,
 				 2));
     }
+  for (int i = 0; i < chipdb->extra_cell_tile.size(); ++i)
+    {
+      if (chipdb->extra_cell_name[i] == "PLL")
+	{
+	  int t = chipdb->extra_cell_tile[i];
+	  pll_locs.push_back(Location(chipdb->tile_x(t),
+				      chipdb->tile_y(t),
+				      // FIXME chipdb->pll_tile_pos
+				      4));
+	}
+    }
   
   std::tie(nets, net_idx) = top->index_nets();
   int n_nets = nets.size();
@@ -720,7 +736,8 @@ Placer::place_initial()
   int n_io_placed = 0,
     n_lc_placed = 0,
     n_ramt_placed = 0,
-    n_gb_placed = 0;
+    n_gb_placed = 0,
+    n_pll_placed = 0;
   
   std::unordered_set<Location> io_locs;
   for (const auto &p : chipdb->pin_loc)
@@ -781,7 +798,8 @@ Placer::place_initial()
   std::vector<Location> empty_io_locs = free_io_locs,
     empty_gb_locs = gb_locs,
     empty_logic_locs,
-    empty_ramt_locs;
+    empty_ramt_locs,
+    empty_pll_locs = pll_locs;
   for (int t : logic_tiles)
     for (int p = 0; p < 8; p ++)
       {
@@ -802,7 +820,8 @@ Placer::place_initial()
   int n_io_gates = 0,
     n_lc_gates = 0,
     n_bram_gates = 0,
-    n_gb_gates = 0;
+    n_gb_gates = 0,
+    n_pll_gates = 0;
   for (unsigned i = 1; i < gates.size(); i ++)  // skip 0, nullptr
     {
       Instance *inst = gates[i];
@@ -812,10 +831,12 @@ Placer::place_initial()
 	++n_io_gates;
       else if (models.is_gb(inst))
 	++n_gb_gates;
+      else if (models.is_ramX(inst))
+	++n_bram_gates;
       else
 	{
-	  assert(models.is_ramX(inst));
-	  ++n_bram_gates;
+	  assert(models.is_pllX(inst));
+	  ++n_pll_gates;
 	}
     }
   
@@ -878,9 +899,8 @@ Placer::place_initial()
 	{
 	  io_q.insert(std::make_pair(gb_inst_gc.at(inst), i));
 	}
-      else
+      else if (models.is_ramX(inst))
 	{
-	  assert(models.is_ramX(inst));
 	  for (unsigned j = 0; j < empty_ramt_locs.size(); ++j)
 	    {
 	      const Location &loc = empty_ramt_locs[j];
@@ -902,6 +922,30 @@ Placer::place_initial()
 		    << " / " << ramt_tiles.size()));
 	  
 	}
+      else
+	{
+	  assert(models.is_pllX(inst));
+	  for (unsigned j = 0; j < empty_pll_locs.size(); ++j)
+	    {
+	      const Location &loc = empty_pll_locs[j];
+	      extend(loc_gate, loc, i);
+	      gate_loc[i] = loc;
+	      if (!valid(loc))
+		loc_gate.erase(loc);
+	      else
+		{
+		  ++n_pll_placed;
+		  empty_pll_locs[j] = empty_pll_locs.back();
+		  empty_pll_locs.pop_back();
+		  goto placed_gate;
+		}
+	    }
+	  fatal(fmt("failed to place: placed "
+		    << n_pll_placed
+		    << " PLLs of " << n_pll_gates
+		    << " / " << pll_locs.size()));
+	}
+      
     placed_gate:;
     }
   
@@ -1055,10 +1099,8 @@ Placer::configure()
 	}
       else if (models.is_gb(inst))
 	;
-      else
+      else if (models.is_ramX(inst))
 	{
-	  assert(models.is_ramX(inst));
-	  
 	  BitVector wm = inst->get_param("WRITE_MODE").as_bits(),
 	    rm = inst->get_param("READ_MODE").as_bits();
 	  wm.resize(2);
@@ -1109,6 +1151,11 @@ Placer::configure()
 			       ramb_negclk.row,
 			       ramb_negclk.col),
 			  true);
+	}
+      else
+	{
+	  assert(models.is_pllX(inst));
+	  // FIXME
 	}
       
       placement[inst] = p.first;

@@ -140,8 +140,41 @@ public:
   int height;
   
   int n_tiles;
-  int n_nets;
-  int n_global_nets;
+  int n_nets;  // FIXME rename n_cnets
+  int n_global_nets;  // FIXME n_global_cnets
+  
+#if 0
+  // FIXME Placement maps gate -> cell, not Location
+  class enum CellType
+  {
+    LC, IO, GB, RAM, WARMBOOT, PLL,
+  };
+  
+  int n_cells;
+  std::vector<CellType> cell_type;
+  std::vector<Location> cell_loc;
+  
+  std::vector<std::vector<int>> cell_type_cells;
+  std::vector<int> cell_subidx;
+  
+  std::unordered_map<Location, int> loc_cell;
+  std::unordered_map<Location, CellType> loc_cell_type;
+  
+  // per cell type data
+  std::vector<int> io_pin;
+  std::unordered_map<int, int> pin_cell;
+  
+  std::vector<int> gb_gbufin_glb;
+  std::vector<int> gb_padin_glb;
+  std::vector<std::pair<int, int, int>> gb_extra_bits;
+  
+  std::vector<int> pll_package_pin;
+  std::vector<int> pll_porta_cell,
+    pll_portb_cell;
+  std::vector<std::map<std::string, std::string>> pll_mfvs;
+  
+  std::vector<std::map<std::string, std::string>> warmboot_mfvs;
+#endif
   
   std::string package;
   std::unordered_map<int, Location> pin_loc;
@@ -159,11 +192,12 @@ public:
   std::unordered_map<int, int> tile_colbuf_tile;
   
   std::vector<TileType> tile_type;
-  std::vector<std::pair<int, std::string>> net_tile_name;
+  std::vector<std::pair<int, std::string>> net_tile_name;  // FIXME remove
   std::vector<std::unordered_map<std::string, int>> tile_nets;
   std::unordered_map<TileType,
 		     std::unordered_map<std::string, std::vector<CBit>>> tile_nonrouting_cbits;
   
+  // FIXME remove for general cell above
   std::vector<int> extra_cell_tile;
   std::vector<std::string> extra_cell_name;
   std::vector<std::map<std::string, std::pair<int, std::string>>>
