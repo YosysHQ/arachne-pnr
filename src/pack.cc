@@ -25,6 +25,7 @@
 class Packer
 {
   const ChipDB *chipdb;
+  const Package &package;
   Design *d;
   
   Models models;
@@ -55,13 +56,14 @@ class Packer
   void pack_carries();
   
 public:
-  Packer(const ChipDB *cdb, Design *d_, CarryChains &chains_);
+  Packer(const ChipDB *cdb, const Package &package_, Design *d_, CarryChains &chains_);
   
   void pack();
 };
 
-Packer::Packer(const ChipDB *cdb, Design *d_, CarryChains &chains_)
+Packer::Packer(const ChipDB *cdb, const Package &package_, Design *d_, CarryChains &chains_)
   : chipdb(cdb), 
+    package(package_),
     d(d_), 
     models(d),
     top(d->top()),
@@ -607,7 +609,7 @@ Packer::pack()
     }
   
   *logs << "\nAfter packing:\n"
-	<< "IOs          " << n_io << " / " << chipdb->pin_loc.size() << "\n"
+	<< "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
 	<< "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
 	<< "  DFF        " << n_lc_dff << "\n"
 	<< "  CARRY      " << n_lc_carry << "\n"
@@ -619,8 +621,8 @@ Packer::pack()
 }
 
 void
-pack(const ChipDB *chipdb, Design *d, CarryChains &chains)
+pack(const ChipDB *chipdb, const Package &package, Design *d, CarryChains &chains)
 {
-  Packer packer(chipdb, d, chains);
+  Packer packer(chipdb, package, d, chains);
   packer.pack();
 }

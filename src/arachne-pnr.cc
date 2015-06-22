@@ -77,6 +77,10 @@ usage()
     << "    -p <pcf-file>, --pcf-file <pcf-file>\n"
     << "        Read physical constraints from <pcf-file>.\n"
     << "\n"
+    << "    -P <package>, --package <package>\n"
+    << "        Target package <package>.\n"
+    << "        Default: tq144 for 1k, ct256 for 8k\n"
+    << "\n"
     << "    -w <pcf-file>, --write-pcf <pcf-file>\n"
     << "        Write pin assignments to <pcf-file> after placement.\n"
     << "\n"
@@ -100,6 +104,7 @@ main(int argc, const char **argv)
   std::string device = "1k";
   const char *chipdb_file = nullptr,
     *input_file = nullptr,
+    *package_name_cp = nullptr,
     *pcf_file = nullptr,
     *post_place_pcf = nullptr,
     *pack_blif = nullptr,
@@ -164,6 +169,15 @@ main(int argc, const char **argv)
 	      ++i;
 	      pcf_file = argv[i];
 	    }
+	  else if (!strcmp(argv[i], "-P")
+		   || !strcmp(argv[i], "--package"))
+	    {
+	      if (i + 1 >= argc)
+		fatal(fmt(argv[i] << ": expected argument"));
+	      
+	      ++i;
+	      package_name_cp = argv[i];
+	    }
 	  else if (!strcmp(argv[i], "-w")
 		   || !strcmp(argv[i], "--write-pcf"))
 	    {
@@ -204,6 +218,17 @@ main(int argc, const char **argv)
       && device != "8k")
     fatal(fmt("unknown device: " << device));
   
+  std::string package_name;
+  if (package_name_cp)
+    package_name = package_name_cp;
+  else if (device == "1k")
+    package_name = "tq144";
+  else 
+    {
+      assert(device == "1k");
+      package_name = "ct256";
+    }
+  
   std::ostream *null_ostream = nullptr;
   if (quiet)
     logs = null_ostream = new std::ostream(new null_streambuf);
@@ -211,7 +236,6 @@ main(int argc, const char **argv)
     logs = &std::cerr;
   
   *logs << "device: " << device << "\n";
-  
   std::string chipdb_file_s;
   if (chipdb_file)
     chipdb_file_s = chipdb_file;
@@ -221,7 +245,25 @@ main(int argc, const char **argv)
 		     + ".txt");
   *logs << "read_chipdb " << chipdb_file_s << "...\n";
   const ChipDB *chipdb = read_chipdb(chipdb_file_s);
+  
+  *logs << "  supported packages: ";
+  bool first = true;
+  for (const auto &p : chipdb->packages)
+    {
+      if (first)
+	first = false;
+      else
+	*logs << ", ";
+      *logs << p.first;
+    }
+  *logs << "\n";
+  
   // chipdb->dump(std::cout);
+  
+  auto package_i = chipdb->packages.find(package_name);
+  if (package_i == chipdb->packages.end())
+    fatal(fmt("unknown package `" << package_name << "'"));
+  const Package &package = package_i->second;
   
   Design *d;
   if (input_file)
@@ -263,7 +305,7 @@ main(int argc, const char **argv)
     CarryChains chains;
     
     *logs << "pack...\n";
-    pack(chipdb, d, chains);
+    pack(chipdb, package, d, chains);
 #ifndef NDEBUG
     d->check();
 #endif
@@ -308,7 +350,7 @@ main(int argc, const char **argv)
     
     *logs << "place...\n";
     // d->dump();
-    std::unordered_map<Instance *, Location> placement = place(chipdb, d,
+    std::unordered_map<Instance *, Location> placement = place(chipdb, package, d,
 							       chains, constraints, gb_inst_gc,
 							       conf);
 #ifndef NDEBUG
@@ -327,7 +369,7 @@ main(int argc, const char **argv)
 	  {
 	    if (models.is_io(p.first))
 	      {
-		std::string pin = chipdb->loc_pin.at(p.second);
+		std::string pin = package.loc_pin.at(p.second);
 		Port *top_port = (p.first
 				  ->find_port("PACKAGE_PIN")
 				  ->connection_other_port());

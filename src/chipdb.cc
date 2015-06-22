@@ -129,15 +129,18 @@ ChipDB::dump(std::ostream &s) const
 {
   s << ".device " << device << "\n\n";
   
-  s << ".pins " << package << "\n";
-  for (const auto &p : pin_loc)
-    s << p.first
-      << " " << p.second.x()
-      << " " << p.second.y() << " "
-      << " " << p.second.pos() << "\n";
-  s << "\n";
+  for (const auto &p : packages)
+    {
+      s << ".pins " << p.first << "\n";
+      for (const auto &p2 : p.second.pin_loc)
+	s << p2.first
+	  << " " << p2.second.x()
+	  << " " << p2.second.y() << " "
+	  << " " << p2.second.pos() << "\n";
+      s << "\n";
+    }
   
-  s << ".colbuf " << package << "\n";
+  s << ".colbuf\n";
   for (const auto &p : tile_colbuf_tile)
     s << tile_x(p.second) << " " << tile_y(p.second) << " "
       << tile_x(p.first) << " " << tile_y(p.first) << "\n";
@@ -302,7 +305,10 @@ ChipDBParser::parse()
 	      if (words.size() != 2)
 		fatal("wrong number of arguments");
 	      
-	      chipdb->package = words[1];
+	      const std::string &package_name = words[1];
+	      Package &package = chipdb->packages[package_name];
+	      
+	      package.name = package_name;
 	      
 	      for (;;)
 		{
@@ -324,16 +330,14 @@ ChipDBParser::parse()
 		    y = std::stoi(words[2]),
 		    pos = std::stoi(words[3]);
 		  Location loc(x, y, pos);
-		  extend(chipdb->pin_loc, pin, loc);
-		  extend(chipdb->loc_pin, loc, pin);
+		  extend(package.pin_loc, pin, loc);
+		  extend(package.loc_pin, loc, pin);
 		}
 	    }
 	  else if (cmd == ".gbufpin")
 	    {
 	      if (words.size() != 1)
 		fatal("wrong number of arguments");
-	      
-	      chipdb->package = words[1];
 	      
 	      for (;;)
 		{

@@ -42,6 +42,7 @@ public:
   std::default_random_engine rg;
   
   const ChipDB *chipdb;
+  const Package &package;
   
   std::vector<int> logic_columns;
   std::vector<int> logic_tiles,
@@ -121,6 +122,7 @@ public:
   
 public:
   Placer(const ChipDB *chipdb,
+	 const Package &package_,
 	 Design *d,
 	 CarryChains &chains_,
 	 const Constraints &constraints_,
@@ -601,12 +603,14 @@ Placer::wire_length() const
 }
 
 Placer::Placer(const ChipDB *cdb,
+	       const Package &package_,
 	       Design *d_,
 	       CarryChains &chains_,
 	       const Constraints &constraints_,
 	       const std::unordered_map<Instance *, uint8_t> &gb_inst_gc_,
 	       Configuration &conf_)
   : chipdb(cdb),
+    package(package_),
     d(d_),
     chains(chains_),
     constraints(constraints_),
@@ -723,7 +727,7 @@ Placer::place_initial()
     n_gb_placed = 0;
   
   std::unordered_set<Location> io_locs;
-  for (const auto &p : chipdb->pin_loc)
+  for (const auto &p : package.pin_loc)
     extend(io_locs, p.second);
   
   std::vector<Net *> bank_latch(4, nullptr);
@@ -732,7 +736,7 @@ Placer::place_initial()
       int g = top_port_io_gate(p.first);
       Instance *inst = gates[g];
       
-      Location loc = chipdb->pin_loc.at(p.second);
+      Location loc = package.pin_loc.at(p.second);
       int t = chipdb->tile(loc.x(),
 			   loc.y());
       int b = chipdb->tile_bank(t);
@@ -872,7 +876,7 @@ Placer::place_initial()
 	  fatal(fmt("failed to place: placed "
 		    << n_io_placed
 		    << " IOs of " << n_io_gates
-		    << " / " << chipdb->pin_loc.size()));
+		    << " / " << package.pin_loc.size()));
 	}
       else if (models.is_gb(inst))
 	{
@@ -1122,7 +1126,7 @@ Placer::configure()
       &ren_0 = func_cbits.at("IoCtrl.REN_0")[0],
       &ren_1 = func_cbits.at("IoCtrl.REN_1")[0],
       &lvds = func_cbits.at("IoCtrl.LVDS")[0];
-    for (const auto &p : chipdb->pin_loc)
+    for (const auto &p : package.pin_loc)
       {
 	// unused io
 	bool enable_input = false;
@@ -1319,7 +1323,7 @@ Placer::place()
     }
   
   *logs << "\nAfter placement:\n"
-	<< "PIOs       " << n_pio << " / " << chipdb->pin_loc.size() << "\n"
+	<< "PIOs       " << n_pio << " / " << package.pin_loc.size() << "\n"
 	<< "PLBs       " << n_plb << " / " << logic_tiles.size() << "\n"
 	<< "BRAMs      " << n_bram << " / " << ramt_tiles.size() << "\n"
 	<< "\n";
@@ -1329,13 +1333,14 @@ Placer::place()
 
 std::unordered_map<Instance *, Location>
 place(const ChipDB *chipdb,
+      const Package &package,
       Design *d,
       CarryChains &chains,
       const Constraints &constraints,
       const std::unordered_map<Instance *, uint8_t> &gb_inst_gc,
       Configuration &conf)
 {
-  Placer placer(chipdb, d, chains, constraints, gb_inst_gc, conf);
+  Placer placer(chipdb, package, d, chains, constraints, gb_inst_gc, conf);
   
   clock_t start = clock();
   std::unordered_map<Instance *, Location> placement = placer.place();

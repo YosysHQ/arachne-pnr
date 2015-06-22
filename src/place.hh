@@ -24,11 +24,13 @@ class Instance;
 class Location;
 class Configuration;
 class ChipDB;
+class Package;
 class Constraints;
 class CarryChains;
 
 extern std::unordered_map<Instance *, Location>
 place(const ChipDB *chipdb, 
+      const Package &package,
       Design *d,
       CarryChains &chains,
       const Constraints &constraints,

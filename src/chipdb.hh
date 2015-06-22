@@ -130,7 +130,16 @@ public:
 }
 
 extern std::string tile_type_name(TileType t);
+
+class Package
+{
+public:
+  std::string name;
   
+  std::unordered_map<std::string, Location> pin_loc;
+  std::unordered_map<Location, std::string> loc_pin;
+};
+
 class ChipDB
 {
 public:
@@ -143,9 +152,8 @@ public:
   int n_nets;
   int n_global_nets;
   
-  std::string package;
-  std::unordered_map<std::string, Location> pin_loc;
-  std::unordered_map<Location, std::string> loc_pin;
+  std::unordered_map<std::string, Package> packages;
+  
   std::unordered_map<Location, int> loc_pin_glb_num;
   
   std::vector<std::vector<int>> bank_tiles;
