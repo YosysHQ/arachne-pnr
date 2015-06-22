@@ -59,6 +59,7 @@ usage()
     << "    -d <device>, --device <device>\n"
     << "        Target device <device>.  Supported devices:\n"
     << "          1k - Lattice Semiconductor iCE40LP/HX1K\n"
+    << "          8k - Lattice Semiconductor iCE40LP/HX8K\n"
     << "        Default: 1k\n"
     << "\n"
     << "    -c <file>, --chipdb <chipdb-file>\n"
@@ -96,8 +97,8 @@ main(int argc, const char **argv)
   bool help = false,
     quiet = false,
     do_promote_globals = true;
-  const char *device = nullptr,
-    *chipdb_file = nullptr,
+  std::string device = "1k";
+  const char *chipdb_file = nullptr,
     *input_file = nullptr,
     *pcf_file = nullptr,
     *post_place_pcf = nullptr,
@@ -199,8 +200,9 @@ main(int argc, const char **argv)
       exit(EXIT_SUCCESS);
     }
   
-  if (!device)
-    device = "1k";
+  if (device != "1k"
+      && device != "8k")
+    fatal(fmt("unknown device: " << device));
   
   std::ostream *null_ostream = nullptr;
   if (quiet)
@@ -325,7 +327,7 @@ main(int argc, const char **argv)
 	  {
 	    if (models.is_io(p.first))
 	      {
-		int pin = chipdb->loc_pin.at(p.second);
+		std::string pin = chipdb->loc_pin.at(p.second);
 		Port *top_port = (p.first
 				  ->find_port("PACKAGE_PIN")
 				  ->connection_other_port());

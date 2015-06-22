@@ -319,8 +319,8 @@ ChipDBParser::parse()
 		  if (words.size() != 5)
 		    fatal("invalid .pins entry");
 		  
-		  int pin = std::stoi(words[0]),
-		    x = std::stoi(words[1]),
+		  const std::string &pin = words[0];
+		  int x = std::stoi(words[1]),
 		    y = std::stoi(words[2]),
 		    pos = std::stoi(words[3]),
 		    glb_num = std::stoi(words[4]);

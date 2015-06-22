@@ -144,8 +144,8 @@ public:
   int n_global_nets;
   
   std::string package;
-  std::unordered_map<int, Location> pin_loc;
-  std::unordered_map<Location, int> loc_pin;
+  std::unordered_map<std::string, Location> pin_loc;
+  std::unordered_map<Location, std::string> loc_pin;
   std::unordered_map<Location, int> loc_pin_glb_num;
   
   std::vector<std::vector<int>> bank_tiles;

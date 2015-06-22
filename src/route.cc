@@ -181,7 +181,7 @@ Router::port_cnet(Instance *inst, Port *p)
   else if (models.is_gb(inst))
     {
       if (p_name == "USER_SIGNAL_TO_GLOBAL_BUFFER")
-	tile_net_name = fmt("wire_gbuf/in");
+	tile_net_name = fmt("fabout");
       else
 	{
 	  assert(p_name == "GLOBAL_BUFFER_OUTPUT");
@@ -641,7 +641,8 @@ Router::route()
 	assert(p.second >= chipdb->n_global_nets);
 	if (p.first < chipdb->n_global_nets)
 	  {
-	    int cb_t = chipdb->tile_colbuf_tile.at(sw.tile);
+	    // FIXME no default
+	    int cb_t = lookup_or_default(chipdb->tile_colbuf_tile, sw.tile, sw.tile);
 	    const CBit &colbuf_cbit = (chipdb->tile_nonrouting_cbits
 				       .at(chipdb->tile_type[cb_t])
 				       .at(fmt("ColBufCtrl.glb_netwk_" << p.first))

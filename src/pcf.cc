@@ -46,7 +46,7 @@ public:
 void
 PCFParser::parse()
 {
-  std::unordered_map<std::string, int> net_pin;
+  std::unordered_map<std::string, std::string> net_pin;
   
   for (;;)
     {
@@ -68,10 +68,9 @@ PCFParser::parse()
 	  if (!p)
 	    fatal(fmt("no port `" << net_name << "' in top-level module `" << top->name() << "'"));
 	  
-	  int pin = std::stoi(words[2]);
 	  auto i = net_pin.find(net_name);
 	  if (i == net_pin.end())
-	    net_pin[net_name] = pin;
+	    net_pin[net_name] = words[2];
 	  else
 	    fatal(fmt("duplicate pin constraints for net `" << net_name << "'"));
 	}
