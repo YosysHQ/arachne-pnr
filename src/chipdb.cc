@@ -316,20 +316,48 @@ ChipDBParser::parse()
 		  if (line[0] == '.')
 		    goto L;
 		  
-		  if (words.size() != 5)
+		  if (words.size() != 4)
 		    fatal("invalid .pins entry");
 		  
 		  const std::string &pin = words[0];
 		  int x = std::stoi(words[1]),
 		    y = std::stoi(words[2]),
-		    pos = std::stoi(words[3]),
-		    glb_num = std::stoi(words[4]);
+		    pos = std::stoi(words[3]);
 		  Location loc(x, y, pos);
 		  extend(chipdb->pin_loc, pin, loc);
 		  extend(chipdb->loc_pin, loc, pin);
-		  if (glb_num >= 0)
-		    extend(chipdb->loc_pin_glb_num, loc, glb_num);
 		}
+	    }
+	  else if (cmd == ".gbufpin")
+	    {
+	      if (words.size() != 1)
+		fatal("wrong number of arguments");
+	      
+	      chipdb->package = words[1];
+	      
+	      for (;;)
+		{
+		  if (eof())
+		    return chipdb;
+		  
+		  read_line();
+		  if (words.empty())
+		    continue;
+		  
+		  if (line[0] == '.')
+		    goto L;
+		  
+		  if (words.size() != 4)
+		    fatal("invalid .gbufpin entry");
+		  
+		  int x = std::stoi(words[0]),
+		    y = std::stoi(words[1]),
+		    pos = std::stoi(words[2]),
+		    glb_num = std::stoi(words[3]);
+		  Location loc(x, y, pos);
+		  extend(chipdb->loc_pin_glb_num, loc, glb_num);
+		}
+	      
 	    }
 	  else if (cmd == ".io_tile"
 		   || cmd == ".logic_tile"
