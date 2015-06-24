@@ -13,6 +13,9 @@
    You should have received a copy of the GNU General Public License
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
+#include <vector>
+#include <cassert>
+
 class UllmanSet
 {
   int n;
@@ -38,17 +41,17 @@ public:
 	    && key[p] == k);
   }
   
-  void insert(int k) const
+  void insert(int k)
   {
     if (contains(k))
       return;
     
-    p = n++;
+    int p = n++;
     key[p] = k;
     pos[k] = p;
   }
 
-  void erase(int k) const
+  void erase(int k)
   {
     if (!contains(k))
       return;

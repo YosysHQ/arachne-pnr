@@ -225,7 +225,7 @@ main(int argc, const char **argv)
     package_name = "tq144";
   else 
     {
-      assert(device == "1k");
+      assert(device == "8k");
       package_name = "ct256";
     }
   

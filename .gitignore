@@ -3,5 +3,6 @@
 *.o
 /bin/arachne-pnr
 /tests/test_bv
+/tests/test_us
 /diff
 save

@@ -1272,7 +1272,7 @@ Placer::place()
   
   *logs << "  initial wire length = " << wire_length() << "\n";
   
-  for (int n = 0; n < 1000; ++n)
+  for (int n = 0; n < chipdb->n_tiles * 8; ++n)
     {
       for (int g : free_gates)
 	{
@@ -1296,7 +1296,7 @@ Placer::place()
 	    }
 	}
       
-      temp *= 0.95;
+      temp *= 0.99;
     }
   
   *logs << "  final wire length = " << wire_length() << "\n";

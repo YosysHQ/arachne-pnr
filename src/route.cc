@@ -70,7 +70,7 @@ class Router
   std::vector<int> net_source;
   std::vector<std::vector<int>> net_targets;
   
-  static const int max_passes = 10;
+  static const int max_passes = 15;
   int passes;
   
   int n_shared;
@@ -643,6 +643,15 @@ Router::route()
 	  {
 	    // FIXME no default
 	    int cb_t = lookup_or_default(chipdb->tile_colbuf_tile, sw.tile, sw.tile);
+	    
+	    // FIXME
+	    if (chipdb->tile_type[cb_t] == TileType::RAMT_TILE)
+	      {
+		cb_t = chipdb->tile(chipdb->tile_x(cb_t),
+				    chipdb->tile_y(cb_t) - 1);
+		assert(chipdb->tile_type[cb_t] == TileType::RAMB_TILE);
+	      }
+	    
 	    const CBit &colbuf_cbit = (chipdb->tile_nonrouting_cbits
 				       .at(chipdb->tile_type[cb_t])
 				       .at(fmt("ColBufCtrl.glb_netwk_" << p.first))

@@ -19,9 +19,13 @@ bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place
 tests/test_bv: tests/test_bv.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
+tests/test_us: tests/test_us.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+
 # assumes icestorm installed
-simpletest: bin/arachne-pnr tests/test_bv
+simpletest: bin/arachne-pnr tests/test_bv tests/test_us
 	./tests/test_bv
+	./tests/test_us
 	cd tests/simple && bash run-test.sh
 	@echo
 	@echo 'All tests passed.'
@@ -30,6 +34,7 @@ simpletest: bin/arachne-pnr tests/test_bv
 # assumes icestorm, yosys and valgrind installed
 test: bin/arachne-pnr tests/test_bv
 	./tests/test_bv
+	./tests/test_us
 	cd tests/simple && bash run-test.sh
 	cd tests/regression && bash run-test.sh
 	cd tests/simple && bash run-valgrind-test.sh
