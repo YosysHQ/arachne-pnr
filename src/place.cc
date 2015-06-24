@@ -84,7 +84,11 @@ public:
   std::vector<std::vector<int>> net_gates;
   std::vector<std::vector<int>> gate_nets;
   
+  int diameter;
   double temp;
+  bool improved;
+  int n_move;
+  int n_accept;
   
   std::unordered_set<int> changed_tiles;
   std::vector<std::pair<Location, int>> restore_loc;
@@ -138,9 +142,23 @@ Placer::gate_random_loc(int g)
   Instance *inst = gates[g];
   if (models.is_lc(inst))
     {
-      int t = random_element(logic_tiles, rg);
-      return Location(chipdb->tile_x(t),
-		      chipdb->tile_y(t),
+      Location loc = gate_loc[g];
+      int x = loc.x(),
+	y = loc.y();
+      
+    L:
+      int new_x = random_int(std::max(0, x - diameter),
+			     std::min(chipdb->width-1, x + diameter), rg),
+	new_y = random_int(std::max(0, y - diameter),
+			   std::min(chipdb->height-1, y + diameter), rg);
+      int new_t = chipdb->tile(new_x, new_y);
+      if (chipdb->tile_type[new_t] != TileType::LOGIC_TILE)
+	goto L;
+      
+      // int t = random_element(logic_tiles, rg);
+      
+      return Location(new_x, 
+		      new_y,
 		      random_int(0, 7, rg));
     }
   else if (models.is_io(inst))
@@ -503,10 +521,18 @@ Placer::accept_or_restore()
   
   // check();
   
-  if (delta <= 0
+  ++n_move;
+  if (delta < 0
       || (temp > 1e-6
 	  && prob_dist(rg) <= exp(-delta/temp)))
-    ;
+    {
+      if (delta < 0)
+	{
+	  // std::cout << "delta " << delta << "\n";
+	  improved = true;
+	}
+      ++n_accept;
+    }
   else
     {
     L:
@@ -618,7 +644,9 @@ Placer::Placer(const ChipDB *cdb,
     conf(conf_),
     models(d),
     top(d->top()),
-    temp(1000.0)
+    diameter(std::max(chipdb->width,
+		      chipdb->height)),
+    temp(10000.0)
 {
   for (int i = 0; i < chipdb->width; ++i)
     {
@@ -1272,31 +1300,90 @@ Placer::place()
   
   *logs << "  initial wire length = " << wire_length() << "\n";
   
-  for (int n = 0; n < chipdb->n_tiles * 8; ++n)
+  int n_no_progress = 0;
+  for (;;)
     {
-      for (int g : free_gates)
-	{
-	  Location new_loc = gate_random_loc(g);
-	  
-	  int new_g = lookup_or_default(loc_gate, new_loc, 0);
-	  if (new_g && chained[new_g])
-	    continue;
-	  
-	  move_gate(g, new_loc);
-	  accept_or_restore();
-	}
+      n_move = n_accept = 0;
+      improved = false;
       
-      for (int c = 0; c < (int)chains.chains.size(); ++c)
+      for (int m = 0; m < 15; ++m)
 	{
-	  std::pair<Location, bool> new_loc = chain_random_loc(c);
-	  if (new_loc.second)
+	  for (int g : free_gates)
 	    {
-	      move_chain(c, new_loc.first);
+#if 0
+	      Location old_loc = gate_loc[g];
+	      
+	    L:
+	      Location new_loc = gate_random_loc(g);
+	      if (new_loc.x() == old_loc.x()
+		  && new_loc.y() == old_loc.y())
+		goto L;
+#endif
+	      Location new_loc = gate_random_loc(g);	      
+	      
+	      int new_g = lookup_or_default(loc_gate, new_loc, 0);
+	      if (new_g && chained[new_g])
+		continue;
+	      
+	      move_gate(g, new_loc);
 	      accept_or_restore();
+	    }
+      
+	  for (int c = 0; c < (int)chains.chains.size(); ++c)
+	    {
+	      std::pair<Location, bool> new_loc = chain_random_loc(c);
+	      if (new_loc.second)
+		{
+		  move_chain(c, new_loc.first);
+		  accept_or_restore();
+		}
 	    }
 	}
       
-      temp *= 0.99;
+      if (improved)
+	{
+	  n_no_progress = 0;
+	  // std::cout << "improved\n";
+	}
+      else
+	++n_no_progress;
+      
+      if (temp <= 1e-3
+	  && n_no_progress >= 5)
+	break;
+      
+      double Raccept = (double)n_accept / (double)n_move;
+#if 0
+      std::cout << "Raccept " << Raccept
+		<< ", diameter = " << diameter
+		<< ", temp " << temp << "\n";
+#endif
+      
+      int M = std::max(chipdb->width,
+		       chipdb->height);
+      
+      double upper = 0.6,
+	lower = 0.4;
+      
+      if (Raccept >= 0.8)
+	temp *= 0.5;
+      else if (Raccept > upper)
+	{
+	  if (diameter < M)
+	    ++diameter;
+	  else
+	    temp *= 0.9;
+	}
+      else if (Raccept > lower)
+	temp *= 0.95;
+      else
+	{
+	  // Raccept < 0.3
+	  if (diameter > 1)
+	    --diameter;
+	  else
+	    temp *= 0.8;
+	}
     }
   
   *logs << "  final wire length = " << wire_length() << "\n";

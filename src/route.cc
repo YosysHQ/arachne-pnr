@@ -20,6 +20,8 @@
 #include "chipdb.hh"
 #include "configuration.hh"
 #include "bitvector.hh"
+#include "ullmanset.hh"
+#include "priorityq.hh"
 
 #include <cassert>
 #include <ostream>
@@ -34,26 +36,20 @@
 
 class Router;
 
-class CnetCompare
+class CompareSecond
 {
-  const Router *router;
-  
 public:
-  CnetCompare()
-    : router(nullptr)
-  {}
+  CompareSecond() {}
   
-  CnetCompare(const Router *r)
-    : router(r)
-  {}
-  
-  bool operator()(int lhs, int rhs) const;
+  bool operator()(const std::pair<int, int> &lhs,
+		  const std::pair<int, int> &rhs) const
+  {
+    return lhs.second > rhs.second;
+  }
 };
 
 class Router
 {
-  friend class CnetCompare;
-  
   const ChipDB *chipdb;
   Design *d;
   Configuration &conf;
@@ -61,10 +57,19 @@ class Router
   
   Models models;
   
+  BitVector cnet_global,
+    cnet_local;
+  std::vector<std::vector<int>> cnet_outs;
+  
   std::unordered_map<std::string, std::pair<std::string, bool>> ram_gate_chip;
   
   std::vector<Net *> cnet_net;
   std::vector<std::vector<int>> cnet_tiles;
+  // cnet_bbox
+  std::vector<int> cnet_xmin,
+    cnet_xmax,
+    cnet_ymin,
+    cnet_ymax;
   
   int n_nets;  // to route
   std::vector<int> net_source;
@@ -80,17 +85,21 @@ class Router
   
   // per net
   int current_net;
-  std::unordered_set<int> unrouted;
+  UllmanSet current_net_target_tiles;
+  UllmanSet unrouted;
   
-  BitVector visited;
+  UllmanSet visited;
   
-  std::set<int, CnetCompare> frontier;
+  UllmanSet frontier;
+  // cn, cost[cn]
+  PriorityQ<std::pair<int, int>, CompareSecond> frontierq;
   
   std::vector<int> backptr;
   std::vector<int> cost;
   
   void start(int net);
   int pop();
+  int compute_cn2_cost(int cn2);
   void visit(int cn);
   void ripup(int net);
   void traceback(int net, int target);
@@ -109,16 +118,6 @@ public:
   
   std::vector<Net *> route();
 };
-
-bool
-CnetCompare::operator()(int lhs, int rhs) const
-{
-  assert(router);
-  
-  return (router->cost[lhs] < router->cost[rhs]
-	  || (router->cost[lhs] == router->cost[rhs]
-	      && lhs < rhs));
-}
 
 int
 Router::port_cnet(Instance *inst, Port *p)
@@ -236,17 +235,61 @@ Router::Router(const ChipDB *cdb,
     conf(c),
     placement(placement_),
     models(d),
+    cnet_global(chipdb->n_nets),
+    cnet_local(chipdb->n_nets),
+    cnet_outs(chipdb->n_nets),
     cnet_net(chipdb->n_nets, nullptr),
     cnet_tiles(chipdb->n_nets),
+    cnet_xmin(chipdb->n_nets),
+    cnet_xmax(chipdb->n_nets),
+    cnet_ymin(chipdb->n_nets),
+    cnet_ymax(chipdb->n_nets),
     n_nets(0),
     n_shared(0),
     demand(chipdb->n_nets, 0),
     historical_demand(chipdb->n_nets, 0),
+    current_net_target_tiles(chipdb->n_tiles),
+    unrouted(chipdb->n_nets),
     visited(chipdb->n_nets),
-    frontier(CnetCompare(this)),
+    frontier(chipdb->n_nets),
     backptr(chipdb->n_nets),
     cost(chipdb->n_nets)
 {
+  for (int t = 0; t < chipdb->n_tiles; ++t)
+    {
+      for (const auto &p : chipdb->tile_nets[t])
+	{
+	  if (is_prefix("local_", p.first))
+	    {
+	      if (!cnet_local[p.second])
+		{
+		  cnet_local[p.second] = true;
+		  break;
+		}
+	    }
+	  else if (is_prefix("glb_netwk_", p.first))
+	    {
+	      if (!cnet_global[p.second])
+		{
+		  cnet_global[p.second] = true;
+		  break;
+		}
+	    }
+	}
+    }
+  
+  for (int i = 0; i < chipdb->n_nets; ++i)
+    {
+      for (int s : chipdb->in_switches[i])
+	{
+	  assert(contains_key(chipdb->switches[s].in_val, i));
+	  int j = chipdb->switches[s].out;
+	  assert(j != i);
+	  
+	  cnet_outs[i].push_back(j);
+	}
+    }
+  
   for (int i = 0; i <= 7; ++i)
     extend(ram_gate_chip,
 	   fmt("RDATA[" << i << "]"),
@@ -307,13 +350,36 @@ Router::Router(const ChipDB *cdb,
   for (int t = 0; t < chipdb->n_tiles; ++t)
     for (const auto &p : chipdb->tile_nets[t])
       cnet_tiles[p.second].push_back(t);
+  
+  for (int i = 0; i < chipdb->n_nets; ++i)
+    {
+      assert(!cnet_tiles[i].empty());
+      int t0 = cnet_tiles[i][0];
+      int xmin, xmax, ymin, ymax;
+      xmin = xmax = chipdb->tile_x(t0);
+      ymin = ymax = chipdb->tile_y(t0);
+      for (int j = 1; j < cnet_tiles[i].size(); ++j)
+	{
+	  int t = cnet_tiles[i][j];
+	  xmin = std::min(xmin, chipdb->tile_x(t));
+	  xmax = std::max(xmax, chipdb->tile_x(t));
+	  ymin = std::min(ymin, chipdb->tile_y(t));
+	  ymax = std::max(ymax, chipdb->tile_y(t));
+	}
+      cnet_xmin[i] = xmin;
+      cnet_xmax[i] = xmax;
+      cnet_ymin[i] = ymin;
+      cnet_ymax[i] = ymax;
+    }
 }
 
 void
 Router::start(int net)
 {
-  visited.zero();
+  visited.clear();
+  
   frontier.clear();
+  frontierq.clear();
   
   int source = net_source[net];
   cost[source] = 0;
@@ -323,100 +389,122 @@ Router::start(int net)
   for (const auto &p : net_route[net])
     {
       frontier.erase(p.second);
+      
       cost[p.second] = 0;
       backptr[p.second] = -1;
       visit(p.second);
     }
 }
 
+int
+Router::compute_cn2_cost(int cn2)
+{
+  int cn2_cost = 1;  // base
+  if (passes == max_passes)
+    {
+      if (demand[cn2])
+	cn2_cost = 1000000;
+    }
+  else // if (passes > 1)
+    {
+      cn2_cost += historical_demand[cn2];
+      cn2_cost *= (1 + 3 * demand[cn2]);
+    }
+  
+  int h = 0;
+  if (!unrouted.contains(cn2))
+    {
+      ++h; // local
+      
+      bool rowcol = false;
+      int xmin = cnet_xmin[cn2],
+	xmax = cnet_xmax[cn2],
+	ymin = cnet_ymin[cn2],
+	ymax = cnet_ymax[cn2];
+      
+      for (int i = 0; i < current_net_target_tiles.size(); ++i)
+	{
+	  int t = current_net_target_tiles.ith(i);
+	  int tx = chipdb->tile_x(t),
+	    ty = chipdb->tile_y(t);
+	  
+	  int dx = 0,
+	    dy = 0;
+	  if (tx < xmin)
+	    dx = xmin - tx;
+	  else if (tx > xmax)
+	    dx = tx - xmax;
+	  
+	  if (ty < ymin)
+	    dy = ymin - ty;
+	  else if (ty > ymax)
+	    dy = ty - ymax;
+	  assert(dx >= 0 && dy >= 0);
+	  
+	  if (dx == 0
+	      && dy == 0)
+	    goto L;
+	  
+	  if ((dx == 0 && dy <= 12)
+	      || (dy == 0 && dx <= 12)
+	      || (dx == 1 && dy <= 3))
+	    rowcol = true;
+	}
+      
+      ++h;
+      if (!rowcol)
+	++h;
+    }
+  
+ L:
+  return cn2_cost + h;
+}
+
 void
 Router::visit(int cn)
 {
-  assert(!contains(frontier, cn));
+  assert(!frontier.contains(cn));
+  visited.extend(cn);
   
-  assert(!visited[cn]);
-  visited[cn] = true;
-  
-  for (int s : chipdb->in_switches[cn])
+  for (int cn2 : cnet_outs[cn])
     {
-      assert(contains_key(chipdb->switches[s].in_val, cn));
-      int cn2 = chipdb->switches[s].out;
-      assert(cn2 != cn);
-      
-      if (visited[cn2])
+      if (visited.contains(cn2))
 	continue;
-       
-      int cn2_cost = 1;  // base
-      if (passes == max_passes)
+      
+      if (cnet_local[cn2])
 	{
-	  if (demand[cn2])
-	    cn2_cost = 1000000;
-	}
-      else // if (passes > 1)
-	{
-	  cn2_cost += historical_demand[cn2];
-	  cn2_cost *= (1 + 3 * demand[cn2]);
+	  assert(cnet_tiles[cn2].size() == 1);
+	  int t = cnet_tiles[cn2][0];
+	  if (!current_net_target_tiles.contains(t))
+	    continue;
 	}
       
-      int h = 0;
-      if (!contains(unrouted, cn2))
-	{
-	  ++h; // local
-	  
-	  bool rowcol = false;
-	  for (int t : cnet_tiles[cn2])
-	    {
-	      int tx = chipdb->tile_x(t),
-		ty = chipdb->tile_y(t);
-	      
-	      for (int s2 : net_targets[current_net])
-		{
-		  assert(cnet_tiles[s2].size() == 1);
-		  int t2 = cnet_tiles[s2][0];
-		  if (t2 == t)
-		    goto L;
-		  
-		  int t2x = chipdb->tile_x(t2),
-		    t2y = chipdb->tile_y(t2);
-		  
-		  int x_dist = std::abs(tx - t2x),
-		    y_dist = std::abs(ty - t2y);
-		  
-		  if ((tx == t2x  // span12
-		       && y_dist <= 12)
-		      || (ty == t2y
-			  && x_dist <= 12)
-		      // and span4 vertical
-		      || (x_dist == 1
-			  && y_dist <= 3))
-		    {
-		      rowcol = true;
-		    }
-		}
-	    }
-	  ++h;  // off tile
-	  if (!rowcol)
-	    ++h;
-	}
+      int new_cost = cost[cn] + compute_cn2_cost(cn2);
       
-    L:
-      int new_cost = cost[cn] + cn2_cost + h;
-      
-      if (contains(frontier, cn2))
+      if (frontier.contains(cn2))
 	{
 	  if (new_cost < cost[cn2])
 	    {
-	      frontier.erase(cn2);
+#if 0
+	      std::cout << "update cn " << cn2
+			<< " old_cost " << cost[cn2]
+			<< " new_cost " << new_cost << "\n";
+#endif
 	      cost[cn2] = new_cost;
 	      backptr[cn2] = cn;
-	      frontier.insert(cn2);
+	      frontierq.push(std::make_pair(cn2, new_cost));
 	    }
 	}
       else
 	{
 	  cost[cn2] = new_cost;
 	  backptr[cn2] = cn;
+#if 0
+	  std::cout << "add cn " << cn2
+		    << " cost " << new_cost << "\n";
+#endif
 	  frontier.insert(cn2);
+	  frontierq.push(std::make_pair(cn2, new_cost));
 	}
     }
 }
@@ -424,14 +512,24 @@ Router::visit(int cn)
 int
 Router::pop()
 {
-  assert(!frontier.empty());
+ L:
+  assert(!frontierq.empty());
+  int cn, cn_cost;
+  std::tie(cn, cn_cost) = frontierq.pop();
+  if (!frontier.contains(cn))
+    goto L;
   
-  int cn = *frontier.begin();
-  frontier.erase(frontier.begin());
+#if 0
+  std::cout << "pop cn " << cn
+	    << " cn_cost " << cn_cost 
+	    << " cost[cn] " << cost[cn] << "\n";
+#endif
+  assert(cn_cost == cost[cn]);
   
-  assert(frontier.empty()
-	 || (cost[cn] <= cost[*frontier.begin()]
-	     && cost[cn] <= cost[*frontier.rbegin()]));
+  assert(frontierq.empty()
+	 || cn_cost <= frontierq.top().second);
+  
+  frontier.erase(cn);
   
   return cn;
 }
@@ -560,6 +658,14 @@ Router::route()
 	  
 	  const auto &targets = net_targets[n];
 	  
+	  current_net_target_tiles.clear();
+	  for (int cn : targets)
+	    {
+	      assert(cnet_tiles[cn].size() == 1);
+	      int t = cnet_tiles[cn][0];
+	      current_net_target_tiles.insert(t);
+	    }
+	  
 	  if (passes > 1)
 	    {
 	      assert(net_route[n].size() > 0);
@@ -572,8 +678,10 @@ Router::route()
 	    }
 	  
 	M:
-	  unrouted = std::unordered_set<int>(targets.begin(),
-					     targets.end());
+	  unrouted.clear();
+	  for (int i : targets)
+	    // not extend, e.g., lutff_global/clk
+	    unrouted.insert(i);
 	  
 	  ripup(n);
 	  
@@ -585,10 +693,9 @@ Router::route()
 	    {
 	      int cn = pop();
 	      
-	      auto i = unrouted.find(cn);
-	      if (i != unrouted.end())
+	      if (unrouted.contains(cn))
 		{
-		  unrouted.erase(i);
+		  unrouted.erase(cn);
 		  traceback(n, cn);
 		  
 		  if (unrouted.empty())

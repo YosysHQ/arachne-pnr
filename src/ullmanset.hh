@@ -32,6 +32,14 @@ public:
   
   int capacity() const { return key.size(); }
   int size() const { return n; }
+  bool empty() const { return n == 0; }
+  void clear() { n = 0; }
+  void resize(int cap)
+  {
+    key.resize(cap);
+    pos.resize(cap);
+    n = 0;
+  }
   
   bool contains(int k) const
   {
@@ -50,7 +58,16 @@ public:
     key[p] = k;
     pos[k] = p;
   }
-
+  
+  void extend(int k)
+  {
+    assert(!contains(k));
+    
+    int p = n++;
+    key[p] = k;
+    pos[k] = p;
+  }
+  
   void erase(int k)
   {
     if (!contains(k))
