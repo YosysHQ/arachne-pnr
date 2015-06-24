@@ -75,7 +75,7 @@ class Router
   std::vector<int> net_source;
   std::vector<std::vector<int>> net_targets;
   
-  static const int max_passes = 15;
+  static const int max_passes = 50;
   int passes;
   
   int n_shared;
@@ -99,7 +99,6 @@ class Router
   
   void start(int net);
   int pop();
-  int compute_cn2_cost(int cn2);
   void visit(int cn);
   void ripup(int net);
   void traceback(int net, int target);
@@ -396,70 +395,6 @@ Router::start(int net)
     }
 }
 
-int
-Router::compute_cn2_cost(int cn2)
-{
-  int cn2_cost = 1;  // base
-  if (passes == max_passes)
-    {
-      if (demand[cn2])
-	cn2_cost = 1000000;
-    }
-  else // if (passes > 1)
-    {
-      cn2_cost += historical_demand[cn2];
-      cn2_cost *= (1 + 3 * demand[cn2]);
-    }
-  
-  int h = 0;
-  if (!unrouted.contains(cn2))
-    {
-      ++h; // local
-      
-      bool rowcol = false;
-      int xmin = cnet_xmin[cn2],
-	xmax = cnet_xmax[cn2],
-	ymin = cnet_ymin[cn2],
-	ymax = cnet_ymax[cn2];
-      
-      for (int i = 0; i < current_net_target_tiles.size(); ++i)
-	{
-	  int t = current_net_target_tiles.ith(i);
-	  int tx = chipdb->tile_x(t),
-	    ty = chipdb->tile_y(t);
-	  
-	  int dx = 0,
-	    dy = 0;
-	  if (tx < xmin)
-	    dx = xmin - tx;
-	  else if (tx > xmax)
-	    dx = tx - xmax;
-	  
-	  if (ty < ymin)
-	    dy = ymin - ty;
-	  else if (ty > ymax)
-	    dy = ty - ymax;
-	  assert(dx >= 0 && dy >= 0);
-	  
-	  if (dx == 0
-	      && dy == 0)
-	    goto L;
-	  
-	  if ((dx == 0 && dy <= 12)
-	      || (dy == 0 && dx <= 12)
-	      || (dx == 1 && dy <= 3))
-	    rowcol = true;
-	}
-      
-      ++h;
-      if (!rowcol)
-	++h;
-    }
-  
- L:
-  return cn2_cost + h;
-}
-
 void
 Router::visit(int cn)
 {
@@ -479,7 +414,19 @@ Router::visit(int cn)
 	    continue;
 	}
       
-      int new_cost = cost[cn] + compute_cn2_cost(cn2);
+      int cn2_cost = 1;  // base
+      if (passes == max_passes)
+	{
+	  if (demand[cn2])
+	    cn2_cost = 1000000;
+	}
+      else // if (passes > 1)
+	{
+	  cn2_cost += historical_demand[cn2];
+	  cn2_cost *= (1 + 3 * demand[cn2]);
+	}
+      
+      int new_cost = cost[cn] + cn2_cost;
       
       if (frontier.contains(cn2))
 	{

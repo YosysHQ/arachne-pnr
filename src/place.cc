@@ -23,6 +23,7 @@
 #include "pcf.hh"
 #include "carry.hh"
 #include "bitvector.hh"
+#include "ullmanset.hh"
 
 #include <iomanip>
 #include <vector>
@@ -90,11 +91,11 @@ public:
   int n_move;
   int n_accept;
   
-  std::unordered_set<int> changed_tiles;
+  UllmanSet changed_tiles;
   std::vector<std::pair<Location, int>> restore_loc;
   std::vector<std::tuple<int, int, int>> restore_chain;
   std::vector<std::pair<int, int>> restore_net_length;
-  std::unordered_set<int> recompute;
+  UllmanSet recompute;
   
   void save_set(const Location &loc, unsigned g);
   void save_set_chain(int c, int x, int start);
@@ -324,8 +325,9 @@ int
 Placer::save_recompute_wire_length()
 {
   int delta = 0;
-  for (int w : recompute)
+  for (int i = 0; i < recompute.size(); ++i)
     {
+      int w = recompute.ith(i);
       int new_length = compute_net_length(w),
 	old_length = net_length.at(w);
       restore_net_length.push_back(std::make_pair(w, old_length));
@@ -511,8 +513,9 @@ Placer::accept_or_restore()
   int delta;
   std::uniform_real_distribution<double> prob_dist(0.0, 1.0);
   
-  for (int t : changed_tiles)
+  for (int i = 0; i < changed_tiles.size(); ++i)
     {
+      int t = changed_tiles.ith(i);
       if (!valid(t))
 	goto L;
     }
@@ -646,7 +649,8 @@ Placer::Placer(const ChipDB *cdb,
     top(d->top()),
     diameter(std::max(chipdb->width,
 		      chipdb->height)),
-    temp(10000.0)
+    temp(10000.0),
+    changed_tiles(chipdb->n_tiles)
 {
   for (int i = 0; i < chipdb->width; ++i)
     {
@@ -680,6 +684,7 @@ Placer::Placer(const ChipDB *cdb,
   
   net_length.resize(n_nets);
   net_gates.resize(n_nets);
+  recompute.resize(n_nets);
   
   std::tie(gates, gate_idx) = top->index_instances();
   int n_gates = gates.size();
