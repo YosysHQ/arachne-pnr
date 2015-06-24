@@ -406,6 +406,7 @@ Router::visit(int cn)
       if (visited.contains(cn2))
 	continue;
       
+#if 0
       if (cnet_local[cn2])
 	{
 	  assert(cnet_tiles[cn2].size() == 1);
@@ -413,6 +414,7 @@ Router::visit(int cn)
 	  if (!current_net_target_tiles.contains(t))
 	    continue;
 	}
+#endif
       
       int cn2_cost = 1;  // base
       if (passes == max_passes)
