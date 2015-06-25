@@ -8,13 +8,13 @@ class PriorityQ
 public:
   Comp comp;
   std::vector<T> v;
-  int n;
+  unsigned n;
   
 public:
   PriorityQ() : n(0) {}
   PriorityQ(Comp comp_) : comp(comp_), n(0) {}
   
-  int size() const { return n; }
+  size_t size() const { return n; }
   void clear() { n = 0; }
   bool empty() { return n == 0; }
   

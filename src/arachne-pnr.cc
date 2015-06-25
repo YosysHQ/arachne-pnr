@@ -74,6 +74,12 @@ usage()
     << "    -V <file>, --post-pack-verilog <file>\n"
     << "        Write post-pack netlist to <file> as Verilog.\n"
     << "\n"
+    << "    --post-place-blif <file>\n"
+    << "        Write post-place netlist to <file> as BLIF.\n"
+    << "\n"
+    << "    --route-only\n"
+    << "        Input must include placement.\n"
+    << "\n"
     << "    -p <pcf-file>, --pcf-file <pcf-file>\n"
     << "        Read physical constraints from <pcf-file>.\n"
     << "\n"
@@ -100,7 +106,8 @@ main(int argc, const char **argv)
   
   bool help = false,
     quiet = false,
-    do_promote_globals = true;
+    do_promote_globals = true,
+    route_only = false;
   std::string device = "1k";
   const char *chipdb_file = nullptr,
     *input_file = nullptr,
@@ -109,6 +116,7 @@ main(int argc, const char **argv)
     *post_place_pcf = nullptr,
     *pack_blif = nullptr,
     *pack_verilog = nullptr,
+    *place_blif = nullptr,
     *output_file = nullptr;
   
   for (int i = 1; i < argc; ++i)
@@ -143,7 +151,7 @@ main(int argc, const char **argv)
 		   || !strcmp(argv[i], "--no-promote-globals"))
 	    do_promote_globals = false;
 	  else if (!strcmp(argv[i], "-B")
-	      || !strcmp(argv[i], "--pack-blif"))
+	      || !strcmp(argv[i], "--post-pack-blif"))
 	    {
 	      if (i + 1 >= argc)
 		fatal(fmt(argv[i] << ": expected argument"));
@@ -152,7 +160,7 @@ main(int argc, const char **argv)
 	      pack_blif = argv[i];
 	    }
 	  else if (!strcmp(argv[i], "-V")
-	      || !strcmp(argv[i], "--pack-verilog"))
+	      || !strcmp(argv[i], "--post-pack-verilog"))
 	    {
 	      if (i + 1 >= argc)
 		fatal(fmt(argv[i] << ": expected argument"));
@@ -160,6 +168,16 @@ main(int argc, const char **argv)
 	      ++i;
 	      pack_verilog = argv[i];
 	    }
+	  else if (!strcmp(argv[i], "--post-place-blif"))
+	    {
+	      if (i + 1 >= argc)
+		fatal(fmt(argv[i] << ": expected argument"));
+	      
+	      ++i;
+	      place_blif = argv[i];
+	    }
+	  else if (!strcmp(argv[i], "--route-only"))
+	    route_only = true;
 	  else if (!strcmp(argv[i], "-p")
 		   || !strcmp(argv[i], "--pcf-file"))
 	    {
@@ -287,97 +305,134 @@ main(int argc, const char **argv)
   
   {
     Models models(d);
-    
-    Constraints constraints;
-    if (pcf_file)
-      {
-	*logs << "read_pcf " << pcf_file << "...\n";
-	read_pcf(pcf_file, d, constraints);
-      }
-    
-    *logs << "instantiate_io...\n";
-    instantiate_io(d);
-#ifndef NDEBUG
-    d->check();
-#endif
-    // d->dump();
-    
-    CarryChains chains;
-    
-    *logs << "pack...\n";
-    pack(chipdb, package, d, chains);
-#ifndef NDEBUG
-    d->check();
-#endif
-    // d->dump();
-    
-    if (pack_blif)
-      {
-	*logs << "write_blif " << pack_blif << "\n";
-	std::string expanded = expand_filename(pack_blif);
-	std::ofstream fs(expanded);
-	if (fs.fail())
-	  fatal(fmt("write_blif: failed to open `" << expanded << "': "
-		    << strerror(errno)));
-	d->write_blif(fs);
-      }
-    if (pack_verilog)
-      {
-	*logs << "write_verilog " << pack_verilog << "\n";
-	std::string expanded = expand_filename(pack_verilog);
-	std::ofstream fs(expanded);
-	if (fs.fail())
-	  fatal(fmt("write_verilog: failed to open `" << expanded << "': "
-		    << strerror(errno)));
-	d->write_verilog(fs);
-      }
-    
-    *logs << "promote_globals...\n";
-    std::unordered_map<Instance *, uint8_t> gb_inst_gc
-      = promote_globals(chipdb, d, do_promote_globals);
-#ifndef NDEBUG
-    d->check();
-#endif
-    // d->dump();
-    
-    *logs << "realize_constants...\n";
-    realize_constants(chipdb, d);
-#ifndef NDEBUG
-    d->check();
-#endif
-    
     Configuration conf;
     
-    *logs << "place...\n";
-    // d->dump();
-    std::unordered_map<Instance *, Location> placement = place(chipdb, package, d,
-							       chains, constraints, gb_inst_gc,
-							       conf);
+    std::unordered_map<Instance *, Location> placement;
+    if (route_only)
+      {
+	Model *top = d->top();
+	for (Instance *inst : top->instances())
+	  {
+	    const std::string &loc_attr = inst->get_attr("loc").as_string();
+	    int t, pos;
+	    sscanf(loc_attr.c_str(), "%d,%d", &t, &pos);
+	    Location loc(chipdb->tile_x(t),
+			 chipdb->tile_y(t),
+			 pos);
+	    extend(placement, inst, loc);
+	  }
+      }
+    else
+      {
+	Constraints constraints;
+	if (pcf_file)
+	  {
+	    *logs << "read_pcf " << pcf_file << "...\n";
+	    read_pcf(pcf_file, d, constraints);
+	  }
+	
+	*logs << "instantiate_io...\n";
+	instantiate_io(d);
 #ifndef NDEBUG
-    d->check();
+	d->check();
+#endif
+	// d->dump();
+    
+	CarryChains chains;
+    
+	*logs << "pack...\n";
+	pack(chipdb, package, d, chains);
+#ifndef NDEBUG
+	d->check();
+#endif
+	// d->dump();
+    
+	if (pack_blif)
+	  {
+	    *logs << "write_blif " << pack_blif << "\n";
+	    std::string expanded = expand_filename(pack_blif);
+	    std::ofstream fs(expanded);
+	    if (fs.fail())
+	      fatal(fmt("write_blif: failed to open `" << expanded << "': "
+			<< strerror(errno)));
+	    d->write_blif(fs);
+	  }
+	if (pack_verilog)
+	  {
+	    *logs << "write_verilog " << pack_verilog << "\n";
+	    std::string expanded = expand_filename(pack_verilog);
+	    std::ofstream fs(expanded);
+	    if (fs.fail())
+	      fatal(fmt("write_verilog: failed to open `" << expanded << "': "
+			<< strerror(errno)));
+	    d->write_verilog(fs);
+	  }
+    
+	*logs << "promote_globals...\n";
+	std::unordered_map<Instance *, uint8_t> gb_inst_gc
+	  = promote_globals(chipdb, d, do_promote_globals);
+#ifndef NDEBUG
+	d->check();
+#endif
+	// d->dump();
+    
+	*logs << "realize_constants...\n";
+	realize_constants(chipdb, d);
+#ifndef NDEBUG
+	d->check();
 #endif
     
-    if (post_place_pcf)
-      {
-	*logs << "write_pcf " << post_place_pcf << "...\n";
-	std::string expanded = expand_filename(post_place_pcf);
-	std::ofstream fs(expanded);
-	if (fs.fail())
-	  fatal(fmt("write_pcf: failed to open `" << expanded << "': "
-		    << strerror(errno)));
-	for (const auto &p : placement)
+	*logs << "place...\n";
+	// d->dump();
+	placement = place(chipdb, package, d,
+			  chains, constraints, gb_inst_gc,
+			  conf);
+#ifndef NDEBUG
+	d->check();
+#endif
+    
+	if (post_place_pcf)
 	  {
-	    if (models.is_io(p.first))
+	    *logs << "write_pcf " << post_place_pcf << "...\n";
+	    std::string expanded = expand_filename(post_place_pcf);
+	    std::ofstream fs(expanded);
+	    if (fs.fail())
+	      fatal(fmt("write_pcf: failed to open `" << expanded << "': "
+			<< strerror(errno)));
+	    for (const auto &p : placement)
 	      {
-		std::string pin = package.loc_pin.at(p.second);
-		Port *top_port = (p.first
-				  ->find_port("PACKAGE_PIN")
-				  ->connection_other_port());
-		assert(isa<Model>(top_port->node())
-		       && cast<Model>(top_port->node()) == d->top());
+		if (models.is_io(p.first))
+		  {
+		    std::string pin = package.loc_pin.at(p.second);
+		    Port *top_port = (p.first
+				      ->find_port("PACKAGE_PIN")
+				      ->connection_other_port());
+		    assert(isa<Model>(top_port->node())
+			   && cast<Model>(top_port->node()) == d->top());
 		
-		fs << "set_io " << top_port->name() << " " << pin << "\n";
+		    fs << "set_io " << top_port->name() << " " << pin << "\n";
+		  }
 	      }
+	  }
+    
+	if (place_blif)
+	  {
+	    for (const auto &p : placement)
+	      {
+		int t = chipdb->tile(p.second.x(),
+				     p.second.y());
+		int pos = p.second.pos();
+		p.first->set_attr("loc",
+				  fmt(t << "," << pos));
+	      }
+	
+	    *logs << "write_blif " << place_blif << "\n";
+	    std::string expanded = expand_filename(place_blif);
+	    std::ofstream fs(expanded);
+	    if (fs.fail())
+	      fatal(fmt("write_blif: failed to open `" << expanded << "': "
+			<< strerror(errno)));
+	    d->write_blif(fs);
 	  }
       }
     
