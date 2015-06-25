@@ -32,6 +32,8 @@
 
 #include <cassert>
 
+using random_generator = std::minstd_rand;
+
 extern std::ostream *logs;
 
 template<class T> std::ostream &

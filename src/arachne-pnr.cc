@@ -87,6 +87,9 @@ usage()
     << "        Target package <package>.\n"
     << "        Default: tq144 for 1k, ct256 for 8k\n"
     << "\n"
+    << "    -s <int>, --seed <int>\n"
+    << "        Set seed for random generator to <int>.\n"
+    << "\n"
     << "    -w <pcf-file>, --write-pcf <pcf-file>\n"
     << "        Write pin assignments to <pcf-file> after placement.\n"
     << "\n"
@@ -117,7 +120,8 @@ main(int argc, const char **argv)
     *pack_blif = nullptr,
     *pack_verilog = nullptr,
     *place_blif = nullptr,
-    *output_file = nullptr;
+    *output_file = nullptr,
+    *seed_str = nullptr;
   
   for (int i = 1; i < argc; ++i)
     {
@@ -205,6 +209,15 @@ main(int argc, const char **argv)
 	      ++i;
 	      post_place_pcf = argv[i];
 	    }
+	  else if (!strcmp(argv[i], "-s")
+		   || !strcmp(argv[i], "--seed"))
+	    {
+	      if (i + 1 >= argc)
+		fatal(fmt(argv[i] << ": expected argument"));
+	      
+	      ++i;
+	      seed_str = argv[i];
+	    }
 	  else if (!strcmp(argv[i], "-o")
 		   || !strcmp(argv[i], "--output-file"))
 	    {
@@ -241,7 +254,7 @@ main(int argc, const char **argv)
     package_name = package_name_cp;
   else if (device == "1k")
     package_name = "tq144";
-  else 
+  else
     {
       assert(device == "8k");
       package_name = "ct256";
@@ -252,6 +265,19 @@ main(int argc, const char **argv)
     logs = null_ostream = new std::ostream(new null_streambuf);
   else
     logs = &std::cerr;
+  
+  // FIXME: use random_device by default
+  unsigned seed = 0;
+  if (seed_str)
+    seed = std::stoi(seed_str);
+  else
+    {
+      std::random_device rd;
+      seed = rd();
+    }
+  *logs << "seed: " << seed << "\n";
+  
+  random_generator rg(seed);
   
   *logs << "device: " << device << "\n";
   std::string chipdb_file_s;
@@ -384,7 +410,7 @@ main(int argc, const char **argv)
     
 	*logs << "place...\n";
 	// d->dump();
-	placement = place(chipdb, package, d,
+	placement = place(rg, chipdb, package, d,
 			  chains, constraints, gb_inst_gc,
 			  conf);
 #ifndef NDEBUG

@@ -40,7 +40,7 @@
 class Placer
 {
 public:
-  std::default_random_engine rg;
+  random_generator &rg;
   
   const ChipDB *chipdb;
   const Package &package;
@@ -126,7 +126,8 @@ public:
 #endif
   
 public:
-  Placer(const ChipDB *chipdb,
+  Placer(random_generator &rg_,
+	 const ChipDB *chipdb,
 	 const Package &package_,
 	 Design *d,
 	 CarryChains &chains_,
@@ -631,14 +632,16 @@ Placer::wire_length() const
   return length;
 }
 
-Placer::Placer(const ChipDB *cdb,
+Placer::Placer(random_generator &rg_,
+	       const ChipDB *cdb,
 	       const Package &package_,
 	       Design *d_,
 	       CarryChains &chains_,
 	       const Constraints &constraints_,
 	       const std::unordered_map<Instance *, uint8_t> &gb_inst_gc_,
 	       Configuration &conf_)
-  : chipdb(cdb),
+  : rg(rg_),
+    chipdb(cdb),
     package(package_),
     d(d_),
     chains(chains_),
@@ -1424,7 +1427,8 @@ Placer::place()
 }
 
 std::unordered_map<Instance *, Location>
-place(const ChipDB *chipdb,
+place(random_generator &rg,
+      const ChipDB *chipdb,
       const Package &package,
       Design *d,
       CarryChains &chains,
@@ -1432,7 +1436,7 @@ place(const ChipDB *chipdb,
       const std::unordered_map<Instance *, uint8_t> &gb_inst_gc,
       Configuration &conf)
 {
-  Placer placer(chipdb, package, d, chains, constraints, gb_inst_gc, conf);
+  Placer placer(rg, chipdb, package, d, chains, constraints, gb_inst_gc, conf);
   
   clock_t start = clock();
   std::unordered_map<Instance *, Location> placement = placer.place();

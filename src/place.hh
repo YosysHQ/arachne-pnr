@@ -16,6 +16,7 @@
 #ifndef PNR_PLACE_HH
 #define PNR_PLACE_HH
 
+#include "util.hh"
 #include <unordered_map>
 #include <ostream>
 
@@ -29,7 +30,8 @@ class Constraints;
 class CarryChains;
 
 extern std::unordered_map<Instance *, Location>
-place(const ChipDB *chipdb, 
+place(random_generator &rg,
+      const ChipDB *chipdb, 
       const Package &package,
       Design *d,
       CarryChains &chains,
