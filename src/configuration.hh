@@ -23,6 +23,7 @@ class ChipDB;
 class Design;
 class Instance;
 class Net;
+class HashId;
 
 class Configuration
 {
@@ -39,7 +40,7 @@ public:
   void write_txt(std::ostream &s,
 		 const ChipDB *chipdb,
 		 Design *d,
-		 const std::unordered_map<Instance *, Location> &placement,
+		 const std::unordered_map<Instance *, Location, HashId> &placement,
 		 const std::vector<Net *> &cnet_net);
 };
 

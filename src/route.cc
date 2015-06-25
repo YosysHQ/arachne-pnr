@@ -53,7 +53,7 @@ class Router
   const ChipDB *chipdb;
   Design *d;
   Configuration &conf;
-  const std::unordered_map<Instance *, Location> &placement;
+  const std::unordered_map<Instance *, Location, HashId> &placement;
   
   Models models;
   
@@ -113,7 +113,7 @@ public:
   Router(const ChipDB *cdb,
 	 Design *d_,
 	 Configuration &c,
-	 const std::unordered_map<Instance *, Location> &p);
+	 const std::unordered_map<Instance *, Location, HashId> &p);
   
   std::vector<Net *> route();
 };
@@ -228,7 +228,7 @@ Router::check()
 Router::Router(const ChipDB *cdb, 
 	       Design *d_, 
 	       Configuration &c,
-	       const std::unordered_map<Instance *, Location> &placement_)
+	       const std::unordered_map<Instance *, Location, HashId> &placement_)
   : chipdb(cdb),
     d(d_),
     conf(c),
@@ -521,7 +521,7 @@ Router::route()
   
   Model *top = d->top();
   
-  std::unordered_set<Net *> boundary_nets = top->boundary_nets(d);
+  std::unordered_set<Net *, HashId> boundary_nets = top->boundary_nets(d);
   for (const auto &p : top->nets())
     {
       Net *n = p.second;
@@ -730,7 +730,7 @@ std::vector<Net *>
 route(const ChipDB *chipdb, 
       Design *d, 
       Configuration &conf,
-      const std::unordered_map<Instance *, Location> &placement)
+      const std::unordered_map<Instance *, Location, HashId> &placement)
 {
   Router router(chipdb, d, conf, placement);
   

@@ -28,6 +28,6 @@ class Configuration;
 extern std::vector<Net *> route(const ChipDB *chipdb,
 				Design *d,
 				Configuration &conf,
-				const std::unordered_map<Instance *, Location> &placement);
+				const std::unordered_map<Instance *, Location, HashId> &placement);
 
 #endif

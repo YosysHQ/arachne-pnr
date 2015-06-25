@@ -69,7 +69,7 @@ template<>
 struct hash<Location>
 {
 public:
-  size_t operator() (const Location &loc) const
+  size_t operator()(const Location &loc) const
   {
     hash<int> hasher;
     size_t h = hasher(loc.m_x);

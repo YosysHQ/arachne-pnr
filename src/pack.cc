@@ -39,7 +39,7 @@ class Packer
   Net *const0;
   Net *const1;
   
-  std::unordered_set<Instance *> ready;
+  std::unordered_set<Instance *, HashId> ready;
   
   void lc_from_dff(Instance *lc_inst, Instance *dff_inst);
   void lc_from_lut(Instance *lc_inst, Instance *lut_inst);

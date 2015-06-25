@@ -274,7 +274,7 @@ BlifParser::parse()
   
  M:
   // unify
-  std::unordered_map<Net *, Net *> replacement;
+  std::unordered_map<Net *, Net *, HashId> replacement;
   for (const auto &p : unify)
     {
       // n1 drives n2
@@ -326,7 +326,7 @@ BlifParser::parse()
 	}
     }
   
-  std::unordered_set<Net *> boundary_nets;
+  std::unordered_set<Net *, HashId> boundary_nets;
   for (Instance *inst2 : top->instances())
     {
       if (inst2->instance_of() == io_model)

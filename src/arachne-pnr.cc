@@ -333,7 +333,7 @@ main(int argc, const char **argv)
     Models models(d);
     Configuration conf;
     
-    std::unordered_map<Instance *, Location> placement;
+    std::unordered_map<Instance *, Location, HashId> placement;
     if (route_only)
       {
 	Model *top = d->top();
@@ -395,7 +395,7 @@ main(int argc, const char **argv)
 	  }
     
 	*logs << "promote_globals...\n";
-	std::unordered_map<Instance *, uint8_t> gb_inst_gc
+	std::unordered_map<Instance *, uint8_t, HashId> gb_inst_gc
 	  = promote_globals(chipdb, d, do_promote_globals);
 #ifndef NDEBUG
 	d->check();

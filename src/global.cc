@@ -48,14 +48,14 @@ class Promoter
   Design *d;
   Models models;
   
-  std::unordered_map<Instance *, uint8_t> gb_inst_gc;
+  std::unordered_map<Instance *, uint8_t, HashId> gb_inst_gc;
   
   uint8_t port_gc(Port *conn, bool indirect);
   
 public:
   Promoter(const ChipDB *chipdb, Design *d);
   
-  std::unordered_map<Instance *, uint8_t> promote(bool do_promote);
+  std::unordered_map<Instance *, uint8_t, HashId> promote(bool do_promote);
 };
 
 Promoter::Promoter(const ChipDB *cdb, Design *d_)
@@ -111,14 +111,14 @@ Promoter::port_gc(Port *conn, bool indirect)
   return 0;
 }
 
-std::unordered_map<Instance *, uint8_t>
+std::unordered_map<Instance *, uint8_t, HashId>
 Promoter::promote(bool do_promote)
 {
   Model *top = d->top();
   // top->dump();
   
   std::vector<Net *> nets;
-  std::unordered_map<Net *, int> net_idx;
+  std::unordered_map<Net *, int, HashId> net_idx;
   std::tie(nets, net_idx) = top->index_nets();
   int n_nets = nets.size();
   
@@ -132,7 +132,7 @@ Promoter::promote(bool do_promote)
       extend(gc_used, gc, 0);
     }
   
-  std::unordered_set<Net *> boundary_nets = top->boundary_nets(d);
+  std::unordered_set<Net *, HashId> boundary_nets = top->boundary_nets(d);
   
   std::set<std::pair<int, int>, std::greater<std::pair<int, int>>> promote_q;
   std::unordered_map<int, uint8_t> net_gc;
@@ -295,7 +295,7 @@ Promoter::promote(bool do_promote)
   return gb_inst_gc;
 }
 
-std::unordered_map<Instance *, uint8_t>
+std::unordered_map<Instance *, uint8_t, HashId>
 promote_globals(const ChipDB *chipdb, Design *d, bool do_promote)
 {
   Promoter promoter(chipdb, d);

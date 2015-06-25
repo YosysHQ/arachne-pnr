@@ -28,15 +28,16 @@ class ChipDB;
 class Package;
 class Constraints;
 class CarryChains;
+class HashId;
 
-extern std::unordered_map<Instance *, Location>
+extern std::unordered_map<Instance *, Location, HashId>
 place(random_generator &rg,
       const ChipDB *chipdb, 
       const Package &package,
       Design *d,
       CarryChains &chains,
       const Constraints &constraints,
-      const std::unordered_map<Instance *, uint8_t> &gb_inst_gc,
+      const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc,
       Configuration &conf);
 
 #endif

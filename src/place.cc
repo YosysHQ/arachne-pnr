@@ -53,19 +53,19 @@ public:
   Design *d;
   CarryChains &chains;
   const Constraints &constraints;
-  const std::unordered_map<Instance *, uint8_t> &gb_inst_gc;
+  const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc;
   Configuration &conf;
   
-  std::unordered_map<Instance *, Location> placement;
+  std::unordered_map<Instance *, Location, HashId> placement;
   
   Models models;
   Model *top;
   
   std::vector<Net *> nets;
-  std::unordered_map<Net *, int> net_idx;
+  std::unordered_map<Net *, int, HashId> net_idx;
   
   std::vector<Instance *> gates;
-  std::unordered_map<Instance *, int> gate_idx;
+  std::unordered_map<Instance *, int, HashId> gate_idx;
   BitVector chained;
   
   std::unordered_set<int> glb_nets;
@@ -132,10 +132,10 @@ public:
 	 Design *d,
 	 CarryChains &chains_,
 	 const Constraints &constraints_,
-	 const std::unordered_map<Instance *, uint8_t> &gb_inst_gc_,
+	 const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc_,
 	 Configuration &conf_);
   
-  std::unordered_map<Instance *, Location> place();
+  std::unordered_map<Instance *, Location, HashId> place();
 };
 
 Location
@@ -638,7 +638,7 @@ Placer::Placer(random_generator &rg_,
 	       Design *d_,
 	       CarryChains &chains_,
 	       const Constraints &constraints_,
-	       const std::unordered_map<Instance *, uint8_t> &gb_inst_gc_,
+	       const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc_,
 	       Configuration &conf_)
   : rg(rg_),
     chipdb(cdb),
@@ -1300,7 +1300,7 @@ Placer::configure()
   }
 }
 
-std::unordered_map<Instance *, Location>
+std::unordered_map<Instance *, Location, HashId>
 Placer::place()
 {
   place_initial();
@@ -1426,20 +1426,20 @@ Placer::place()
   return std::move(placement);
 }
 
-std::unordered_map<Instance *, Location>
+std::unordered_map<Instance *, Location, HashId>
 place(random_generator &rg,
       const ChipDB *chipdb,
       const Package &package,
       Design *d,
       CarryChains &chains,
       const Constraints &constraints,
-      const std::unordered_map<Instance *, uint8_t> &gb_inst_gc,
+      const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc,
       Configuration &conf)
 {
   Placer placer(rg, chipdb, package, d, chains, constraints, gb_inst_gc, conf);
   
   clock_t start = clock();
-  std::unordered_map<Instance *, Location> placement = placer.place();
+  std::unordered_map<Instance *, Location, HashId> placement = placer.place();
   clock_t end = clock();
   
   *logs << "  place time "
