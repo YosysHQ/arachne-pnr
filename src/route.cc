@@ -357,7 +357,7 @@ Router::Router(const ChipDB *cdb,
       int xmin, xmax, ymin, ymax;
       xmin = xmax = chipdb->tile_x(t0);
       ymin = ymax = chipdb->tile_y(t0);
-      for (int j = 1; j < cnet_tiles[i].size(); ++j)
+      for (int j = 1; j < (int)cnet_tiles[i].size(); ++j)
 	{
 	  int t = cnet_tiles[i][j];
 	  xmin = std::min(xmin, chipdb->tile_x(t));
