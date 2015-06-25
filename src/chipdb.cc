@@ -73,7 +73,7 @@ operator<<(std::ostream &s, const CBitVal &cv)
   return s;
 }
 
-std::unordered_set<CBit>
+hashset<CBit>
 CBitVal::cbits() const
 {
   return unordered_keys(cbit_val);
@@ -507,7 +507,7 @@ ChipDBParser::parse()
 	      for (unsigned i = 4; i < words.size(); i ++)
 		cbits[i - 4] = parse_cbit(x, y, words[i]);
 	      
-	      std::unordered_map<int, std::vector<bool>> in_val;	      
+	      hashmap<int, std::vector<bool>> in_val;	      
 	      
 	      for (;;)
 		{

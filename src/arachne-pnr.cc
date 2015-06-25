@@ -327,7 +327,7 @@ main(int argc, const char **argv)
       *logs << "read_blif <stdin>...\n";
       d = read_blif("<stdin>", std::cin);
     }
-  // d->dump();
+  d->dump();
   
   *logs << "prune...\n";
   d->prune();
@@ -340,7 +340,7 @@ main(int argc, const char **argv)
     Models models(d);
     Configuration conf;
     
-    std::unordered_map<Instance *, Location, HashId> placement;
+    hashmap<Instance *, Location> placement;
     if (route_only)
       {
 	Model *top = d->top();
@@ -402,7 +402,7 @@ main(int argc, const char **argv)
 	  }
     
 	*logs << "promote_globals...\n";
-	std::unordered_map<Instance *, uint8_t, HashId> gb_inst_gc
+	hashmap<Instance *, uint8_t> gb_inst_gc
 	  = promote_globals(chipdb, d, do_promote_globals);
 #ifndef NDEBUG
 	d->check();

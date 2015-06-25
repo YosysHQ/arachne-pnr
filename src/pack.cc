@@ -19,7 +19,6 @@
 #include "chipdb.hh"
 #include "carry.hh"
 
-#include <unordered_set>
 #include <cstring>
 
 class Packer
@@ -39,7 +38,7 @@ class Packer
   Net *const0;
   Net *const1;
   
-  std::unordered_set<Instance *, HashId> ready;
+  hashset<Instance *> ready;
   
   void lc_from_dff(Instance *lc_inst, Instance *dff_inst);
   void lc_from_lut(Instance *lc_inst, Instance *lut_inst);

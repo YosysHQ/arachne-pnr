@@ -17,6 +17,7 @@
 #define PNR_ROUTE_HH
 
 #include "location.hh"
+#include "util.hh"
 
 #include <map>
 
@@ -28,6 +29,6 @@ class Configuration;
 extern std::vector<Net *> route(const ChipDB *chipdb,
 				Design *d,
 				Configuration &conf,
-				const std::unordered_map<Instance *, Location, HashId> &placement);
+				const hashmap<Instance *, Location> &placement);
 
 #endif

@@ -24,11 +24,11 @@ class Design;
 class Constraints
 {
 public:
-  std::unordered_map<std::string, std::string> net_pin;
+  hashmap<std::string, std::string> net_pin;
   
 public:
   Constraints() {}
-  Constraints(const std::unordered_map<std::string, std::string> &np)
+  Constraints(const hashmap<std::string, std::string> &np)
     : net_pin(np)
   {}
 };

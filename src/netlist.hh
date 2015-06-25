@@ -24,7 +24,6 @@
 #include <vector>
 #include <set>
 #include <map>
-#include <unordered_map>
 
 class Net;
 class Port;
@@ -63,10 +62,15 @@ class HashId
 public:
   size_t operator()(const Identified *x) const
   {
-    std::hash<int> hasher;
+    Hash<int> hasher;
     return hasher(x->id);
   }
 };
+
+template<> struct Hash<Net *> : public HashId {};
+template<> struct Hash<Node *> : public HashId {};
+template<> struct Hash<Instance *> : public HashId {};
+template<> struct Hash<Model *> : public HashId {};
 
 enum class Direction
 {
@@ -217,7 +221,7 @@ public:
 class Node : public Identified
 {
 protected:
-  std::unordered_map<std::string, Port *> m_ports;
+  hashmap<std::string, Port *> m_ports;
   
 public:
   typedef Node Base;
@@ -230,7 +234,7 @@ private:
   Kind m_kind;
   
 public:
-  const std::unordered_map<std::string, Port *> &ports() const { return m_ports; }
+  const hashmap<std::string, Port *> &ports() const { return m_ports; }
   Kind kind() const { return m_kind; }
   
   Node(Kind k) : m_kind(k) {}
@@ -247,16 +251,16 @@ class Instance : public Node
   Model *m_parent;
   Model *m_instance_of;
   
-  std::unordered_map<std::string, Const> m_params;
-  std::unordered_map<std::string, Const> m_attrs;
+  hashmap<std::string, Const> m_params;
+  hashmap<std::string, Const> m_attrs;
   
 public:
   static const Kind kindof = Kind::instance;
   
   Model *parent() const { return m_parent; }
   Model *instance_of() const { return m_instance_of; }
-  const std::unordered_map<std::string, Const> &attrs() const { return m_attrs; }
-  const std::unordered_map<std::string, Const> &params() const { return m_params; }
+  const hashmap<std::string, Const> &attrs() const { return m_attrs; }
+  const hashmap<std::string, Const> &params() const { return m_params; }
   
   Instance(Model *p, Model *inst_of);
   
@@ -289,9 +293,9 @@ public:
   void remove();
   
   void write_blif(std::ostream &s,
-		  const std::unordered_map<Net *, std::string, HashId> &net_name) const;
+		  const hashmap<Net *, std::string> &net_name) const;
   void write_verilog(std::ostream &s,
-		     const std::unordered_map<Net *, std::string, HashId> &net_name,
+		     const hashmap<Net *, std::string> &net_name,
 		     const std::string &inst_name) const;
 };
 
@@ -305,7 +309,7 @@ class Model : public Node
   std::map<std::string, Net *> m_nets;
   std::set<Instance *, IdLess> m_instances;
   
-  std::unordered_map<std::string, Const> m_params;
+  hashmap<std::string, Const> m_params;
   
 public:
   static const Kind kindof = Kind::model;
@@ -314,7 +318,7 @@ public:
   
   const std::set<Instance *, IdLess> &instances() const { return m_instances; }
   const std::map<std::string, Net *> &nets() const { return m_nets; }
-  const std::unordered_map<std::string, Const> &params() const { return m_params; }
+  const hashmap<std::string, Const> &params() const { return m_params; }
   
   Model(Design *d, const std::string &n);
   ~Model();
@@ -347,19 +351,19 @@ public:
   
   bool has_param(const std::string &pn) { return contains_key(m_params, pn); }
   
-  std::unordered_set<Net *, HashId> boundary_nets(const Design *d) const;
-  std::pair<std::vector<Net *>, std::unordered_map<Net *, int, HashId>>
+  hashset<Net *> boundary_nets(const Design *d) const;
+  std::pair<std::vector<Net *>, hashmap<Net *, int>>
     index_nets() const;
-  std::pair<std::vector<Net *>, std::unordered_map<Net *, int, HashId>>
+  std::pair<std::vector<Net *>, hashmap<Net *, int>>
     index_internal_nets(const Design *d) const;
   
-  std::pair<std::vector<Instance *>, std::unordered_map<Instance *, int, HashId>>
+  std::pair<std::vector<Instance *>, hashmap<Instance *, int>>
     index_instances() const;
   
   void prune();
 
-  std::pair<std::unordered_map<Net *, std::string, HashId>,
-	    std::unordered_set<Net *, HashId>>
+  std::pair<hashmap<Net *, std::string>,
+	    hashset<Net *>>
     shared_names() const;
   void write_verilog(std::ostream &s) const;
   void write_blif(std::ostream &s) const;
@@ -374,7 +378,7 @@ class Design
   friend class Model;
   
   Model *m_top;
-  std::unordered_map<std::string, Model *> m_models;
+  hashmap<std::string, Model *> m_models;
   
 public:
   Model *top() const { return m_top; }

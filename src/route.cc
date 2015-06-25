@@ -29,7 +29,6 @@
 #include <iomanip>
 #include <fstream>
 #include <set>
-#include <unordered_set>
 #include <map>
 #include <vector>
 #include <ctime>
@@ -53,7 +52,7 @@ class Router
   const ChipDB *chipdb;
   Design *d;
   Configuration &conf;
-  const std::unordered_map<Instance *, Location, HashId> &placement;
+  const hashmap<Instance *, Location> &placement;
   
   Models models;
   
@@ -61,7 +60,7 @@ class Router
     cnet_local;
   std::vector<std::vector<int>> cnet_outs;
   
-  std::unordered_map<std::string, std::pair<std::string, bool>> ram_gate_chip;
+  hashmap<std::string, std::pair<std::string, bool>> ram_gate_chip;
   
   std::vector<Net *> cnet_net;
   std::vector<std::vector<int>> cnet_tiles;
@@ -113,7 +112,7 @@ public:
   Router(const ChipDB *cdb,
 	 Design *d_,
 	 Configuration &c,
-	 const std::unordered_map<Instance *, Location, HashId> &p);
+	 const hashmap<Instance *, Location> &p);
   
   std::vector<Net *> route();
 };
@@ -228,7 +227,7 @@ Router::check()
 Router::Router(const ChipDB *cdb, 
 	       Design *d_, 
 	       Configuration &c,
-	       const std::unordered_map<Instance *, Location, HashId> &placement_)
+	       const hashmap<Instance *, Location> &placement_)
   : chipdb(cdb),
     d(d_),
     conf(c),
@@ -521,7 +520,7 @@ Router::route()
   
   Model *top = d->top();
   
-  std::unordered_set<Net *, HashId> boundary_nets = top->boundary_nets(d);
+  hashset<Net *> boundary_nets = top->boundary_nets(d);
   for (const auto &p : top->nets())
     {
       Net *n = p.second;
@@ -730,7 +729,7 @@ std::vector<Net *>
 route(const ChipDB *chipdb, 
       Design *d, 
       Configuration &conf,
-      const std::unordered_map<Instance *, Location, HashId> &placement)
+      const hashmap<Instance *, Location> &placement)
 {
   Router router(chipdb, d, conf, placement);
   

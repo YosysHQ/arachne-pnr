@@ -17,10 +17,10 @@
 #include "global.hh"
 #include "chipdb.hh"
 #include "casting.hh"
+#include "util.hh"
 
 #include <queue>
 #include <cassert>
-#include <unordered_set>
 #include <set>
 
 std::vector<uint8_t> global_classes = {
@@ -48,14 +48,14 @@ class Promoter
   Design *d;
   Models models;
   
-  std::unordered_map<Instance *, uint8_t, HashId> gb_inst_gc;
+  hashmap<Instance *, uint8_t> gb_inst_gc;
   
   uint8_t port_gc(Port *conn, bool indirect);
   
 public:
   Promoter(const ChipDB *chipdb, Design *d);
   
-  std::unordered_map<Instance *, uint8_t, HashId> promote(bool do_promote);
+  hashmap<Instance *, uint8_t> promote(bool do_promote);
 };
 
 Promoter::Promoter(const ChipDB *cdb, Design *d_)
@@ -111,32 +111,32 @@ Promoter::port_gc(Port *conn, bool indirect)
   return 0;
 }
 
-std::unordered_map<Instance *, uint8_t, HashId>
+hashmap<Instance *, uint8_t>
 Promoter::promote(bool do_promote)
 {
   Model *top = d->top();
   // top->dump();
   
   std::vector<Net *> nets;
-  std::unordered_map<Net *, int, HashId> net_idx;
+  hashmap<Net *, int> net_idx;
   std::tie(nets, net_idx) = top->index_nets();
   int n_nets = nets.size();
   
   int n_global = 0;
   
-  std::unordered_map<uint8_t, int> gc_global;
-  std::unordered_map<uint8_t, int> gc_used;
+  hashmap<uint8_t, int> gc_global;
+  hashmap<uint8_t, int> gc_used;
   for (uint8_t gc : global_classes)
     {
       extend(gc_global, gc, 0);
       extend(gc_used, gc, 0);
     }
   
-  std::unordered_set<Net *, HashId> boundary_nets = top->boundary_nets(d);
+  hashset<Net *> boundary_nets = top->boundary_nets(d);
   
   std::set<std::pair<int, int>, std::greater<std::pair<int, int>>> promote_q;
-  std::unordered_map<int, uint8_t> net_gc;
-  std::unordered_map<int, Port *> net_driver;
+  hashmap<int, uint8_t> net_gc;
+  hashmap<int, Port *> net_driver;
   for (int i = 0; i < n_nets; ++i)
     {
       Net *n = nets[i];
@@ -144,7 +144,7 @@ Promoter::promote(bool do_promote)
 	  || n->is_constant())
 	continue;
       
-      std::unordered_map<uint8_t, int> n_gc;
+      hashmap<uint8_t, int> n_gc;
       for (uint8_t gc : global_classes)
 	extend(n_gc, gc, 0);
       
@@ -204,7 +204,7 @@ Promoter::promote(bool do_promote)
     }
   
   int n_promoted = 0;
-  std::unordered_map<uint8_t, int> gc_promoted;
+  hashmap<uint8_t, int> gc_promoted;
   for (int gc : global_classes)
     extend(gc_promoted, gc, 0);
   
@@ -295,7 +295,7 @@ Promoter::promote(bool do_promote)
   return gb_inst_gc;
 }
 
-std::unordered_map<Instance *, uint8_t, HashId>
+hashmap<Instance *, uint8_t>
 promote_globals(const ChipDB *chipdb, Design *d, bool do_promote)
 {
   Promoter promoter(chipdb, d);

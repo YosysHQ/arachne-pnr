@@ -46,7 +46,7 @@ void
 Configuration::write_txt(std::ostream &s,
 			 const ChipDB *chipdb,
 			 Design *d,
-			 const std::unordered_map<Instance *, Location, HashId> &placement,
+			 const hashmap<Instance *, Location> &placement,
 			 const std::vector<Net *> &cnet_net)
 {
   s << ".device " << chipdb->device << "\n";

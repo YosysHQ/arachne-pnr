@@ -16,8 +16,8 @@
 #ifndef PNR_CONFIGURATION_HH
 #define PNR_CONFIGURATION_HH
 
+#include "util.hh"
 #include <ostream>
-#include <unordered_map>
 
 class ChipDB;
 class Design;
@@ -28,7 +28,7 @@ class HashId;
 class Configuration
 {
 public:
-  std::unordered_map<CBit, bool> cbits;
+  hashmap<CBit, bool> cbits;
   
 public:
   Configuration();
@@ -40,7 +40,7 @@ public:
   void write_txt(std::ostream &s,
 		 const ChipDB *chipdb,
 		 Design *d,
-		 const std::unordered_map<Instance *, Location, HashId> &placement,
+		 const hashmap<Instance *, Location> &placement,
 		 const std::vector<Net *> &cnet_net);
 };
 

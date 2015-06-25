@@ -32,6 +32,14 @@
 
 #include <cassert>
 
+template<typename T> struct Hash;
+
+// FIXME default (override) hash
+template<typename T>
+using hashset = std::unordered_set<T, Hash<T>>;
+
+template<typename K, typename V>
+using hashmap = std::unordered_map<K, V, Hash<K>>;
 
 // FIXME doesn't match std::minstd_rand
 class random_generator
@@ -42,6 +50,7 @@ class random_generator
   unsigned state;
   
 public:
+  random_generator() : state(1) {}
   random_generator(unsigned seed)
     : state(seed % m)
   {
@@ -189,10 +198,10 @@ keys(const M &m)
   return std::move(keys);
 }
 
-template<typename M> inline std::unordered_set<typename M::key_type>
+template<typename M> inline hashset<typename M::key_type>
 unordered_keys(const M &m)
 {
-  std::unordered_set<typename M::key_type> keys;
+  hashset<typename M::key_type> keys;
   std::transform(m.begin(), m.end(),
 		 std::inserter(keys, keys.end()),
 		 [](const typename M::value_type &p) { return p.first; });
@@ -269,25 +278,60 @@ random_int(int min, int max, random_generator &rg)
 template<typename T> inline std::size_t
 hash_combine(std::size_t h, const T &v)
 {
-  std::hash<T> hasher;
+  Hash<T> hasher;
   return h ^ (hasher(v) + 0x9e3779b9 + (h << 6) + (h >> 2));
 }
 
-namespace std {
+template<> struct Hash<char> {
+  size_t operator() (char x) const { return (size_t)x; }
+};
+
+template<> struct Hash<unsigned char> {
+  size_t operator() (unsigned char x) const { return (size_t)x; }
+};
+
+template<> struct Hash<int> {
+  size_t operator() (int x) const { return (size_t)x; }
+};
+
+template<> struct Hash<unsigned> {
+  size_t operator() (unsigned x) const { return (size_t)x; }
+};
+
+template<> struct Hash<size_t> {
+  size_t operator() (size_t x) const { return x; }
+};
 
 template<typename S, typename T>
-struct hash<pair<S, T>>
+struct Hash<std::pair<S, T>>
 {
 public:
-  size_t operator() (const pair<S, T> &p) const
+  size_t operator() (const std::pair<S, T> &p) const
   {
-    hash<int> hasher;
-    size_t h = hasher(p.first);
-    return hash_combine(h, hasher(p.second));
+    Hash<S> Shasher;
+    size_t h = Shasher(p.first);
+    
+    Hash<T> Thasher;
+    return hash_combine(h, Thasher(p.second));
   }
 };
 
-}
+template<>
+struct Hash<std::string>
+{
+public:
+  size_t operator()(const std::string &s) const
+  {
+    Hash<size_t> hasher;
+    size_t h = hasher(s.size());
+    
+    Hash<char> hasher2;
+    for (char c : s)
+      h = hash_combine(h, hasher2(c));
+    
+    return h;
+  }
+};
 
 extern std::string expand_filename(const std::string &file);
 

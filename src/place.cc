@@ -28,8 +28,6 @@
 #include <iomanip>
 #include <vector>
 #include <set>
-#include <unordered_set>
-#include <unordered_map>
 #include <random>
 #include <algorithm>
 #include <iostream>
@@ -53,25 +51,25 @@ public:
   Design *d;
   CarryChains &chains;
   const Constraints &constraints;
-  const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc;
+  const hashmap<Instance *, uint8_t> &gb_inst_gc;
   Configuration &conf;
   
-  std::unordered_map<Instance *, Location, HashId> placement;
+  hashmap<Instance *, Location> placement;
   
   Models models;
   Model *top;
   
   std::vector<Net *> nets;
-  std::unordered_map<Net *, int, HashId> net_idx;
+  hashmap<Net *, int> net_idx;
   
   std::vector<Instance *> gates;
-  std::unordered_map<Instance *, int, HashId> gate_idx;
+  hashmap<Instance *, int> gate_idx;
   BitVector chained;
   
-  std::unordered_set<int> glb_nets;
+  hashset<int> glb_nets;
   std::vector<Location> free_io_locs;
   std::vector<int> free_gates;
-  std::unordered_map<int, int> gate_chain;
+  hashmap<int, int> gate_chain;
   
   Location gate_random_loc(int g);
   std::pair<Location, bool> chain_random_loc(int c);
@@ -107,7 +105,7 @@ public:
   std::vector<int> chain_x, chain_start;
   
   std::vector<Location> gate_loc;
-  std::unordered_map<Location, unsigned> loc_gate;
+  hashmap<Location, unsigned> loc_gate;
   
   std::vector<int> net_length;
   
@@ -132,10 +130,10 @@ public:
 	 Design *d,
 	 CarryChains &chains_,
 	 const Constraints &constraints_,
-	 const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc_,
+	 const hashmap<Instance *, uint8_t> &gb_inst_gc_,
 	 Configuration &conf_);
   
-  std::unordered_map<Instance *, Location, HashId> place();
+  hashmap<Instance *, Location> place();
 };
 
 Location
@@ -637,7 +635,7 @@ Placer::Placer(random_generator &rg_,
 	       Design *d_,
 	       CarryChains &chains_,
 	       const Constraints &constraints_,
-	       const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc_,
+	       const hashmap<Instance *, uint8_t> &gb_inst_gc_,
 	       Configuration &conf_)
   : rg(rg_),
     chipdb(cdb),
@@ -761,7 +759,7 @@ Placer::place_initial()
     n_ramt_placed = 0,
     n_gb_placed = 0;
   
-  std::unordered_set<Location> io_locs;
+  hashset<Location> io_locs;
   for (const auto &p : package.pin_loc)
     extend(io_locs, p.second);
   
@@ -1221,7 +1219,7 @@ Placer::configure()
 	  }
       }
     
-    std::unordered_set<Location> ieren_image;
+    hashset<Location> ieren_image;
     for (const auto &p : chipdb->ieren)
       extend(ieren_image, p.second);
     for (int t = 0; t < chipdb->n_tiles; ++t)
@@ -1299,7 +1297,7 @@ Placer::configure()
   }
 }
 
-std::unordered_map<Instance *, Location, HashId>
+hashmap<Instance *, Location>
 Placer::place()
 {
   place_initial();
@@ -1400,7 +1398,7 @@ Placer::place()
   int n_pio = 0,
     n_plb = 0,
     n_bram = 0;
-  std::unordered_set<int> seen;
+  hashset<int> seen;
   for (const Location &loc : gate_loc)
     {
       int t = chipdb->tile(loc.x(), loc.y());
@@ -1425,20 +1423,20 @@ Placer::place()
   return std::move(placement);
 }
 
-std::unordered_map<Instance *, Location, HashId>
+hashmap<Instance *, Location>
 place(random_generator &rg,
       const ChipDB *chipdb,
       const Package &package,
       Design *d,
       CarryChains &chains,
       const Constraints &constraints,
-      const std::unordered_map<Instance *, uint8_t, HashId> &gb_inst_gc,
+      const hashmap<Instance *, uint8_t> &gb_inst_gc,
       Configuration &conf)
 {
   Placer placer(rg, chipdb, package, d, chains, constraints, gb_inst_gc, conf);
   
   clock_t start = clock();
-  std::unordered_map<Instance *, Location, HashId> placement = placer.place();
+  hashmap<Instance *, Location> placement = placer.place();
   clock_t end = clock();
   
   *logs << "  place time "

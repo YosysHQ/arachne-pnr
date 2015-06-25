@@ -6,7 +6,7 @@
 #include <iostream>
 
 void
-test(int n, std::default_random_engine &rg)
+test(int n, random_generator &rg)
 {
   std::set<int> a;
   UllmanSet b(n);
@@ -53,7 +53,7 @@ test(int n, std::default_random_engine &rg)
 int
 main()
 {
-  std::default_random_engine rg;
+  random_generator rg;
   
   for (int n = 0; n <= 1000; ++n)
     test(n, rg);
