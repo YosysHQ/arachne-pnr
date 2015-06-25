@@ -325,7 +325,7 @@ int
 Placer::save_recompute_wire_length()
 {
   int delta = 0;
-  for (int i = 0; i < recompute.size(); ++i)
+  for (int i = 0; i < (int)recompute.size(); ++i)
     {
       int w = recompute.ith(i);
       int new_length = compute_net_length(w),
@@ -513,7 +513,7 @@ Placer::accept_or_restore()
   int delta;
   std::uniform_real_distribution<double> prob_dist(0.0, 1.0);
   
-  for (int i = 0; i < changed_tiles.size(); ++i)
+  for (int i = 0; i < (int)changed_tiles.size(); ++i)
     {
       int t = changed_tiles.ith(i);
       if (!valid(t))

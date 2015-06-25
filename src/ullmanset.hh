@@ -14,27 +14,28 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include <vector>
+#include <cstddef>
 #include <cassert>
 
 class UllmanSet
 {
-  int n;
+  unsigned n;
   std::vector<int> key;
-  std::vector<int> pos;
+  std::vector<unsigned> pos;
   
 public:
   UllmanSet()
     : n(0)
   {}
-  UllmanSet(int cap)
+  UllmanSet(size_t cap)
     : n(0), key(cap), pos(cap)
   {}
   
-  int capacity() const { return key.size(); }
-  int size() const { return n; }
+  size_t capacity() const { return key.size(); }
+  size_t size() const { return (size_t)n; }
   bool empty() const { return n == 0; }
   void clear() { n = 0; }
-  void resize(int cap)
+  void resize(size_t cap)
   {
     key.resize(cap);
     pos.resize(cap);
@@ -43,8 +44,8 @@ public:
   
   bool contains(int k) const
   {
-    assert(k >= 0 && k < capacity());
-    int p = pos[k];
+    assert(k >= 0 && k < (int)capacity());
+    unsigned p = pos[k];
     return (p < n
 	    && key[p] == k);
   }
@@ -54,7 +55,7 @@ public:
     if (contains(k))
       return;
     
-    int p = n++;
+    unsigned p = n++;
     key[p] = k;
     pos[k] = p;
   }
@@ -63,7 +64,7 @@ public:
   {
     assert(!contains(k));
     
-    int p = n++;
+    unsigned p = n++;
     key[p] = k;
     pos[k] = p;
   }
@@ -73,7 +74,7 @@ public:
     if (!contains(k))
       return;
     
-    int p = pos[k];
+    unsigned p = pos[k];
     --n;
     if (p != n)
       {
@@ -85,7 +86,7 @@ public:
   
   int ith(int i)
   {
-    assert(i >= 0 && i < n);
+    assert(i >= 0 && i < (int)n);
     return key[i];
   }
 };

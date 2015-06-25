@@ -11,7 +11,7 @@ test(int n, std::default_random_engine &rg)
   std::set<int> a;
   UllmanSet b(n);
   
-  assert(b.capacity() == n);
+  assert((int)b.capacity() == n);
   
   for (int i = 0; i < n; ++i)
     {
@@ -45,7 +45,7 @@ test(int n, std::default_random_engine &rg)
   // std::cout << n << " " << k << "\n";
   
   std::set<int> a2;
-  for (int i = 0; i < b.size(); ++i)
+  for (int i = 0; i < (int)b.size(); ++i)
     a2.insert(b.ith(i));
   assert(a2 == a);
 }
