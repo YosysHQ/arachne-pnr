@@ -512,7 +512,6 @@ void
 Placer::accept_or_restore()
 {
   int delta;
-  std::uniform_real_distribution<double> prob_dist(0.0, 1.0);
   
   for (int i = 0; i < (int)changed_tiles.size(); ++i)
     {
@@ -528,7 +527,7 @@ Placer::accept_or_restore()
   ++n_move;
   if (delta < 0
       || (temp > 1e-6
-	  && prob_dist(rg) <= exp(-delta/temp)))
+	  && rg.random_real(0.0, 1.0) <= exp(-delta/temp)))
     {
       if (delta < 0)
 	{

@@ -269,11 +269,18 @@ main(int argc, const char **argv)
   // FIXME: use random_device by default
   unsigned seed = 0;
   if (seed_str)
-    seed = std::stoi(seed_str);
+    {
+      // FIXME catch exception
+      seed = std::stoi(seed_str);
+      if (!seed)
+	fatal("zero seed\n");
+    }
   else
     {
       std::random_device rd;
-      seed = rd();
+      do {
+	seed = rd();
+      } while (seed == 0);
     }
   *logs << "seed: " << seed << "\n";
   

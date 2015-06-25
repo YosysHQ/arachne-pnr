@@ -32,7 +32,71 @@
 
 #include <cassert>
 
-using random_generator = std::minstd_rand;
+
+// FIXME doesn't match std::minstd_rand
+class random_generator
+{
+  static const unsigned m = 2147483647;
+  static const unsigned a = 48271;
+  
+  unsigned state;
+  
+public:
+  random_generator(unsigned seed)
+    : state(seed % m)
+  {
+    assert(seed != 0);
+  }
+  
+  // uniformly random between 0 .. m
+  unsigned random()
+  {
+    state = (a * state) % m;
+    return state;
+  }
+  unsigned operator()()
+  {
+    return random();
+  }
+  
+  int random_int(int min, int max)
+  {
+    assert(max >= min);
+    unsigned d = max - min + 1;
+    assert(d <= m);
+    
+    unsigned k = m / d;
+    assert(k >= 1);
+    
+    for (;;)
+      {
+	// randomly distributed 0 .. (m-1)
+	unsigned x = random();
+	if (x >= k*d)
+	  continue;
+	
+	// randomly disributed 0 ..(k*m-1)
+	int r = min + (int)(x % d);
+	assert(min <= r && r <= max);
+	return r;
+      }
+  }
+  
+  double random_real(double min, double max)
+  {
+    assert(max >= min);
+    if (min == max)
+      return min;
+    
+    double d = max - min;
+    assert(d > 0);
+    
+    unsigned x = random();
+    double r = min + (double)x / (double)(m-1);
+    assert(min <= r && r <= max);
+    return r;
+  }
+};
 
 extern std::ostream *logs;
 
@@ -189,17 +253,17 @@ hexdigit(int i, char a = 'a')
 	  : a + (i - 10));
 }
 
-template<typename T, typename RG> inline const T &
-random_element(const std::vector<T> &v, RG &rg)
+template<typename T> inline const T &
+random_element(const std::vector<T> &v, random_generator &rg)
 {
-  return v[std::uniform_int_distribution<int>(0, v.size() - 1)(rg)];
+  return v[rg.random_int(0, v.size()-1)];
 }
 
-template<typename RG> inline int
-random_int(int min, int max, RG &rg)
+inline int
+random_int(int min, int max, random_generator &rg)
 {
   assert(min <= max);
-  return std::uniform_int_distribution<int>(min, max)(rg);
+  return rg.random_int(min, max);
 }
 
 template<typename T> inline std::size_t
