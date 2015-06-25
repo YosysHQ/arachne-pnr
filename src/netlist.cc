@@ -226,18 +226,18 @@ Instance::merge_attrs(const Instance *inst)
 }
 
 bool
-Instance::has_param(const std::string &id) const
+Instance::has_param(const std::string &pn) const
 { 
-  return (contains_key(m_params, id)
-	  || m_instance_of->has_param(id));
+  return (contains_key(m_params, pn)
+	  || m_instance_of->has_param(pn));
 }
 
 const Const &
-Instance::get_param(const std::string &id) const
+Instance::get_param(const std::string &pn) const
 {
-  auto i = m_params.find(id);
+  auto i = m_params.find(pn);
   if (i == m_params.end())
-    return m_instance_of->get_param(id);  // default
+    return m_instance_of->get_param(pn);  // default
   else
     return i->second;
 }

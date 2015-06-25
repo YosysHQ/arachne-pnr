@@ -260,30 +260,30 @@ public:
   
   Instance(Model *p, Model *inst_of);
   
-  void set_attr(const std::string &id, const Const &val) { m_attrs[id] = val; }
+  void set_attr(const std::string &an, const Const &val) { m_attrs[an] = val; }
   
-  bool has_attr(const std::string &id) const
+  bool has_attr(const std::string &an) const
   {
-    return contains_key(m_attrs, id);
+    return contains_key(m_attrs, an);
   }
   
-  const Const &get_attr(const std::string &id) const
+  const Const &get_attr(const std::string &an) const
   {
-    return m_attrs.at(id);
+    return m_attrs.at(an);
   }
   
   void merge_attrs(const Instance *inst);
   
-  void set_param(const std::string &id, const Const &val) { m_params[id] = val; }
+  void set_param(const std::string &pn, const Const &val) { m_params[pn] = val; }
   
-  bool has_param(const std::string &id) const;
-  const Const &get_param(const std::string &id) const;
+  bool has_param(const std::string &pn) const;
+  const Const &get_param(const std::string &pn) const;
   
-  bool self_has_param(const std::string &id) const { return contains_key(m_params, id); }
+  bool self_has_param(const std::string &pn) const { return contains_key(m_params, pn); }
   const Const &
-  self_get_param(const std::string &id) const
+  self_get_param(const std::string &pn) const
   {
-    return m_params.at(id);
+    return m_params.at(pn);
   }
   
   void remove();
@@ -328,24 +328,24 @@ public:
   Instance *add_instance(Model *inst_of);
   
   void
-  set_param(const std::string &id, const std::string &val)
+  set_param(const std::string &pn, const std::string &val)
   {
-    m_params[id] = Const(val);
+    m_params[pn] = Const(val);
   }
   
   void
-  set_param(const std::string &id, const BitVector &val)
+  set_param(const std::string &pn, const BitVector &val)
   {
-    m_params[id] = Const(val);
+    m_params[pn] = Const(val);
   }
   
   const Const &
-  get_param(const std::string &id)
+  get_param(const std::string &pn)
   { 
-    return m_params.at(id); 
+    return m_params.at(pn);
   }
   
-  bool has_param(const std::string &id) { return contains_key(m_params, id); }
+  bool has_param(const std::string &pn) { return contains_key(m_params, pn); }
   
   std::unordered_set<Net *, HashId> boundary_nets(const Design *d) const;
   std::pair<std::vector<Net *>, std::unordered_map<Net *, int, HashId>>
