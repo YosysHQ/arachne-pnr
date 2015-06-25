@@ -221,7 +221,7 @@ public:
 class Node : public Identified
 {
 protected:
-  hashmap<std::string, Port *> m_ports;
+  std::map<std::string, Port *> m_ports;
   
 public:
   typedef Node Base;
@@ -234,7 +234,7 @@ private:
   Kind m_kind;
   
 public:
-  const hashmap<std::string, Port *> &ports() const { return m_ports; }
+  const std::map<std::string, Port *> &ports() const { return m_ports; }
   Kind kind() const { return m_kind; }
   
   Node(Kind k) : m_kind(k) {}

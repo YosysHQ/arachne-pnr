@@ -34,12 +34,11 @@
 
 template<typename T> struct Hash;
 
-// FIXME default (override) hash
-template<typename T>
-using hashset = std::unordered_set<T, Hash<T>>;
+template<typename T, typename H = Hash<T>>
+using hashset = std::unordered_set<T, H>;
 
-template<typename K, typename V>
-using hashmap = std::unordered_map<K, V, Hash<K>>;
+template<typename K, typename V, typename H = Hash<K>>
+using hashmap = std::unordered_map<K, V, H>;
 
 // FIXME doesn't match std::minstd_rand
 class random_generator
