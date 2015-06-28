@@ -110,8 +110,20 @@ public:
 };
 
 enum class TileType {
+  // FIXME EMPTY, remove _TILE
   NO_TILE, IO_TILE, LOGIC_TILE, RAMB_TILE, RAMT_TILE,
 };
+
+enum class CellType : int {
+  LOGIC, IO, GB, RAM, WARMBOOT, PLL,
+};
+
+constexpr int cell_type_idx(CellType type)
+{
+  return static_cast<int>(type);
+}
+
+static const int n_cell_types = cell_type_idx(CellType::PLL) + 1;
 
 namespace std {
 
@@ -169,14 +181,20 @@ public:
   std::vector<TileType> tile_type;
   std::vector<std::pair<int, std::string>> net_tile_name;
   std::vector<std::map<std::string, int>> tile_nets;
+  
+  // FIXME
   std::map<TileType,
 	  std::map<std::string, std::vector<CBit>>>
     tile_nonrouting_cbits;
   
   std::vector<int> extra_cell_tile;
-  std::vector<std::string> extra_cell_name;
+  std::vector<std::string> extra_cell_type;
   std::vector<std::map<std::string, std::pair<int, std::string>>>
     extra_cell_mfvs;
+  
+  std::vector<CellType> cell_type;
+  std::vector<Location> cell_location;
+  std::vector<std::vector<int>> cell_type_cells;
   
   // buffers and routing
   std::vector<Switch> switches;
@@ -186,6 +204,7 @@ public:
   
   std::map<TileType, std::pair<int, int>> tile_cbits_block_size;
   
+  void add_cell(CellType type, const Location &loc);
   bool is_global_net(int i) const { return i < n_global_nets; }
   int find_switch(int in, int out) const;
   

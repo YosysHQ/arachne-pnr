@@ -101,8 +101,18 @@ tile_type_name(TileType t)
 
 ChipDB::ChipDB()
   : width(0), height(0), n_tiles(0), n_nets(0), n_global_nets(8),
-    bank_tiles(4)
+    bank_tiles(4),
+    cell_type_cells(n_cell_types)
 {
+}
+
+void
+ChipDB::add_cell(CellType type, const Location &loc)
+{
+  int c = cell_type.size();
+  cell_type.push_back(type);
+  cell_location.push_back(loc);
+  cell_type_cells[cell_type_idx(type)].push_back(c);
 }
 
 int
@@ -332,6 +342,8 @@ ChipDBParser::parse()
 		  Location loc(x, y, pos);
 		  extend(package.pin_loc, pin, loc);
 		  extend(package.loc_pin, loc, pin);
+		  
+		  chipdb->add_cell(CellType::IO, Location(x, y, pos));
 		}
 	    }
 	  else if (cmd == ".gbufpin")
@@ -360,6 +372,8 @@ ChipDBParser::parse()
 		    glb_num = std::stoi(words[3]);
 		  Location loc(x, y, pos);
 		  extend(chipdb->loc_pin_glb_num, loc, glb_num);
+		  
+		  chipdb->add_cell(CellType::GB, Location(x, y, 2));
 		}
 	      
 	    }
@@ -381,15 +395,24 @@ ChipDBParser::parse()
 	      int t = chipdb->tile(x, y);
 	      
 	      if (cmd == ".io_tile")
-		chipdb->tile_type[t] = TileType::IO_TILE;
+		{
+		  chipdb->tile_type[t] = TileType::IO_TILE;
+		}
 	      else if (cmd == ".logic_tile")
-		chipdb->tile_type[t] = TileType::LOGIC_TILE;
+		{
+		  chipdb->tile_type[t] = TileType::LOGIC_TILE;
+		  
+		  for (int p = 0; p < 8; ++p)
+		    chipdb->add_cell(CellType::LOGIC, Location(x, y, p));
+		}
 	      else if (cmd == ".ramb_tile")
 		chipdb->tile_type[t] = TileType::RAMB_TILE;
 	      else
 		{
 		  assert(cmd == ".ramt_tile");
 		  chipdb->tile_type[t] = TileType::RAMT_TILE;
+		  
+		  chipdb->add_cell(CellType::RAM, Location(x, y, 0));
 		}
 	    }
 	  else if (cmd == ".io_tile_bits"
@@ -690,10 +713,19 @@ ChipDBParser::parse()
 	      if (words.size() != 4)
 		fatal("wrong number of arguments to .extra_cell");
 	      
-	      int t = chipdb->tile(std::stoi(words[1]),
-				   std::stoi(words[2]));
+	      const std::string &cell_type = words[3];
+	      int x = std::stoi(words[1]),
+		y = std::stoi(words[2]);
+	      int t = chipdb->tile(x, y);
 	      chipdb->extra_cell_tile.push_back(t);
-	      chipdb->extra_cell_name.push_back(words[3]);
+	      chipdb->extra_cell_type.push_back(cell_type);
+	      
+	      if (cell_type == "WARMBOOT")
+		chipdb->add_cell(CellType::WARMBOOT, Location(x, y, 0));
+	      else if (cell_type == "PLL")
+		chipdb->add_cell(CellType::PLL, Location(x, y, 4));
+	      else
+		fatal(fmt("unknown extra cell type `" << cell_type << "'"));
 	      
 	      std::map<std::string, std::pair<int, std::string>> mfvs;
 	      for (;;)
