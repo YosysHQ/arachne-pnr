@@ -327,7 +327,7 @@ main(int argc, const char **argv)
       *logs << "read_blif <stdin>...\n";
       d = read_blif("<stdin>", std::cin);
     }
-  d->dump();
+  // d->dump();
   
   *logs << "prune...\n";
   d->prune();

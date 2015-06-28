@@ -35,15 +35,17 @@
 
 class Router;
 
-class CompareSecond
+class Comp
 {
 public:
-  CompareSecond() {}
+  Comp() {}
   
   bool operator()(const std::pair<int, int> &lhs,
 		  const std::pair<int, int> &rhs) const
   {
-    return lhs.second > rhs.second;
+    return (lhs.second > rhs.second
+	    || (lhs.second == rhs.second
+		&& lhs.first > rhs.first));
   }
 };
 
@@ -91,7 +93,7 @@ class Router
   
   UllmanSet frontier;
   // cn, cost[cn]
-  PriorityQ<std::pair<int, int>, CompareSecond> frontierq;
+  PriorityQ<std::pair<int, int>, Comp> frontierq;
   
   std::vector<int> backptr;
   std::vector<int> cost;
@@ -467,13 +469,8 @@ Router::pop()
   if (!frontier.contains(cn))
     goto L;
   
-#if 0
-  std::cout << "pop cn " << cn
-	    << " cn_cost " << cn_cost 
-	    << " cost[cn] " << cost[cn] << "\n";
-#endif
+  // *logs << "pop " << cn << "\n";
   assert(cn_cost == cost[cn]);
-  
   assert(frontierq.empty()
 	 || cn_cost <= frontierq.top().second);
   
@@ -591,6 +588,16 @@ Router::route()
 	  && !targets.empty())
 	{
 	  ++n_nets;
+	  
+#if 0
+	  *logs << "net " << n_nets
+		<< " " << n->name()
+		<< " " << source;
+	  for (int cn : targets)
+	    *logs << " " << cn;
+	  *logs << "\n";
+#endif
+	  
 	  net_source.push_back(source);
 	  net_targets.push_back(std::move(targets));
 	}

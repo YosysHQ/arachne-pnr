@@ -30,6 +30,7 @@ Configuration::set_cbit(const CBit &value_cbit, bool value)
 {
   assert(!contains_key(cbits, value_cbit)
 	 || cbits.at(value_cbit) == value);
+  // *logs << value_cbit << " = " << value << "\n";
   cbits[value_cbit] = value;
 }
 
