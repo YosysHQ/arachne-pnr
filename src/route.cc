@@ -52,7 +52,7 @@ class Router
   const ChipDB *chipdb;
   Design *d;
   Configuration &conf;
-  const hashmap<Instance *, Location> &placement;
+  const std::map<Instance *, Location, IdLess> &placement;
   
   Models models;
   
@@ -60,7 +60,7 @@ class Router
     cnet_local;
   std::vector<std::vector<int>> cnet_outs;
   
-  hashmap<std::string, std::pair<std::string, bool>> ram_gate_chip;
+  std::map<std::string, std::pair<std::string, bool>> ram_gate_chip;
   
   std::vector<Net *> cnet_net;
   std::vector<std::vector<int>> cnet_tiles;
@@ -112,7 +112,7 @@ public:
   Router(const ChipDB *cdb,
 	 Design *d_,
 	 Configuration &c,
-	 const hashmap<Instance *, Location> &p);
+	 const std::map<Instance *, Location, IdLess> &p);
   
   std::vector<Net *> route();
 };
@@ -227,7 +227,7 @@ Router::check()
 Router::Router(const ChipDB *cdb, 
 	       Design *d_, 
 	       Configuration &c,
-	       const hashmap<Instance *, Location> &placement_)
+	       const std::map<Instance *, Location, IdLess> &placement_)
   : chipdb(cdb),
     d(d_),
     conf(c),
@@ -520,7 +520,7 @@ Router::route()
   
   Model *top = d->top();
   
-  hashset<Net *> boundary_nets = top->boundary_nets(d);
+  std::set<Net *, IdLess> boundary_nets = top->boundary_nets(d);
   for (const auto &p : top->nets())
     {
       Net *n = p.second;
@@ -729,7 +729,7 @@ std::vector<Net *>
 route(const ChipDB *chipdb, 
       Design *d, 
       Configuration &conf,
-      const hashmap<Instance *, Location> &placement)
+      const std::map<Instance *, Location, IdLess> &placement)
 {
   Router router(chipdb, d, conf, placement);
   

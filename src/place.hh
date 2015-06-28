@@ -27,16 +27,16 @@ class ChipDB;
 class Package;
 class Constraints;
 class CarryChains;
-class HashId;
+class IdLess;
 
-extern hashmap<Instance *, Location>
+extern std::map<Instance *, Location, IdLess>
 place(random_generator &rg,
       const ChipDB *chipdb, 
       const Package &package,
       Design *d,
       CarryChains &chains,
       const Constraints &constraints,
-      const hashmap<Instance *, uint8_t> &gb_inst_gc,
+      const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc,
       Configuration &conf);
 
 #endif

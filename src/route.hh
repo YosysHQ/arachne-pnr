@@ -29,6 +29,6 @@ class Configuration;
 extern std::vector<Net *> route(const ChipDB *chipdb,
 				Design *d,
 				Configuration &conf,
-				const hashmap<Instance *, Location> &placement);
+				const std::map<Instance *, Location, IdLess> &placement);
 
 #endif

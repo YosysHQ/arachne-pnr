@@ -30,7 +30,7 @@ class CBit
 {
 public:
   friend std::ostream &operator<<(std::ostream &s, const CBit &cbit);
-  template<typename T> friend struct Hash;
+  template<typename T> friend struct std::hash;
   
   int x;  // tile
   int y;
@@ -51,13 +51,15 @@ public:
   bool operator<(const CBit &rhs) const;
 };
 
+namespace std {
+
 template<>
-struct Hash<CBit>
+struct hash<CBit>
 {
 public:
   size_t operator() (const CBit &cbit) const
   {
-    Hash<int> hasher;
+    std::hash<int> hasher;
     size_t h = hasher(cbit.x);
     h = hash_combine(h, hasher(cbit.y));
     h = hash_combine(h, hasher(cbit.row));
@@ -65,20 +67,22 @@ public:
   }
 };
 
+}
+
 class CBitVal
 {
 public:
   friend std::ostream &operator<<(std::ostream &s, const CBitVal &cbits);
   
-  hashmap<CBit, bool> cbit_val;
+  std::map<CBit, bool> cbit_val;
   
 public:
   CBitVal() {}
-  CBitVal(const hashmap<CBit, bool> &cbv)
+  CBitVal(const std::map<CBit, bool> &cbv)
     : cbit_val(cbv)
   {}
   
-  hashset<CBit> cbits() const;
+  std::set<CBit> cbits() const;
 };
 
 class Switch
@@ -87,7 +91,7 @@ public:
   bool bidir; // routing
   int tile;
   int out;
-  hashmap<int, std::vector<bool>> in_val;
+  std::map<int, std::vector<bool>> in_val;
   std::vector<CBit> cbits;
   
 public:
@@ -95,7 +99,7 @@ public:
   Switch(bool bi,
 	 int t,
 	 int o,
-	 const hashmap<int, std::vector<bool>> &iv,
+	 const std::map<int, std::vector<bool>> &iv,
 	 const std::vector<CBit> &cb)
     : bidir(bi),
       tile(t),
@@ -109,17 +113,21 @@ enum class TileType {
   NO_TILE, IO_TILE, LOGIC_TILE, RAMB_TILE, RAMT_TILE,
 };
 
+namespace std {
+
 template<>
-struct Hash<TileType>
+struct hash<TileType>
 {
 public:
   size_t operator() (TileType x) const
   {
     using underlying_t = typename std::underlying_type<TileType>::type;
-    Hash<underlying_t> hasher;
+    std::hash<underlying_t> hasher;
     return hasher(static_cast<underlying_t>(x));
   }
 };
+
+}
 
 extern std::string tile_type_name(TileType t);
 
@@ -128,8 +136,8 @@ class Package
 public:
   std::string name;
   
-  hashmap<std::string, Location> pin_loc;
-  hashmap<Location, std::string> loc_pin;
+  std::map<std::string, Location> pin_loc;
+  std::map<Location, std::string> loc_pin;
 };
 
 class ChipDB
@@ -144,25 +152,25 @@ public:
   int n_nets;
   int n_global_nets;
   
-  hashmap<std::string, Package> packages;
+  std::map<std::string, Package> packages;
   
-  hashmap<Location, int> loc_pin_glb_num;
+  std::map<Location, int> loc_pin_glb_num;
   
   std::vector<std::vector<int>> bank_tiles;
   
   std::vector<int> iolatch;  // tiles
-  hashmap<Location, Location> ieren;
-  hashmap<std::string, std::tuple<int, int, int>> extra_bits;
+  std::map<Location, Location> ieren;
+  std::map<std::string, std::tuple<int, int, int>> extra_bits;
   
-  hashmap<std::pair<int, int>, int> gbufin;
+  std::map<std::pair<int, int>, int> gbufin;
   
-  hashmap<int, int> tile_colbuf_tile;
+  std::map<int, int> tile_colbuf_tile;
   
   std::vector<TileType> tile_type;
   std::vector<std::pair<int, std::string>> net_tile_name;
-  std::vector<hashmap<std::string, int>> tile_nets;
-  hashmap<TileType,
-	  hashmap<std::string, std::vector<CBit>>>
+  std::vector<std::map<std::string, int>> tile_nets;
+  std::map<TileType,
+	  std::map<std::string, std::vector<CBit>>>
     tile_nonrouting_cbits;
   
   std::vector<int> extra_cell_tile;
@@ -176,7 +184,7 @@ public:
   std::vector<std::set<int>> out_switches;
   std::vector<std::set<int>> in_switches;
   
-  hashmap<TileType, std::pair<int, int>> tile_cbits_block_size;
+  std::map<TileType, std::pair<int, int>> tile_cbits_block_size;
   
   bool is_global_net(int i) const { return i < n_global_nets; }
   int find_switch(int in, int out) const;

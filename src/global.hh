@@ -34,7 +34,7 @@ extern const char *global_class_name(uint8_t gc);
 
 extern std::vector<uint8_t> global_classes;
 
-extern hashmap<Instance *, uint8_t>
+extern std::map<Instance *, uint8_t, IdLess>
 promote_globals(const ChipDB *chipdb, Design *d, bool promote);
 
 #endif

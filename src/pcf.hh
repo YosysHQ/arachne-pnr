@@ -24,11 +24,11 @@ class Design;
 class Constraints
 {
 public:
-  hashmap<std::string, std::string> net_pin;
+  std::map<std::string, std::string> net_pin;
   
 public:
   Constraints() {}
-  Constraints(const hashmap<std::string, std::string> &np)
+  Constraints(const std::map<std::string, std::string> &np)
     : net_pin(np)
   {}
 };

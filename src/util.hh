@@ -32,14 +32,6 @@
 
 #include <cassert>
 
-template<typename T> struct Hash;
-
-template<typename T, typename H = Hash<T>>
-using hashset = std::unordered_set<T, H>;
-
-template<typename K, typename V, typename H = Hash<K>>
-using hashmap = std::unordered_map<K, V, H>;
-
 // FIXME doesn't match std::minstd_rand
 class random_generator
 {
@@ -197,16 +189,6 @@ keys(const M &m)
   return std::move(keys);
 }
 
-template<typename M> inline hashset<typename M::key_type>
-unordered_keys(const M &m)
-{
-  hashset<typename M::key_type> keys;
-  std::transform(m.begin(), m.end(),
-		 std::inserter(keys, keys.end()),
-		 [](const typename M::value_type &p) { return p.first; });
-  return std::move(keys);
-}
-
 extern std::string unescape(const std::string &s);
 
 template<typename K, typename V> inline const V &
@@ -277,61 +259,27 @@ random_int(int min, int max, random_generator &rg)
 template<typename T> inline std::size_t
 hash_combine(std::size_t h, const T &v)
 {
-  Hash<T> hasher;
+  std::hash<T> hasher;
   return h ^ (hasher(v) + 0x9e3779b9 + (h << 6) + (h >> 2));
 }
 
-template<> struct Hash<char> {
-  size_t operator() (char x) const { return (size_t)x; }
-};
-
-template<> struct Hash<unsigned char> {
-  size_t operator() (unsigned char x) const { return (size_t)x; }
-};
-
-template<> struct Hash<int> {
-  size_t operator() (int x) const { return (size_t)x; }
-};
-
-template<> struct Hash<unsigned> {
-  size_t operator() (unsigned x) const { return (size_t)x; }
-};
-
-template<> struct Hash<size_t> {
-  size_t operator() (size_t x) const { return x; }
-};
+namespace std {
 
 template<typename S, typename T>
-struct Hash<std::pair<S, T>>
+struct hash<std::pair<S, T>>
 {
 public:
   size_t operator() (const std::pair<S, T> &p) const
   {
-    Hash<S> Shasher;
+    std::hash<S> Shasher;
     size_t h = Shasher(p.first);
     
-    Hash<T> Thasher;
+    std::hash<T> Thasher;
     return hash_combine(h, Thasher(p.second));
   }
 };
 
-template<>
-struct Hash<std::string>
-{
-public:
-  size_t operator()(const std::string &s) const
-  {
-    Hash<size_t> hasher;
-    size_t h = hasher(s.size());
-    
-    Hash<char> hasher2;
-    for (char c : s)
-      h = hash_combine(h, hasher2(c));
-    
-    return h;
-  }
-};
-
+}
 extern std::string expand_filename(const std::string &file);
 
 #endif

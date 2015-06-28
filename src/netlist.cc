@@ -252,7 +252,7 @@ Instance::remove()
 
 void
 Instance::write_blif(std::ostream &s,
-		     const hashmap<Net *, std::string> &net_name) const
+		     const std::map<Net *, std::string, IdLess> &net_name) const
 {
   s << ".gate " << m_instance_of->name();
   for (const auto &p : m_ports)
@@ -292,7 +292,7 @@ write_verilog_name(std::ostream &s, const std::string &name)
 
 void
 Instance::write_verilog(std::ostream &s,
-			const hashmap<Net *, std::string> &net_name,
+			const std::map<Net *, std::string, IdLess> &net_name,
 			const std::string &inst_name) const
 {
   if (!m_attrs.empty())
@@ -440,11 +440,11 @@ Model::add_instance(Model *inst_of)
   return new_inst;
 }
 
-hashset<Net *>
+std::set<Net *, IdLess>
 Model::boundary_nets(const Design *d) const
 {
   Model *io_model = d->find_model("SB_IO");
-  hashset<Net *> bnets;
+  std::set<Net *, IdLess> bnets;
   for (const auto &p : m_ports)
     {
       Net *n = p.second->connection();
@@ -461,12 +461,12 @@ Model::boundary_nets(const Design *d) const
   return bnets;
 }
 
-std::pair<std::vector<Net *>, hashmap<Net *, int>>
+std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
 Model::index_nets() const
 {
   int n_nets = 0;
   std::vector<Net *> vnets;
-  hashmap<Net *, int> net_idx;
+  std::map<Net *, int, IdLess> net_idx;
   for (const auto &p : m_nets)
     {
       Net *n = p.second;
@@ -478,13 +478,13 @@ Model::index_nets() const
   return std::make_pair(vnets, net_idx);
 }
 
-std::pair<std::vector<Net *>, hashmap<Net *, int>>
+std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
 Model::index_internal_nets(const Design *d) const
 {
-  hashset<Net *> bnets = boundary_nets(d);
+  std::set<Net *, IdLess> bnets = boundary_nets(d);
   
   std::vector<Net *> vnets;
-  hashmap<Net *, int> net_idx;
+  std::map<Net *, int, IdLess> net_idx;
   
   int n_nets = 0;
   for (const auto &p : m_nets)
@@ -500,11 +500,11 @@ Model::index_internal_nets(const Design *d) const
   return std::make_pair(vnets, net_idx);
 }
 
-std::pair<std::vector<Instance *>, hashmap<Instance *, int>>
+std::pair<std::vector<Instance *>, std::map<Instance *, int, IdLess>>
 Model::index_instances() const
 {
   std::vector<Instance *> gates;
-  hashmap<Instance *, int> gate_idx;
+  std::map<Instance *, int, IdLess> gate_idx;
   
   int n_gates = 0;
   gates.push_back(nullptr);
@@ -608,7 +608,7 @@ Model::check(const Design *d) const
     }
   
   // FIXME call boundary_nets?
-  hashset<Net *> bnets;
+  std::set<Net *, IdLess> bnets;
   for (Instance *inst : m_instances)
     {
       if (inst->instance_of() == io_model)
@@ -652,13 +652,13 @@ Model::check(const Design *d) const
 }
 #endif
 
-std::pair<hashmap<Net *, std::string>,
-	  hashset<Net *>>
+std::pair<std::map<Net *, std::string, IdLess>,
+	  std::set<Net *, IdLess>>
 Model::shared_names() const
 {
-  hashset<std::string> names;
-  hashmap<Net *, std::string> net_name;
-  hashset<Net *> is_port;
+  std::set<std::string> names;
+  std::map<Net *, std::string, IdLess> net_name;
+  std::set<Net *, IdLess> is_port;
   for (auto i : m_ports)
     {
       Net *n = i.second->connection();
@@ -713,8 +713,8 @@ Model::write_blif(std::ostream &s) const
     }
   s << "\n";
   
-  hashmap<Net *, std::string> net_name;
-  hashset<Net *> is_port;
+  std::map<Net *, std::string, IdLess> net_name;
+  std::set<Net *, IdLess> is_port;
   std::tie(net_name, is_port) = shared_names();
   
   for (const auto &p : net_name)
@@ -787,8 +787,8 @@ Model::write_verilog(std::ostream &s) const
     }
   s << ");\n";
   
-  hashmap<Net *, std::string> net_name;
-  hashset<Net *> is_port;
+  std::map<Net *, std::string, IdLess> net_name;
+  std::set<Net *, IdLess> is_port;
   std::tie(net_name, is_port) = shared_names();
   
   for (const auto &p : net_name)

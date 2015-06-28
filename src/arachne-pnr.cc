@@ -340,7 +340,7 @@ main(int argc, const char **argv)
     Models models(d);
     Configuration conf;
     
-    hashmap<Instance *, Location> placement;
+    std::map<Instance *, Location, IdLess> placement;
     if (route_only)
       {
 	Model *top = d->top();
@@ -402,7 +402,7 @@ main(int argc, const char **argv)
 	  }
     
 	*logs << "promote_globals...\n";
-	hashmap<Instance *, uint8_t> gb_inst_gc
+	std::map<Instance *, uint8_t, IdLess> gb_inst_gc
 	  = promote_globals(chipdb, d, do_promote_globals);
 #ifndef NDEBUG
 	d->check();

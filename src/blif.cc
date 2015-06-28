@@ -274,7 +274,7 @@ BlifParser::parse()
   
  M:
   // unify
-  hashmap<Net *, Net *> replacement;
+  std::map<Net *, Net *, IdLess> replacement;
   for (const auto &p : unify)
     {
       // n1 drives n2
@@ -326,7 +326,7 @@ BlifParser::parse()
 	}
     }
   
-  hashset<Net *> boundary_nets;
+  std::set<Net *, IdLess> boundary_nets;
   for (Instance *inst2 : top->instances())
     {
       if (inst2->instance_of() == io_model)

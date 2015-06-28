@@ -38,7 +38,7 @@ class Packer
   Net *const0;
   Net *const1;
   
-  hashset<Instance *> ready;
+  std::set<Instance *, IdLess> ready;
   
   void lc_from_dff(Instance *lc_inst, Instance *dff_inst);
   void lc_from_lut(Instance *lc_inst, Instance *lut_inst);

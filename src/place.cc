@@ -24,6 +24,7 @@
 #include "carry.hh"
 #include "bitvector.hh"
 #include "ullmanset.hh"
+#include "hashmap.hh"
 
 #include <iomanip>
 #include <vector>
@@ -51,25 +52,25 @@ public:
   Design *d;
   CarryChains &chains;
   const Constraints &constraints;
-  const hashmap<Instance *, uint8_t> &gb_inst_gc;
+  const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc;
   Configuration &conf;
   
-  hashmap<Instance *, Location> placement;
+  std::map<Instance *, Location, IdLess> placement;
   
   Models models;
   Model *top;
   
   std::vector<Net *> nets;
-  hashmap<Net *, int> net_idx;
+  std::map<Net *, int, IdLess> net_idx;
   
   std::vector<Instance *> gates;
-  hashmap<Instance *, int> gate_idx;
+  std::map<Instance *, int, IdLess> gate_idx;
   BitVector chained;
   
-  hashset<int> glb_nets;
+  std::set<int> glb_nets;
   std::vector<Location> free_io_locs;
   std::vector<int> free_gates;
-  hashmap<int, int> gate_chain;
+  std::map<int, int> gate_chain;
   
   Location gate_random_loc(int g);
   std::pair<Location, bool> chain_random_loc(int c);
@@ -105,7 +106,7 @@ public:
   std::vector<int> chain_x, chain_start;
   
   std::vector<Location> gate_loc;
-  hashmap<Location, unsigned> loc_gate;
+  HashMap<Location, unsigned> loc_gate;
   
   std::vector<int> net_length;
   
@@ -130,10 +131,10 @@ public:
 	 Design *d,
 	 CarryChains &chains_,
 	 const Constraints &constraints_,
-	 const hashmap<Instance *, uint8_t> &gb_inst_gc_,
+	 const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc_,
 	 Configuration &conf_);
   
-  hashmap<Instance *, Location> place();
+  std::map<Instance *, Location, IdLess> place();
 };
 
 Location
@@ -569,8 +570,11 @@ Placer::check()
       unsigned g = gate_idx.at(inst);
       assert(loc_gate.at(gate_loc[g]) == g);
     }
+#if 0
+  // FIXME
   for (const auto &p : loc_gate)
     assert(gate_loc[p.second] == p.first);
+#endif
   
   for (unsigned c = 0; c < chains.chains.size(); ++c)
     {
@@ -635,7 +639,7 @@ Placer::Placer(random_generator &rg_,
 	       Design *d_,
 	       CarryChains &chains_,
 	       const Constraints &constraints_,
-	       const hashmap<Instance *, uint8_t> &gb_inst_gc_,
+	       const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc_,
 	       Configuration &conf_)
   : rg(rg_),
     chipdb(cdb),
@@ -672,6 +676,8 @@ Placer::Placer(random_generator &rg_,
 	  break;
 	}
     }
+
+  // FIXME
   for (const auto &p : chipdb->gbufin)
     {
       gb_locs.push_back(Location(p.first.first,
@@ -759,11 +765,13 @@ Placer::place_initial()
     n_ramt_placed = 0,
     n_gb_placed = 0;
   
-  hashset<Location> io_locs;
+  std::set<Location> io_locs;
+  // FIXME
   for (const auto &p : package.pin_loc)
     extend(io_locs, p.second);
   
   std::vector<Net *> bank_latch(4, nullptr);
+  // FIXME
   for (const auto &p : constraints.net_pin)
     {
       int g = top_port_io_gate(p.first);
@@ -996,13 +1004,14 @@ Placer::place_initial()
 void
 Placer::configure()
 {
-  for (const auto &p : loc_gate)
+  for (unsigned g = 1; g < gates.size(); g ++)  // skip 0, nullptr
     {
-      const Location &loc = p.first;
+      Instance *inst = gates[g];
+      const Location &loc = gate_loc[g];
+      
       int t = chipdb->tile(loc.x(), loc.y());
       const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(chipdb->tile_type[t]);
       
-      Instance *inst = gates[p.second];
       if (models.is_lc(inst))
 	{
 	  BitVector lut_init = inst->get_param("LUT_INIT").as_bits();
@@ -1148,7 +1157,7 @@ Placer::configure()
 			  true);
 	}
       
-      placement[inst] = p.first;
+      placement[inst] = loc;
     }
   
   // set IoCtrl configuration bits
@@ -1159,6 +1168,8 @@ Placer::configure()
       &ren_0 = func_cbits.at("IoCtrl.REN_0")[0],
       &ren_1 = func_cbits.at("IoCtrl.REN_1")[0],
       &lvds = func_cbits.at("IoCtrl.LVDS")[0];
+    
+    // FIXME
     for (const auto &p : package.pin_loc)
       {
 	// unused io
@@ -1219,7 +1230,8 @@ Placer::configure()
 	  }
       }
     
-    hashset<Location> ieren_image;
+    std::set<Location> ieren_image;
+    // FIXME
     for (const auto &p : chipdb->ieren)
       extend(ieren_image, p.second);
     for (int t = 0; t < chipdb->n_tiles; ++t)
@@ -1297,7 +1309,7 @@ Placer::configure()
   }
 }
 
-hashmap<Instance *, Location>
+std::map<Instance *, Location, IdLess>
 Placer::place()
 {
   place_initial();
@@ -1398,12 +1410,13 @@ Placer::place()
   int n_pio = 0,
     n_plb = 0,
     n_bram = 0;
-  hashset<int> seen;
+  std::set<int> seen;
   for (const Location &loc : gate_loc)
     {
       int t = chipdb->tile(loc.x(), loc.y());
       seen.insert(t);
     }
+  // FIXME
   for (int t : seen)
     {
       if (chipdb->tile_type[t] == TileType::LOGIC_TILE)
@@ -1423,20 +1436,20 @@ Placer::place()
   return std::move(placement);
 }
 
-hashmap<Instance *, Location>
+std::map<Instance *, Location, IdLess>
 place(random_generator &rg,
       const ChipDB *chipdb,
       const Package &package,
       Design *d,
       CarryChains &chains,
       const Constraints &constraints,
-      const hashmap<Instance *, uint8_t> &gb_inst_gc,
+      const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc,
       Configuration &conf)
 {
   Placer placer(rg, chipdb, package, d, chains, constraints, gb_inst_gc, conf);
   
   clock_t start = clock();
-  hashmap<Instance *, Location> placement = placer.place();
+  std::map<Instance *, Location, IdLess> placement = placer.place();
   clock_t end = clock();
   
   *logs << "  place time "

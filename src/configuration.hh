@@ -23,12 +23,12 @@ class ChipDB;
 class Design;
 class Instance;
 class Net;
-class HashId;
+class IdLess;
 
 class Configuration
 {
 public:
-  hashmap<CBit, bool> cbits;
+  std::map<CBit, bool> cbits;
   
 public:
   Configuration();
@@ -40,7 +40,7 @@ public:
   void write_txt(std::ostream &s,
 		 const ChipDB *chipdb,
 		 Design *d,
-		 const hashmap<Instance *, Location> &placement,
+		 const std::map<Instance *, Location, IdLess> &placement,
 		 const std::vector<Net *> &cnet_net);
 };
 

@@ -22,7 +22,7 @@
 class Location
 {
   friend std::ostream &operator<<(std::ostream &s, const Location &loc);
-  template<typename T> friend struct Hash;
+  template<typename T> friend struct std::hash;
   
   // pos is 0-7 for logic tiles, 0-1 for io tiles
   int m_x, m_y, m_pos;
@@ -63,17 +63,21 @@ public:
   }
 };
 
+namespace std {
+
 template<>
-struct Hash<Location>
+struct hash<Location>
 {
 public:
   size_t operator()(const Location &loc) const
   {
-    Hash<int> hasher;
+    std::hash<int> hasher;
     size_t h = hasher(loc.m_x);
     h = hash_combine(h, hasher(loc.m_y));
     return hash_combine(h, hasher(loc.m_pos));
   }
 };
+
+}
 
 #endif

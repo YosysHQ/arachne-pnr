@@ -46,7 +46,7 @@ public:
 void
 PCFParser::parse()
 {
-  hashmap<std::string, std::string> net_pin;
+  std::map<std::string, std::string> net_pin;
   
   for (;;)
     {

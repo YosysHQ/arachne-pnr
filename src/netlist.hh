@@ -35,7 +35,7 @@ class Design;
 class Identified
 {
 private:
-  friend class HashId;
+  template<typename T> friend struct std::hash;
   friend class IdLess;
   
   static int id_counter;
@@ -51,26 +51,31 @@ public:
 class IdLess
 {
 public:
-  bool operator()(const Identified *lhs, const Identified *rhs)
+  bool operator()(const Identified *lhs, const Identified *rhs) const
   {
     return lhs->id < rhs->id;
   }
 };
 
-class HashId
+namespace std {
+  
+template<>
+struct hash<Identified *>
 {
 public:
   size_t operator()(const Identified *x) const
   {
-    Hash<int> hasher;
+    std::hash<int> hasher;
     return hasher(x->id);
   }
 };
 
-template<> struct Hash<Net *> : public HashId {};
-template<> struct Hash<Node *> : public HashId {};
-template<> struct Hash<Instance *> : public HashId {};
-template<> struct Hash<Model *> : public HashId {};
+template<> struct hash<Net *> : public std::hash<Identified *> {};
+template<> struct hash<Node *> : public std::hash<Identified *> {};
+template<> struct hash<Instance *> : public std::hash<Identified *> {};
+template<> struct hash<Model *> : public std::hash<Identified *> {};
+
+}
 
 enum class Direction
 {
@@ -221,6 +226,7 @@ public:
 class Node : public Identified
 {
 protected:
+  // FIXME maintain input order: vector
   std::map<std::string, Port *> m_ports;
   
 public:
@@ -251,16 +257,16 @@ class Instance : public Node
   Model *m_parent;
   Model *m_instance_of;
   
-  hashmap<std::string, Const> m_params;
-  hashmap<std::string, Const> m_attrs;
+  std::map<std::string, Const> m_params;
+  std::map<std::string, Const> m_attrs;
   
 public:
   static const Kind kindof = Kind::instance;
   
   Model *parent() const { return m_parent; }
   Model *instance_of() const { return m_instance_of; }
-  const hashmap<std::string, Const> &attrs() const { return m_attrs; }
-  const hashmap<std::string, Const> &params() const { return m_params; }
+  const std::map<std::string, Const> &attrs() const { return m_attrs; }
+  const std::map<std::string, Const> &params() const { return m_params; }
   
   Instance(Model *p, Model *inst_of);
   
@@ -293,9 +299,9 @@ public:
   void remove();
   
   void write_blif(std::ostream &s,
-		  const hashmap<Net *, std::string> &net_name) const;
+		  const std::map<Net *, std::string, IdLess> &net_name) const;
   void write_verilog(std::ostream &s,
-		     const hashmap<Net *, std::string> &net_name,
+		     const std::map<Net *, std::string, IdLess> &net_name,
 		     const std::string &inst_name) const;
 };
 
@@ -309,7 +315,7 @@ class Model : public Node
   std::map<std::string, Net *> m_nets;
   std::set<Instance *, IdLess> m_instances;
   
-  hashmap<std::string, Const> m_params;
+  std::map<std::string, Const> m_params;
   
 public:
   static const Kind kindof = Kind::model;
@@ -318,7 +324,7 @@ public:
   
   const std::set<Instance *, IdLess> &instances() const { return m_instances; }
   const std::map<std::string, Net *> &nets() const { return m_nets; }
-  const hashmap<std::string, Const> &params() const { return m_params; }
+  const std::map<std::string, Const> &params() const { return m_params; }
   
   Model(Design *d, const std::string &n);
   ~Model();
@@ -351,19 +357,19 @@ public:
   
   bool has_param(const std::string &pn) { return contains_key(m_params, pn); }
   
-  hashset<Net *> boundary_nets(const Design *d) const;
-  std::pair<std::vector<Net *>, hashmap<Net *, int>>
+  std::set<Net *, IdLess> boundary_nets(const Design *d) const;
+  std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
     index_nets() const;
-  std::pair<std::vector<Net *>, hashmap<Net *, int>>
+  std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
     index_internal_nets(const Design *d) const;
   
-  std::pair<std::vector<Instance *>, hashmap<Instance *, int>>
+  std::pair<std::vector<Instance *>, std::map<Instance *, int, IdLess>>
     index_instances() const;
   
   void prune();
 
-  std::pair<hashmap<Net *, std::string>,
-	    hashset<Net *>>
+  std::pair<std::map<Net *, std::string, IdLess>,
+	    std::set<Net *, IdLess>>
     shared_names() const;
   void write_verilog(std::ostream &s) const;
   void write_blif(std::ostream &s) const;
@@ -378,7 +384,7 @@ class Design
   friend class Model;
   
   Model *m_top;
-  hashmap<std::string, Model *> m_models;
+  std::map<std::string, Model *> m_models;
   
 public:
   Model *top() const { return m_top; }
