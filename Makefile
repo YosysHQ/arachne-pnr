@@ -5,7 +5,7 @@
 
 # build optimized without -DNDEBUG
 # OPTDEBUGFLAGS = -O0 -fno-inline -g
-OPTDEBUGFLAGS = -O2 -DNDEBUG
+OPTDEBUGFLAGS = -O2 # -DNDEBUG
 
 CXXFLAGS = -Isrc -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
 LIBS = -lm
