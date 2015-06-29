@@ -340,19 +340,16 @@ main(int argc, const char **argv)
     Models models(d);
     Configuration conf;
     
-    std::map<Instance *, Location, IdLess> placement;
+    std::map<Instance *, int, IdLess> placement;
     if (route_only)
       {
 	Model *top = d->top();
 	for (Instance *inst : top->instances())
 	  {
 	    const std::string &loc_attr = inst->get_attr("loc").as_string();
-	    int t, pos;
-	    sscanf(loc_attr.c_str(), "%d,%d", &t, &pos);
-	    Location loc(chipdb->tile_x(t),
-			 chipdb->tile_y(t),
-			 pos);
-	    extend(placement, inst, loc);
+	    int cell;
+	    sscanf(loc_attr.c_str(), "%d", &cell);
+	    extend(placement, inst, cell);
 	  }
       }
     else
@@ -436,29 +433,24 @@ main(int argc, const char **argv)
 	      {
 		if (models.is_io(p.first))
 		  {
-		    std::string pin = package.loc_pin.at(p.second);
+		    const Location &loc = chipdb->cell_location[p.second];
+		    std::string pin = package.loc_pin.at(loc);
 		    Port *top_port = (p.first
 				      ->find_port("PACKAGE_PIN")
 				      ->connection_other_port());
 		    assert(isa<Model>(top_port->node())
 			   && cast<Model>(top_port->node()) == d->top());
-		
+		    
 		    fs << "set_io " << top_port->name() << " " << pin << "\n";
 		  }
 	      }
 	  }
-    
+	
 	if (place_blif)
 	  {
 	    for (const auto &p : placement)
-	      {
-		int t = chipdb->tile(p.second.x(),
-				     p.second.y());
-		int pos = p.second.pos();
-		p.first->set_attr("loc",
-				  fmt(t << "," << pos));
-	      }
-	
+	      p.first->set_attr("loc", fmt(p.second));
+	    
 	    *logs << "write_blif " << place_blif << "\n";
 	    std::string expanded = expand_filename(place_blif);
 	    std::ofstream fs(expanded);

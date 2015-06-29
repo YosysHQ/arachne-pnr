@@ -92,7 +92,7 @@ public:
     assert(d > 0);
     
     unsigned x = random();
-    double r = min + (double)x / (double)(m-1);
+    double r = min + d*(double)x / (double)(m-1);
     assert(min <= r && r <= max);
     return r;
   }
@@ -280,6 +280,20 @@ public:
 };
 
 }
+
 extern std::string expand_filename(const std::string &file);
+
+template<typename T> void
+pop(std::vector<T> &v, int i)
+{
+  assert(i < (int)v.size());
+  if (i == (int)v.size())
+    v.pop_back();
+  else
+    {
+      std::swap(v[i], v.back());
+      v.pop_back();
+    }
+}
 
 #endif

@@ -47,7 +47,7 @@ void
 Configuration::write_txt(std::ostream &s,
 			 const ChipDB *chipdb,
 			 Design *d,
-			 const std::map<Instance *, Location, IdLess> &placement,
+			 const std::map<Instance *, int, IdLess> &placement,
 			 const std::vector<Net *> &cnet_net)
 {
   s << ".device " << chipdb->device << "\n";
@@ -89,10 +89,13 @@ Configuration::write_txt(std::ostream &s,
     {
       if (models.is_ramX(p.first))
 	{
-	  assert(chipdb->tile_type[chipdb->tile(p.second.x(), p.second.y())]
+	  int cell = p.second;
+	  const Location &loc = chipdb->cell_location[cell];
+	  
+	  assert(chipdb->tile_type[chipdb->tile(loc.x(), loc.y())]
 		 == TileType::RAMT_TILE);
 	  
-	  s << ".ram_data " << p.second.x() << " " << (p.second.y()-1) << "\n";
+	  s << ".ram_data " << loc.x() << " " << (loc.y()-1) << "\n";
 	  for (int i = 0; i < 16; ++i)
 	    {
 	      BitVector init_i = p.first->get_param(fmt("INIT_" << hexdigit(i, 'A'))).as_bits();

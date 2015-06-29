@@ -54,7 +54,7 @@ class Router
   const ChipDB *chipdb;
   Design *d;
   Configuration &conf;
-  const std::map<Instance *, Location, IdLess> &placement;
+  const std::map<Instance *, int, IdLess> &placement;
   
   Models models;
   
@@ -114,7 +114,7 @@ public:
   Router(const ChipDB *cdb,
 	 Design *d_,
 	 Configuration &c,
-	 const std::map<Instance *, Location, IdLess> &p);
+	 const std::map<Instance *, int, IdLess> &p);
   
   std::vector<Net *> route();
 };
@@ -123,7 +123,8 @@ int
 Router::port_cnet(Instance *inst, Port *p)
 {
   const auto &p_name = p->name();
-  const auto &loc = placement.at(inst);
+  int cell = placement.at(inst);
+  const Location &loc = chipdb->cell_location[cell];
   int t = chipdb->tile(loc.x(), loc.y());
   
   std::string tile_net_name;
@@ -229,7 +230,7 @@ Router::check()
 Router::Router(const ChipDB *cdb, 
 	       Design *d_, 
 	       Configuration &c,
-	       const std::map<Instance *, Location, IdLess> &placement_)
+	       const std::map<Instance *, int, IdLess> &placement_)
   : chipdb(cdb),
     d(d_),
     conf(c),
@@ -537,7 +538,8 @@ Router::route()
 	      if (models.is_lc(inst)
 		  && p2->name() == "CIN")
 		{
-		  const Location &loc = placement.at(inst);
+		  int cell = placement.at(inst);
+		  const Location &loc = chipdb->cell_location[cell];
 		  if (loc.pos() == 0)
 		    continue;
 		}
@@ -736,7 +738,7 @@ std::vector<Net *>
 route(const ChipDB *chipdb, 
       Design *d, 
       Configuration &conf,
-      const std::map<Instance *, Location, IdLess> &placement)
+      const std::map<Instance *, int, IdLess> &placement)
 {
   Router router(chipdb, d, conf, placement);
   

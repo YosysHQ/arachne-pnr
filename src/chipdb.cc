@@ -109,10 +109,11 @@ ChipDB::ChipDB()
 void
 ChipDB::add_cell(CellType type, const Location &loc)
 {
-  int c = cell_type.size();
+  int cell = cell_type.size();
   cell_type.push_back(type);
   cell_location.push_back(loc);
-  cell_type_cells[cell_type_idx(type)].push_back(c);
+  extend(loc_cell, loc, cell);
+  cell_type_cells[cell_type_idx(type)].push_back(cell);
 }
 
 int

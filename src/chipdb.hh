@@ -18,6 +18,7 @@
 
 #include "location.hh"
 #include "util.hh"
+#include "hashmap.hh"
 
 #include <ostream>
 #include <string>
@@ -194,6 +195,7 @@ public:
   
   std::vector<CellType> cell_type;
   std::vector<Location> cell_location;
+  HashMap<Location, int> loc_cell;
   std::vector<std::vector<int>> cell_type_cells;
   
   // buffers and routing

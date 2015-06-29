@@ -40,7 +40,7 @@ public:
   void write_txt(std::ostream &s,
 		 const ChipDB *chipdb,
 		 Design *d,
-		 const std::map<Instance *, Location, IdLess> &placement,
+		 const std::map<Instance *, int, IdLess> &placement,
 		 const std::vector<Net *> &cnet_net);
 };
 
