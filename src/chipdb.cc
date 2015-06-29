@@ -25,14 +25,13 @@
 std::ostream &
 operator<<(std::ostream &s, const CBit &cbit)
 {
-  return s << cbit.x << " " << cbit.y << " B" << cbit.row << "[" << cbit.col << "]";
+  return s << cbit.tile << " B" << cbit.row << "[" << cbit.col << "]";
 }
 
 bool
 CBit::operator==(const CBit &rhs) const
 {
-  return x == rhs.x
-    && y == rhs.y
+  return tile == rhs.tile
     && row == rhs.row
     && col == rhs.col;
 }
@@ -40,14 +39,9 @@ CBit::operator==(const CBit &rhs) const
 bool
 CBit::operator<(const CBit &rhs) const
 {
-  if (x < rhs.x)
+  if (tile < rhs.tile)
     return true;
-  if (x > rhs.x)
-    return false;
-  
-  if (y < rhs.y)
-    return true;
-  if (y > rhs.y)
+  if (tile > rhs.tile)
     return false;
 
   if (row < rhs.row)
@@ -144,10 +138,13 @@ ChipDB::dump(std::ostream &s) const
     {
       s << ".pins " << p.first << "\n";
       for (const auto &p2 : p.second.pin_loc)
-	s << p2.first
-	  << " " << p2.second.x()
-	  << " " << p2.second.y() << " "
-	  << " " << p2.second.pos() << "\n";
+	{
+	  int t = p2.second.tile();
+	  s << p2.first
+	    << " " << tile_x(t)
+	    << " " << tile_y(t)
+	    << " " << p2.second.pos() << "\n";
+	}
       s << "\n";
     }
   
@@ -253,7 +250,7 @@ ChipDB::set_device(const std::string &d,
 
 class ChipDBParser : public LineParser
 {
-  CBit parse_cbit(int x, int y, const std::string &s);
+  CBit parse_cbit(int tile, const std::string &s);
   
 public:
   ChipDBParser(const std::string &f, std::istream &s_)
@@ -264,7 +261,7 @@ public:
 };
 
 CBit
-ChipDBParser::parse_cbit(int x, int y, const std::string &s_)
+ChipDBParser::parse_cbit(int t, const std::string &s_)
 {
   std::size_t lbr = s_.find('['),
     rbr = s_.find(']');
@@ -280,7 +277,7 @@ ChipDBParser::parse_cbit(int x, int y, const std::string &s_)
   int r = std::stoi(rows),
     c = std::stoi(cols);
   
-  return CBit(x, y, r, c);
+  return CBit(t, r, c);
 }
 
 ChipDB *
@@ -340,11 +337,12 @@ ChipDBParser::parse()
 		  int x = std::stoi(words[1]),
 		    y = std::stoi(words[2]),
 		    pos = std::stoi(words[3]);
-		  Location loc(x, y, pos);
+		  int t = chipdb->tile(x, y);
+		  Location loc(t, pos);
 		  extend(package.pin_loc, pin, loc);
 		  extend(package.loc_pin, loc, pin);
 		  
-		  chipdb->add_cell(CellType::IO, Location(x, y, pos));
+		  chipdb->add_cell(CellType::IO, loc);
 		}
 	    }
 	  else if (cmd == ".gbufpin")
@@ -371,10 +369,11 @@ ChipDBParser::parse()
 		    y = std::stoi(words[1]),
 		    pos = std::stoi(words[2]),
 		    glb_num = std::stoi(words[3]);
-		  Location loc(x, y, pos);
+		  int t = chipdb->tile(x, y);
+		  Location loc(t, pos);
 		  extend(chipdb->loc_pin_glb_num, loc, glb_num);
 		  
-		  chipdb->add_cell(CellType::GB, Location(x, y, 2));
+		  chipdb->add_cell(CellType::GB, Location(t, 2));
 		}
 	      
 	    }
@@ -404,7 +403,7 @@ ChipDBParser::parse()
 		  chipdb->tile_type[t] = TileType::LOGIC_TILE;
 		  
 		  for (int p = 0; p < 8; ++p)
-		    chipdb->add_cell(CellType::LOGIC, Location(x, y, p));
+		    chipdb->add_cell(CellType::LOGIC, Location(t, p));
 		}
 	      else if (cmd == ".ramb_tile")
 		chipdb->tile_type[t] = TileType::RAMB_TILE;
@@ -413,7 +412,7 @@ ChipDBParser::parse()
 		  assert(cmd == ".ramt_tile");
 		  chipdb->tile_type[t] = TileType::RAMT_TILE;
 		  
-		  chipdb->add_cell(CellType::RAM, Location(x, y, 0));
+		  chipdb->add_cell(CellType::RAM, Location(t, 0));
 		}
 	    }
 	  else if (cmd == ".io_tile_bits"
@@ -463,7 +462,7 @@ ChipDBParser::parse()
 		  
 		  std::vector<CBit> cbits(words.size() - 1);
 		  for (unsigned i = 1; i < words.size(); ++i)
-		    cbits[i - 1] = parse_cbit(0, 0, words[i]);
+		    cbits[i - 1] = parse_cbit(0, words[i]);
 		  
 		  extend(chipdb->tile_nonrouting_cbits[ty], func, cbits);
 		}
@@ -529,7 +528,7 @@ ChipDBParser::parse()
 	      
 	      std::vector<CBit> cbits(words.size() - 4);
 	      for (unsigned i = 4; i < words.size(); i ++)
-		cbits[i - 4] = parse_cbit(x, y, words[i]);
+		cbits[i - 4] = parse_cbit(t, words[i]);
 	      
 	      std::map<int, std::vector<bool>> in_val;	      
 	      
@@ -674,12 +673,13 @@ ChipDBParser::parse()
 		  if (words.size() != 6)
 		    fatal("invalid .ieren entry");
 	      
-		  Location pio(std::stoi(words[0]),
-			       std::stoi(words[1]),
-			       std::stoi(words[2])),
-		    ieren(std::stoi(words[3]),
-			  std::stoi(words[4]),
-			  std::stoi(words[5]));
+		  int pio_t = chipdb->tile(std::stoi(words[0]),
+					   std::stoi(words[1])),
+		    ieren_t = chipdb->tile(std::stoi(words[3]),
+					   std::stoi(words[4]));
+		  
+		  Location pio(pio_t, std::stoi(words[2])),
+		    ieren(ieren_t, std::stoi(words[5]));
 		  extend(chipdb->ieren, pio, ieren);
 		}
 	    }
@@ -722,9 +722,9 @@ ChipDBParser::parse()
 	      chipdb->extra_cell_type.push_back(cell_type);
 	      
 	      if (cell_type == "WARMBOOT")
-		chipdb->add_cell(CellType::WARMBOOT, Location(x, y, 0));
+		chipdb->add_cell(CellType::WARMBOOT, Location(t, 0));
 	      else if (cell_type == "PLL")
-		chipdb->add_cell(CellType::PLL, Location(x, y, 4));
+		chipdb->add_cell(CellType::PLL, Location(t, 4));
 	      else
 		fatal(fmt("unknown extra cell type `" << cell_type << "'"));
 	      

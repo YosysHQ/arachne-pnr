@@ -125,7 +125,7 @@ Router::port_cnet(Instance *inst, Port *p)
   const auto &p_name = p->name();
   int cell = placement.at(inst);
   const Location &loc = chipdb->cell_location[cell];
-  int t = chipdb->tile(loc.x(), loc.y());
+  int t = loc.tile();
   
   std::string tile_net_name;
   if (models.is_lc(inst))
@@ -198,8 +198,8 @@ Router::port_cnet(Instance *inst, Port *p)
       tile_net_name = r.first;
       if (r.second)
 	// ramb tile
-	t = chipdb->tile(loc.x(),
-			 loc.y() - 1);
+	t = chipdb->tile(chipdb->tile_x(loc.tile()),
+			 chipdb->tile_y(loc.tile()) - 1);
     }
   
   int n = chipdb->tile_nets[t].at(tile_net_name);
@@ -720,8 +720,7 @@ Router::route()
 				       .at(chipdb->tile_type[cb_t])
 				       .at(fmt("ColBufCtrl.glb_netwk_" << p.first))
 				       [0]);
-	    conf.set_cbit(CBit(chipdb->tile_x(cb_t),
-			       chipdb->tile_y(cb_t),
+	    conf.set_cbit(CBit(cb_t,
 			       colbuf_cbit.row,
 			       colbuf_cbit.col),
 			  1);

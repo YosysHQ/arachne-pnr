@@ -51,38 +51,37 @@ Configuration::write_txt(std::ostream &s,
 			 const std::vector<Net *> &cnet_net)
 {
   s << ".device " << chipdb->device << "\n";
-  for (int x = 0; x < chipdb->width; x ++)
-    for (int y = 0; y < chipdb->height; y ++)
-      {
-	int t = chipdb->tile(x, y);
-	TileType ty = chipdb->tile_type[t];
-	
-	if (ty == TileType::NO_TILE)
-	  continue;
-	
-	s << "." << tile_type_name(ty) << " " << x << " " << y << "\n";
-	
-	int bw, bh;
-	std::tie(bw, bh) = chipdb->tile_cbits_block_size.at(ty);
-	
-	for (int r = 0; r < bh; r ++)
-	  {
-	    for (int c = 0; c < bw; c ++)
-	      {
-		auto i = cbits.find(CBit(x, y, r, c));
-		if (i != cbits.end())
-		  {
-		    if (i->second)
-		      s << "1";
-		    else
-		      s << "0";
-		  }
-		else
-		  s << "0";
-	      }
-	    s << "\n";
-	  }
-      }
+  for (int t = 0; t < chipdb->n_tiles; ++t)
+    {
+      TileType ty = chipdb->tile_type[t];
+      if (ty == TileType::NO_TILE)
+	continue;
+
+      int  x = chipdb->tile_x(t),
+	y = chipdb->tile_y(t);
+      s << "." << tile_type_name(ty) << " " << x << " " << y << "\n";
+      
+      int bw, bh;
+      std::tie(bw, bh) = chipdb->tile_cbits_block_size.at(ty);
+      
+      for (int r = 0; r < bh; r ++)
+	{
+	  for (int c = 0; c < bw; c ++)
+	    {
+	      auto i = cbits.find(CBit(t, r, c));
+	      if (i != cbits.end())
+		{
+		  if (i->second)
+		    s << "1";
+		  else
+		    s << "0";
+		}
+	      else
+		s << "0";
+	    }
+	  s << "\n";
+	}
+    }
   
   Models models(d);
   for (const auto &p : placement)
@@ -92,21 +91,24 @@ Configuration::write_txt(std::ostream &s,
 	  int cell = p.second;
 	  const Location &loc = chipdb->cell_location[cell];
 	  
-	  assert(chipdb->tile_type[chipdb->tile(loc.x(), loc.y())]
-		 == TileType::RAMT_TILE);
+	  int t = loc.tile();
+	  assert(chipdb->tile_type[t] == TileType::RAMT_TILE);
 	  
-	  s << ".ram_data " << loc.x() << " " << (loc.y()-1) << "\n";
+	  int x = chipdb->tile_x(t),
+	    y = chipdb->tile_y(t);
+	  
+	  s << ".ram_data " << x << " " << (y-1) << "\n";
 	  for (int i = 0; i < 16; ++i)
 	    {
 	      BitVector init_i = p.first->get_param(fmt("INIT_" << hexdigit(i, 'A'))).as_bits();
 	      init_i.resize(256);
 	      for (int j = 63; j >= 0; --j)
 		{
-		  int x = (((int)init_i[j*4 + 3] << 3)
+		  int v = (((int)init_i[j*4 + 3] << 3)
 			   | ((int)init_i[j*4 + 2] << 2)
 			   | ((int)init_i[j*4 + 1] << 1)
 			   | ((int)init_i[j*4 + 0]));
-		  s << hexdigit(x);
+		  s << hexdigit(v);
 		}
 	      s << "\n";
 	    }

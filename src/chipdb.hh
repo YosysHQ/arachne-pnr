@@ -33,17 +33,16 @@ public:
   friend std::ostream &operator<<(std::ostream &s, const CBit &cbit);
   template<typename T> friend struct std::hash;
   
-  int x;  // tile
-  int y;
+  int tile;
   int row;
   int col;
   
 public:
   CBit()
-    : x(0), y(0), row(0), col(0)
+    : tile(0), row(0), col(0)
   {}
-  CBit(int x_, int y_, int r, int c)
-    : x(x_), y(y_), row(r), col(c)
+  CBit(int tile_, int r, int c)
+    : tile(tile_), row(r), col(c)
   {}
   
   bool operator==(const CBit &rhs) const;
@@ -61,8 +60,7 @@ public:
   size_t operator() (const CBit &cbit) const
   {
     std::hash<int> hasher;
-    size_t h = hasher(cbit.x);
-    h = hash_combine(h, hasher(cbit.y));
+    size_t h = hasher(cbit.tile);
     h = hash_combine(h, hasher(cbit.row));
     return hash_combine(h, hasher(cbit.col));
   }
@@ -195,6 +193,7 @@ public:
   
   std::vector<CellType> cell_type;
   std::vector<Location> cell_location;
+  // FIXME loc_cell(const Location &loc), tile_pos_cell: tile -> pos -> cell
   HashMap<Location, int> loc_cell;
   std::vector<std::vector<int>> cell_type_cells;
   
