@@ -203,6 +203,7 @@ public:
   std::vector<std::set<int>> out_switches;
   std::vector<std::set<int>> in_switches;
   
+  // FIXME
   std::map<TileType, std::pair<int, int>> tile_cbits_block_size;
   
   void add_cell(CellType type, const Location &loc);

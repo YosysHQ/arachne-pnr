@@ -30,6 +30,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <cstdlib>
 
 const char *program_name;
 
@@ -271,7 +272,7 @@ main(int argc, const char **argv)
   if (seed_str)
     {
       // FIXME catch exception
-      seed = std::stoi(seed_str);
+      seed = (unsigned)atoi(seed_str);
       if (!seed)
 	fatal("zero seed\n");
     }
@@ -449,7 +450,16 @@ main(int argc, const char **argv)
 	if (place_blif)
 	  {
 	    for (const auto &p : placement)
-	      p.first->set_attr("loc", fmt(p.second));
+	      {
+		// p.first->set_attr("loc", fmt(p.second));
+		const Location &loc = chipdb->cell_location[p.second];
+		int t = loc.tile();
+		int pos = loc.pos();
+		p.first->set_attr("loc",
+				  fmt(chipdb->tile_x(t)
+				      << "," << chipdb->tile_y(t)
+				      << "/" << pos));
+	      }
 	    
 	    *logs << "write_blif " << place_blif << "\n";
 	    std::string expanded = expand_filename(place_blif);

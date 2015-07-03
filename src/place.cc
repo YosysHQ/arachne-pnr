@@ -66,7 +66,14 @@ public:
   std::map<Instance *, int, IdLess> gate_idx;
   BitVector chained;
   
-  std::set<int> glb_nets;
+  std::vector<int> gate_clk, gate_sr, gate_cen;
+  
+  // FIXME single vector?
+  // net-parity
+  std::vector<std::vector<int>> gate_local_np;
+  UllmanSet tmp_local_np;
+  
+  BitVector net_global;
   
   std::vector<std::vector<int>> cell_type_free_cells;
   
@@ -116,8 +123,7 @@ public:
   
   std::vector<int> net_length;
   
-  bool valid(int t) const;
-  bool valid(const Location &loc) const;
+  bool valid(int t);
   
   int wire_length() const;
   int compute_net_length(int w);
@@ -366,15 +372,16 @@ Placer::discard()
 }
 
 bool
-Placer::valid(int t) const
+Placer::valid(int t)
 {
   int x = chipdb->tile_x(t),
     y = chipdb->tile_y(t);
   if (chipdb->tile_type[t] == TileType::LOGIC_TILE)
     {
-      Net *global_clk = nullptr,
-	*global_sr = nullptr,
-	*global_cen = nullptr;
+      int global_clk = 0,
+	global_sr = 0,
+	global_cen = 0;
+      tmp_local_np.clear();
       for (int q = 0; q < 8; q ++)
 	{
 	  Location loc(t, q);
@@ -382,39 +389,42 @@ Placer::valid(int t) const
 	  int g = cell_gate[cell];
 	  if (g)
 	    {
-	      Instance *inst = gates[g];
+	      int clk = gate_clk[g],
+		sr = gate_sr[g],
+		cen = gate_cen[g];
 	      
-	      Port *clk = inst->find_port("CLK");
-	      if (clk->connected())
-		{
-		  Net *n = clk->connection();
-		  if (!global_clk)
-		    global_clk = n;
-		  else if (global_clk != n)
-		    return false;
-		}
+	      if (!global_clk)
+		global_clk = clk;
+	      else if (global_clk != clk)
+		return false;
 	      
-	      Port *cen = inst->find_port("CEN");
-	      if (cen->connected())
-		{
-		  Net *n = cen->connection();
-		  if (!global_cen)
-		    global_cen = n;
-		  else if (global_cen != n)
-		    return false;
-		}
+	      if (!global_sr)
+		global_sr = sr;
+	      else if (global_sr != sr)
+		return false;
 	      
-	      Port *sr = inst->find_port("SR");
-	      if (sr->connected())
-		{
-		  Net *n = sr->connection();
-		  if (!global_sr)
-		    global_sr = n;
-		  else if (global_sr != n)
-		    return false;
-		}
+	      if (!global_cen)
+		global_cen = cen;
+	      else if (global_cen != cen)
+		return false;
+	      
+	      for (int np : gate_local_np[g])
+		tmp_local_np.insert(np ^ (q & 1));
 	    }
 	}
+      
+      if (global_clk
+	  && !net_global[global_clk])
+	tmp_local_np.insert(global_clk << 1);
+      if (global_sr
+	  && !net_global[global_sr])
+	tmp_local_np.insert(global_sr << 1);
+      if (global_cen
+	  && !net_global[global_cen])
+	tmp_local_np.insert(global_cen << 1);
+      
+      if (tmp_local_np.size() > 29)
+	return false;
     }
   else if (chipdb->tile_type[t] == TileType::IO_TILE)
     {
@@ -494,12 +504,6 @@ Placer::valid(int t) const
     assert(chipdb->tile_type[t] == TileType::RAMT_TILE);
   
   return true;
-}
-
-bool
-Placer::valid(const Location &loc) const
-{
-  return valid(loc.tile());
 }
 
 void
@@ -588,7 +592,7 @@ Placer::check()
       int start = chain_start[c];
       assert(start + nt - 1 <= chipdb->height - 2);
     }
-  for (int w = 0; w < (int)nets.size(); ++w)
+  for (int w = 1; w < (int)nets.size(); ++w) // skip 0, nullptr
     assert(net_length[w] == compute_net_length(w));
 }
 #endif
@@ -596,7 +600,7 @@ Placer::check()
 int
 Placer::compute_net_length(int w)
 {
-  if (contains(glb_nets, w)
+  if (net_global[w]
       || net_gates[w].empty())
     return 0;
   
@@ -686,12 +690,51 @@ Placer::Placer(random_generator &rg_,
   std::tie(nets, net_idx) = top->index_nets();
   int n_nets = nets.size();
   
+  net_global.resize(n_nets);
+  
   net_length.resize(n_nets);
   net_gates.resize(n_nets);
   recompute.resize(n_nets);
   
   std::tie(gates, gate_idx) = top->index_instances();
   int n_gates = gates.size();
+  
+  gate_clk.resize(n_gates, 0);
+  gate_sr.resize(n_gates, 0);
+  gate_cen.resize(n_gates, 0);
+  gate_local_np.resize(n_gates);
+  tmp_local_np.resize(n_nets * 2);
+  
+  for (int i = 1; i < n_gates; ++i)  // skip 0, nullptr
+    {
+      Instance *inst = gates[i];
+      if (models.is_lc(inst))
+	{
+	  Net *clk = inst->find_port("CLK")->connection();
+	  if (clk)
+	    gate_clk[i] = net_idx.at(clk);
+	  
+	  Net *sr = inst->find_port("SR")->connection();
+	  if (sr)
+	    gate_sr[i] = net_idx.at(sr);
+	  
+	  Net *cen = inst->find_port("CEN")->connection();
+	  if (cen)
+	    gate_cen[i] = net_idx.at(cen);
+	  
+	  tmp_local_np.clear();
+	  for (int j = 0; j < 4; ++j)
+	    {
+	      Net *n = inst->find_port(fmt("I" << j))->connection();
+	      if (n
+		  && !n->is_constant())
+		tmp_local_np.insert((net_idx.at(n) << 1) | (j & 1));
+	    }
+	  
+	  for (int j = 0; j < (int)tmp_local_np.size(); ++j)
+	    gate_local_np[i].push_back(tmp_local_np.ith(j));
+	}
+    }
   
   gate_cell.resize(n_gates);
   gate_nets.resize(n_gates);
@@ -701,7 +744,8 @@ Placer::Placer(random_generator &rg_,
       if (models.is_gb(inst))
 	{
 	  Net *n = inst->find_port("GLOBAL_BUFFER_OUTPUT")->connection();
-	  glb_nets.insert(net_idx.at(n));
+	  if (n)
+	    net_global[net_idx.at(n)] = true;
 	}
     }
 }
@@ -820,7 +864,7 @@ Placer::place_initial()
       locked[g] = true;
       ++cell_type_n_placed[io_idx];
       
-      assert(valid(loc));
+      assert(valid(t));
     }
   
   cell_type_free_cells = chipdb->cell_type_cells;
@@ -868,7 +912,7 @@ Placer::place_initial()
 	      cell_gate[c] = i;
 	      gate_cell[i] = c;
 	      
-	      if (!valid(chipdb->cell_location[c]))
+	      if (!valid(chipdb->cell_location[c].tile()))
 		cell_gate[c] = 0;
 	      else
 		{
@@ -905,7 +949,7 @@ Placer::place_initial()
 	  cell_gate[c] = i;
 	  gate_cell[i] = c;
 	  
-	  if (!valid(chipdb->cell_location[c]))
+	  if (!valid(chipdb->cell_location[c].tile()))
 	    cell_gate[c] = 0;
 	  else
 	    {
@@ -927,7 +971,8 @@ Placer::place_initial()
       for (const auto &p : inst->ports())
 	{
 	  Net *n = p.second->connection();
-	  if (n)
+	  if (n
+	      && !n->is_constant())  // constants are not routed
 	    {
 	      int w = net_idx.at(n);
 	      net_gates[w].push_back(g);
@@ -1322,6 +1367,100 @@ Placer::place()
   *logs << "  final wire length = " << wire_length() << "\n";
   
   configure();
+  
+#if 0
+  int max_demand = 0;
+  for (int t = 0; t < chipdb->n_tiles; ++t)
+    {
+      if (chipdb->tile_type[t] != TileType::LOGIC_TILE)
+	continue;
+      
+      std::set<std::pair<Net *, int>> demand;
+      for (int q = 0; q < 8; q ++)
+	{
+	  Location loc(t, q);
+	  int cell = chipdb->loc_cell.at(loc);
+	  int g = cell_gate[cell];
+	  if (g)
+	    {
+	      Instance *inst = gates[g];
+	      
+	      for (int i = 0; i < 4; ++i)
+		{
+		  Net *n = inst->find_port(fmt("I" << i))->connection();
+		  if (n
+		      && !n->is_constant())
+		    {
+		      int parity = (q + i) & 1;
+		      demand.insert(std::make_pair(n, parity));
+		    }
+		}
+	      
+	      Net *clk = inst->find_port("CLK")->connection();
+	      if (clk
+		  && !clk->is_constant())
+		{
+		  int n = net_idx.at(clk);
+		  if (!net_global[n])
+		    demand.insert(std::make_pair(clk, 0));
+		}
+
+	      Net *cen = inst->find_port("CEN")->connection();
+	      if (cen
+		  && !cen->is_constant())
+		{
+		  int n = net_idx.at(cen);
+		  if (!net_global[n])
+		    demand.insert(std::make_pair(cen, 0));
+		}
+	      
+	      Net *sr = inst->find_port("SR")->connection();
+	      if (sr
+		  && !sr->is_constant())
+		{
+		  int n = net_idx.at(sr);
+		  if (!net_global[n])
+		    demand.insert(std::make_pair(sr, 0));
+		}
+	    }
+	}
+      *logs << t 
+	    << " " << chipdb->tile_x(t)
+	    << " " << chipdb->tile_y(t)
+	    << " " << demand.size() << "\n";
+      if ((int)demand.size() > max_demand)
+	max_demand = demand.size();
+    }
+  *logs << "max_demand " << max_demand << "\n";
+#endif
+      
+#if 0
+  {
+    int t = chipdb->tile(17, 16);
+    for (const auto &p : placement)
+      {
+	int cell = p.second;
+	const Location &loc = chipdb->cell_location[cell];
+	if (loc.tile() == t)
+	  {
+	    Instance *inst = p.first;
+	    *logs << "LC " << inst << " " << loc.pos() << "\n";
+	    *logs << "  I0 " << inst->find_port("I0")->connection()->name() << "\n";
+	    *logs << "  I1 " << inst->find_port("I1")->connection()->name() << "\n";
+	    *logs << "  I2 " << inst->find_port("I2")->connection()->name() << "\n";
+	    *logs << "  I3 " << inst->find_port("I3")->connection()->name() << "\n";
+	    if (inst->find_port("CIN")->connected())
+	      *logs << "  CIN " << inst->find_port("CIN")->connection()->name() << "\n";
+	    if (inst->find_port("CLK")->connected())
+	      *logs << "  CLK " << inst->find_port("CLK")->connection()->name() << "\n";
+	    if (inst->find_port("SR")->connected())
+	      *logs << "  SR " << inst->find_port("SR")->connection()->name() << "\n";
+	    if (inst->find_port("CEN")->connected())
+	      *logs << "  CEN " << inst->find_port("CEN")->connection()->name() << "\n";
+	  }
+      }
+  }
+#endif
   
   int n_pio = 0,
     n_plb = 0,

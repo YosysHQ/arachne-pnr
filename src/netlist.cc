@@ -467,10 +467,11 @@ Model::index_nets() const
   int n_nets = 0;
   std::vector<Net *> vnets;
   std::map<Net *, int, IdLess> net_idx;
+  vnets.push_back(nullptr);
+  ++n_nets;
   for (const auto &p : m_nets)
     {
       Net *n = p.second;
-      
       vnets.push_back(n);
       extend(net_idx, n, n_nets);
       ++n_nets;

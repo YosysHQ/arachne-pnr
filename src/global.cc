@@ -137,7 +137,7 @@ Promoter::promote(bool do_promote)
   std::set<std::pair<int, int>, std::greater<std::pair<int, int>>> promote_q;
   std::map<int, uint8_t> net_gc;
   std::map<int, Port *> net_driver;
-  for (int i = 0; i < n_nets; ++i)
+  for (int i = 1; i < n_nets; ++i) // skip 0, nullptr
     {
       Net *n = nets[i];
       if (contains(boundary_nets, n)

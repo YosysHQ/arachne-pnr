@@ -75,6 +75,7 @@ class Router
   int n_nets;  // to route
   std::vector<int> net_source;
   std::vector<std::vector<int>> net_targets;
+  std::vector<Net *> net_net;
   
   static const int max_passes = 50;
   int passes;
@@ -467,6 +468,7 @@ Router::pop()
   assert(!frontierq.empty());
   int cn, cn_cost;
   std::tie(cn, cn_cost) = frontierq.pop();
+  // FIXME how often does this happen?  picorv5: 23K times
   if (!frontier.contains(cn))
     goto L;
   
@@ -568,6 +570,15 @@ Router::route()
 	  if (cn < 0)
 	    continue;
 	  
+#if 1
+	  if (cnet_net[cn]
+	      && cnet_net[cn] != n)
+	    *logs << "n " << n->name()
+		  << " cn " << cn
+		  << " cnet_net[cn] " << cnet_net[cn]->name() << "\n";
+#endif
+	    
+	  
 	  assert(cnet_net[cn] == nullptr
 		 // like lutff_global/clk
 		 || cnet_net[cn] == n);
@@ -602,6 +613,7 @@ Router::route()
 	  
 	  net_source.push_back(source);
 	  net_targets.push_back(std::move(targets));
+	  net_net.push_back(n);
 	}
     }
   
@@ -691,6 +703,32 @@ Router::route()
 		historical_demand[i] += demand[i];
 	    }
 	}
+
+#if 0
+      for (int i = 0; i < n_nets; ++i)
+	{
+	  for (const auto &p : net_route[i])
+	    {
+	      bool print = false;
+	      if (demand[p.second] > 1)
+		{
+		  print = true;
+		  *logs << "demand " << i << " " << p.second << "\n";
+		}
+	      if (print)
+		{
+		  *logs << "  net " << i << " " << net_net[i]->name() << "\n";
+		  *logs << "  " << net_source[i] << " -> ";
+		  for (int cn : net_targets[i])
+		    *logs << " " << cn;
+		  *logs << "\n";
+		  *logs << "route\n";
+		  for (const auto &p2 : net_route[i])
+		    *logs << "  " << p2.first << " -> " << p2.second << "\n";
+		}
+	    }
+	}
+#endif
     }
   
   if (n_shared)
