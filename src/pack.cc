@@ -560,7 +560,7 @@ Packer::pack()
   int n_ramt_tiles = 0;
   for (int i = 0; i < chipdb->n_tiles; ++i)
     {
-      if (chipdb->tile_type[i] == TileType::RAMT_TILE)
+      if (chipdb->tile_type[i] == TileType::RAMT)
 	++n_ramt_tiles;
     }
   
@@ -603,7 +603,7 @@ Packer::pack()
   int n_logic_tiles = 0;
   for (int i = 0; i < chipdb->n_tiles; ++i)
     {
-      if (chipdb->tile_type[i] == TileType::LOGIC_TILE)
+      if (chipdb->tile_type[i] == TileType::LOGIC)
 	++n_logic_tiles;
     }
   

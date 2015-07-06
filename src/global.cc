@@ -23,12 +23,27 @@
 #include <cassert>
 #include <set>
 
-std::vector<uint8_t> global_classes = {
-  gc_clk, gc_cen, gc_sr, gc_rclke, gc_re,
+// FIXME
+class Promoter
+{
+  std::vector<uint8_t> global_classes;
+  static const char *global_class_name(uint8_t gc);
+  
+  Design *d;
+  Models models;
+  
+  std::map<Instance *, uint8_t, IdLess> gb_inst_gc;
+  
+  uint8_t port_gc(Port *conn, bool indirect);
+  
+public:
+  Promoter(const ChipDB *chipdb, Design *d);
+  
+  std::map<Instance *, uint8_t, IdLess> promote(bool do_promote);
 };
 
 const char *
-global_class_name(uint8_t gc)
+Promoter::global_class_name(uint8_t gc)
 {
   switch(gc)
     {
@@ -43,25 +58,12 @@ global_class_name(uint8_t gc)
     }
 }
 
-class Promoter
-{
-  Design *d;
-  Models models;
-  
-  std::map<Instance *, uint8_t, IdLess> gb_inst_gc;
-  
-  uint8_t port_gc(Port *conn, bool indirect);
-  
-public:
-  Promoter(const ChipDB *chipdb, Design *d);
-  
-  std::map<Instance *, uint8_t, IdLess> promote(bool do_promote);
-};
-
 Promoter::Promoter(const ChipDB *cdb, Design *d_)
-  : d(d_),
+  : global_classes{
+      gc_clk, gc_cen, gc_sr, gc_rclke, gc_re,
+    },
+    d(d_),
     models(d)
-
 {
 }
 

@@ -36,11 +36,10 @@ Configuration::set_cbit(const CBit &value_cbit, bool value)
 
 void
 Configuration::set_cbits(const std::vector<CBit> &value_cbits,
-			 const std::vector<bool> &value)
+			 unsigned value)
 {
-  assert(value_cbits.size() == value.size());
-  for (unsigned i = 0; i < value_cbits.size(); i ++)
-    set_cbit(value_cbits[i], value[i]);
+  for (unsigned i = 0; i < value_cbits.size(); ++i)
+    set_cbit(value_cbits[i], (bool)(value & (1 << i)));
 }
 
 void
@@ -54,7 +53,7 @@ Configuration::write_txt(std::ostream &s,
   for (int t = 0; t < chipdb->n_tiles; ++t)
     {
       TileType ty = chipdb->tile_type[t];
-      if (ty == TileType::NO_TILE)
+      if (ty == TileType::EMPTY)
 	continue;
 
       int  x = chipdb->tile_x(t),
@@ -92,7 +91,7 @@ Configuration::write_txt(std::ostream &s,
 	  const Location &loc = chipdb->cell_location[cell];
 	  
 	  int t = loc.tile();
-	  assert(chipdb->tile_type[t] == TileType::RAMT_TILE);
+	  assert(chipdb->tile_type[t] == TileType::RAMT);
 	  
 	  int x = chipdb->tile_x(t),
 	    y = chipdb->tile_y(t);

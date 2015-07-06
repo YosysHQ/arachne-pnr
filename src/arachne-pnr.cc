@@ -65,7 +65,10 @@ usage()
     << "\n"
     << "    -c <file>, --chipdb <chipdb-file>\n"
     << "        Read chip database from <chipdb-file>.\n"
-    << "        Default: /usr/local/share/icebox/chipdb-<device>.txt\n"
+    << "        Default: +share/arachne-pnr/chipdb-<device>.bin\n"
+    << "\n"
+    << "    --write-binary-chipdb <file>\n"
+    << "        Write binary chipdb to <file>.\n"
     << "\n"
     << "    -l, --no-promote-globals\n"
     << "        Don't promote nets to globals.\n"
@@ -122,7 +125,8 @@ main(int argc, const char **argv)
     *pack_verilog = nullptr,
     *place_blif = nullptr,
     *output_file = nullptr,
-    *seed_str = nullptr;
+    *seed_str = nullptr,
+    *binary_chipdb = nullptr;
   
   for (int i = 1; i < argc; ++i)
     {
@@ -151,6 +155,14 @@ main(int argc, const char **argv)
 	      
 	      ++i;
 	      chipdb_file = argv[i];
+	    }
+	  else if (!strcmp(argv[i], "--write-binary-chipdb"))
+	    {
+	      if (i + 1 >= argc)
+		fatal(fmt(argv[i] << ": expected argument"));
+	      
+	      ++i;
+	      binary_chipdb = argv[i];
 	    }
 	  else if (!strcmp(argv[i], "-l")
 		   || !strcmp(argv[i], "--no-promote-globals"))
@@ -267,7 +279,6 @@ main(int argc, const char **argv)
   else
     logs = &std::cerr;
   
-  // FIXME: use random_device by default
   unsigned seed = 0;
   if (seed_str)
     {
@@ -292,11 +303,37 @@ main(int argc, const char **argv)
   if (chipdb_file)
     chipdb_file_s = chipdb_file;
   else
-    chipdb_file_s = (std::string("/usr/local/share/icebox/chipdb-")
+    chipdb_file_s = (std::string("+share/arachne-pnr/chipdb-")
 		     + device 
-		     + ".txt");
+		     + ".bin");
   *logs << "read_chipdb " << chipdb_file_s << "...\n";
   const ChipDB *chipdb = read_chipdb(chipdb_file_s);
+  
+  if (binary_chipdb)
+    {
+      *logs << "write_binary_chipdb " << binary_chipdb << "\n";
+      
+      std::string expanded = expand_filename(binary_chipdb);
+      std::ofstream ofs(expanded);
+      if (ofs.fail())
+	fatal(fmt("write_binary_chidpb: failed to open `" << expanded << "': "
+		  << strerror(errno)));
+      obstream obs(ofs);
+      chipdb->bwrite(obs);
+      
+      // clean up
+      if (chipdb)
+	delete chipdb;
+      
+      logs = nullptr;
+      if (null_ostream)
+	{
+	  delete null_ostream;
+	  null_ostream = nullptr;
+	}
+      
+      return 0;
+    }
   
   *logs << "  supported packages: ";
   bool first = true;
@@ -494,8 +531,11 @@ main(int argc, const char **argv)
       }
   }
   
+  if (d)
   delete d;
-  delete chipdb;
+  
+  if (chipdb)
+    delete chipdb;
   
   logs = nullptr;
   if (null_ostream)

@@ -4,52 +4,37 @@ set -ex
 
 seed=7
 arachne_pnr="../../bin/arachne-pnr -s $seed"
+devices='1k 8k'
 
 rm -f txt.sum
 
-# sb_up3down5.blif
-$arachne_pnr sb_up3down5.blif -o sb_up3down5.txt
-shasum sb_up3down5.txt >> txt.sum
-icepack sb_up3down5.txt sb_up3down5.bin
+for d in $devices; do
+    rm -rf $d
+    mkdir $d
+    
+    $arachne_pnr -d $d -c /usr/local/share/icebox/chipdb-$d.txt --write-binary-chipdb $d/chipdb-$d.bin
+    $arachne_pnr -d $d -c $d/chipdb-$d.bin --write-binary-chipdb $d/chipdb2-$d.bin
+    cmp $d/chipdb-$d.bin $d/chipdb2-$d.bin
+    
+    # sb_up3down5.blif
+    $arachne_pnr -d $d sb_up3down5.blif -o $d/sb_up3down5.txt
+    shasum $d/sb_up3down5.txt >> txt.sum
+    icepack $d/sb_up3down5.txt $d/sb_up3down5.bin
+    
+    $arachne_pnr -d $d -l sb_up3down5.blif -o $d/sb_up3down5_l.txt
+    shasum $d/sb_up3down5_l.txt >> txt.sum
+    icepack $d/sb_up3down5_l.txt $d/sb_up3down5_l.bin
+    
+    $arachne_pnr -d $d sb_up3down5.blif -B $d/sb_up3down5_packed.blif -o $d/sb_up3down5.txt
+    $arachne_pnr -d $d sb_up3down5_packed.blif -o $d/sb_up3down5_packed.txt
+    shasum $d/sb_up3down5_packed.txt >> txt.sum
+    icepack $d/sb_up3down5_packed.txt $d/sb_up3down5_packed.bin
+    
+    $arachne_pnr -d $d carry.blif -o $d/carry.txt
+    shasum $d/carry.txt >> txt.sum
+    icepack $d/carry.txt $d/carry.bin
 
-$arachne_pnr -l sb_up3down5.blif -o sb_up3down5_l.txt
-shasum sb_up3down5_l.txt >> txt.sum
-icepack sb_up3down5_l.txt sb_up3down5_l.bin
-
-$arachne_pnr sb_up3down5.blif -B sb_up3down5_packed.blif -o sb_up3down5.txt
-$arachne_pnr sb_up3down5_packed.blif -o sb_up3down5_packed.txt
-shasum sb_up3down5_packed.txt >> txt.sum
-icepack sb_up3down5_packed.txt sb_up3down5_packed.bin
-
-
-$arachne_pnr carry.blif -o carry.txt
-shasum carry.txt >> txt.sum
-icepack carry.txt carry.bin
-
-$arachne_pnr bram.blif -o bram.txt
-shasum bram.txt >> txt.sum
-icepack bram.txt bram.bin
-
-# FIXME don't overwrite
-# test 8k
-$arachne_pnr -d 8k sb_up3down5.blif -o sb_up3down5.txt
-shasum sb_up3down5.txt >> txt.sum
-icepack sb_up3down5.txt sb_up3down5.bin
-
-$arachne_pnr -d 8k  -l sb_up3down5.blif -o sb_up3down5_l.txt
-shasum sb_up3down5_l.txt >> txt.sum
-icepack sb_up3down5_l.txt sb_up3down5_l.bin
-
-$arachne_pnr -d 8k  sb_up3down5.blif -B sb_up3down5_packed.blif -o sb_up3down5.txt
-$arachne_pnr -d 8k  sb_up3down5_packed.blif -o sb_up3down5_packed.txt
-shasum sb_up3down5_packed.txt >> txt.sum
-icepack sb_up3down5_packed.txt sb_up3down5_packed.bin
-
-
-$arachne_pnr -d 8k  carry.blif -o carry.txt
-shasum carry.txt >> txt.sum
-icepack carry.txt carry.bin
-
-$arachne_pnr -d 8k  bram.blif -o bram.txt
-shasum bram.txt >> txt.sum
-icepack bram.txt bram.bin
+    $arachne_pnr -d $d bram.blif -o $d/bram.txt
+    shasum $d/bram.txt >> txt.sum
+    icepack $d/bram.txt $d/bram.bin
+done

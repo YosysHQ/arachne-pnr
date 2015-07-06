@@ -35,7 +35,7 @@ public:
   
   void set_cbit(const CBit &cbit, bool value);
   void set_cbits(const std::vector<CBit> &value_cbits,
-		 const std::vector<bool> &value);
+		 unsigned value);
   
   void write_txt(std::ostream &s,
 		 const ChipDB *chipdb,

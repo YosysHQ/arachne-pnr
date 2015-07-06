@@ -20,7 +20,8 @@
 #include <vector>
 #include <cassert>
 
-class BitVector
+template<size_t B>
+class BasedBitVector
 {
   int n;
   std::vector<uint64_t> v;
@@ -29,19 +30,19 @@ public:
   class BitRef
   {
     std::vector<uint64_t> &v;
-    int i;
+    size_t i;
     
   public:
-    BitRef (std::vector<uint64_t> &v_, int i_)
+    BitRef (std::vector<uint64_t> &v_, size_t i_)
       : v(v_), i(i_)
     {}
     
     BitRef &operator=(bool x)
     {
-      int w = i / 64,
-	b = i & 63;
+      size_t w = (i - B) / 64,
+	b = (i - B) & 63;
       uint64_t m = ((uint64_t)1 << b);
-      assert(w < (int)v.size());
+      assert(w < v.size());
       if (x)
 	v[w] |= m;
       else
@@ -51,27 +52,27 @@ public:
     
     operator bool() const
     {
-      int w = i / 64,
-	b = i & 63;
+      size_t w = (i - B) / 64,
+	b = (i - B) & 63;
       uint64_t m = ((uint64_t)1 << b);
-      assert(w < (int)v.size());
+      assert(w < v.size());
       return v[w] & m;
     }
   };
   
-  BitVector() {}
-  BitVector(int n_)
+  BasedBitVector() {}
+  BasedBitVector(size_t n_)
     : n(n_), v((n + 63) / 64, 0)
   {
   }
   
-  BitVector(int n_, uint64_t init)
+  BasedBitVector(size_t n_, uint64_t init)
     : n(n_), v((n + 63) / 64, 0)
   {
     v[0] = init;
   }
   
-  void resize(int n_)
+  void resize(size_t n_)
   {
     n = n_;
     v.resize((n + 63) / 64, 0);
@@ -81,21 +82,23 @@ public:
   {
     std::fill(v.begin(), v.end(), 0);
   }
-  int size() const { return n; }
+  size_t size() const { return n; }
   
-  bool operator[](int i) const
+  bool operator[](size_t i) const
   {
-    assert(i < n);
-    int w = i / 64,
-      b = i & 63;
+    assert(i >= B && i < n + B);
+    size_t w = (i - B) / 64,
+      b = (i - B) & 63;
     uint64_t m = ((uint64_t)1 << b);
     return v[w] & m;
   }
-  BitRef operator[](int i)
+  BitRef operator[](size_t i)
   {
-    assert(i < n);
+    assert(i >= B && i < n + B);
     return BitRef(v, i);
   }
 };
+
+using BitVector = BasedBitVector<0>;
 
 #endif

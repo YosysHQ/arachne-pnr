@@ -146,7 +146,7 @@ Router::port_cnet(Instance *inst, Port *p)
       else if (p_name == "I3")
 	tile_net_name = fmt("lutff_" << loc.pos() << "/in_3");
       else if (p_name == "CIN")
-	return -1;
+	return -1;  // FIXME make 0 out of band
       else if (p_name == "COUT")
 	tile_net_name = fmt("lutff_" << loc.pos() << "/cout");
       else
@@ -468,7 +468,6 @@ Router::pop()
   assert(!frontierq.empty());
   int cn, cn_cost;
   std::tie(cn, cn_cost) = frontierq.pop();
-  // FIXME how often does this happen?  picorv5: 23K times
   if (!frontier.contains(cn))
     goto L;
   
@@ -746,12 +745,12 @@ Router::route()
 	    // FIXME no default
 	    int cb_t = lookup_or_default(chipdb->tile_colbuf_tile, sw.tile, sw.tile);
 	    
-	    // FIXME
-	    if (chipdb->tile_type[cb_t] == TileType::RAMT_TILE)
+	    // FIXME double check icestorm documentation
+	    if (chipdb->tile_type[cb_t] == TileType::RAMT)
 	      {
 		cb_t = chipdb->tile(chipdb->tile_x(cb_t),
 				    chipdb->tile_y(cb_t) - 1);
-		assert(chipdb->tile_type[cb_t] == TileType::RAMB_TILE);
+		assert(chipdb->tile_type[cb_t] == TileType::RAMB);
 	      }
 	    
 	    const CBit &colbuf_cbit = (chipdb->tile_nonrouting_cbits

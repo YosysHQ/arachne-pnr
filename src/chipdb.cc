@@ -76,26 +76,60 @@ CBitVal::cbits() const
 std::string
 tile_type_name(TileType t)
 {
-  assert(t != TileType::NO_TILE);
+  assert(t != TileType::EMPTY);
   switch(t)
     {
-    case TileType::IO_TILE:
+    case TileType::IO:
       return "io_tile";
-    case TileType::LOGIC_TILE:
+    case TileType::LOGIC:
       return "logic_tile";
-    case TileType::RAMB_TILE:
+    case TileType::RAMB:
       return "ramb_tile";
-    case TileType::RAMT_TILE:
+    case TileType::RAMT:
       return "ramt_tile";
-    case TileType::NO_TILE:
+    case TileType::EMPTY:
       abort();
     }    
   return std::string();
 }
 
+obstream &operator<<(obstream &obs, const Switch &sw)
+{
+  obs << sw.bidir
+      << sw.tile
+      << sw.out
+      << sw.cbits.size();
+  for (const CBit &cbit : sw.cbits)
+    {
+      assert(cbit.tile == sw.tile);
+      obs << cbit.row << cbit.col;
+    }
+  obs << sw.in_val;
+  return obs;
+}
+
+ibstream &operator>>(ibstream &ibs, Switch &sw)
+{
+  size_t n_cbits;
+  ibs >> sw.bidir
+      >> sw.tile
+      >> sw.out
+      >> n_cbits;
+  sw.cbits.resize(n_cbits);
+  for (size_t i = 0; i < n_cbits; ++i)
+    {
+      int row, col;
+      ibs >> row >> col;
+      sw.cbits[i] = CBit(sw.tile, row, col);
+    }
+  ibs >> sw.in_val;
+  return ibs;
+}
+
 ChipDB::ChipDB()
   : width(0), height(0), n_tiles(0), n_nets(0), n_global_nets(8),
     bank_tiles(4),
+    n_cells(0),
     cell_type_cells(n_cell_types)
 {
 }
@@ -103,17 +137,16 @@ ChipDB::ChipDB()
 void
 ChipDB::add_cell(CellType type, const Location &loc)
 {
-  int cell = cell_type.size();
+  int cell = ++n_cells;
   cell_type.push_back(type);
   cell_location.push_back(loc);
-  extend(loc_cell, loc, cell);
   cell_type_cells[cell_type_idx(type)].push_back(cell);
 }
 
 int
 ChipDB::tile_bank(int t) const
 {
-  assert(tile_type[t] == TileType::IO_TILE);
+  assert(tile_type[t] == TileType::IO);
   int x = tile_x(t),
     y = tile_y(t);
   if (x == 0)
@@ -160,18 +193,18 @@ ChipDB::dump(std::ostream &s) const
 	int t = tile(i, j);
 	switch(tile_type[t])
 	  {
-	  case TileType::NO_TILE:
+	  case TileType::EMPTY:
 	    break;
-	  case TileType::IO_TILE:
+	  case TileType::IO:
 	    s << ".io_tile " << i << " " << j << "\n";
 	    break;
-	  case TileType::LOGIC_TILE:
+	  case TileType::LOGIC:
 	    s << ".logic_tile " << i << " " << j << "\n";
 	    break;
-	  case TileType::RAMB_TILE:
+	  case TileType::RAMB:
 	    s << ".ramb_tile " << i << " " << j << "\n";
 	    break;
-	  case TileType::RAMT_TILE:
+	  case TileType::RAMT:
 	    s << ".ramt_tile " << i << " " << j << "\n";
 	    break;
 	  }
@@ -211,9 +244,13 @@ ChipDB::dump(std::ostream &s) const
       
       for (const auto &p : sw.in_val)
 	{
-	  std::copy(p.second.begin(),
-		    p.second.end(),
-		    std::ostream_iterator<bool>(s));
+	  for (int j = 0; j < (int)sw.cbits.size(); ++j)
+	    {
+	      if (p.second & (1 << j))
+		s << "1";
+	      else
+		s << "0";
+	    }	  
 	  s << " " << p.first << "\n";
 	}
       s << "\n";
@@ -231,21 +268,12 @@ ChipDB::set_device(const std::string &d,
   n_tiles = width * height;
   n_nets = n_nets_;
   
-  tile_type.resize(n_tiles, TileType::NO_TILE);
+  tile_type.resize(n_tiles, TileType::EMPTY);
   tile_nets.resize(n_tiles);
   
   net_tile_name.resize(n_nets);
   out_switches.resize(n_nets);
   in_switches.resize(n_nets);
-  
-  for (int t = 0; t < n_tiles; ++t)
-    {
-      if (tile_type[t] != TileType::IO_TILE)
-	continue;
-      
-      int b = tile_bank(t);
-      bank_tiles[b].push_back(t);
-    }
 }
 
 class ChipDBParser : public LineParser
@@ -285,10 +313,11 @@ ChipDBParser::parse()
 {
   ChipDB *chipdb = new ChipDB;
   
+  // FIXME restructure
   for (;;)
     {
       if (eof())
-	return chipdb;
+	goto M;
       
       read_line();
       if (words.empty())
@@ -321,7 +350,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -353,7 +382,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -396,21 +425,21 @@ ChipDBParser::parse()
 	      
 	      if (cmd == ".io_tile")
 		{
-		  chipdb->tile_type[t] = TileType::IO_TILE;
+		  chipdb->tile_type[t] = TileType::IO;
 		}
 	      else if (cmd == ".logic_tile")
 		{
-		  chipdb->tile_type[t] = TileType::LOGIC_TILE;
+		  chipdb->tile_type[t] = TileType::LOGIC;
 		  
 		  for (int p = 0; p < 8; ++p)
 		    chipdb->add_cell(CellType::LOGIC, Location(t, p));
 		}
 	      else if (cmd == ".ramb_tile")
-		chipdb->tile_type[t] = TileType::RAMB_TILE;
+		chipdb->tile_type[t] = TileType::RAMB;
 	      else
 		{
 		  assert(cmd == ".ramt_tile");
-		  chipdb->tile_type[t] = TileType::RAMT_TILE;
+		  chipdb->tile_type[t] = TileType::RAMT;
 		  
 		  chipdb->add_cell(CellType::RAM, Location(t, 0));
 		}
@@ -425,15 +454,15 @@ ChipDBParser::parse()
 	      
 	      TileType ty;
 	      if (cmd == ".io_tile_bits")
-		ty = TileType::IO_TILE;
+		ty = TileType::IO;
 	      else if (cmd == ".logic_tile_bits")
-		ty = TileType::LOGIC_TILE;
+		ty = TileType::LOGIC;
 	      else if (cmd == ".ramb_tile_bits")
-		ty = TileType::RAMB_TILE;
+		ty = TileType::RAMB;
 	      else
 		{
 		  assert(cmd == ".ramt_tile_bits");
-		  ty = TileType::RAMT_TILE;
+		  ty = TileType::RAMT;
 		}
 	      
 	      int n_columns = std::stoi(words[1]),
@@ -446,7 +475,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -480,7 +509,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -530,12 +559,12 @@ ChipDBParser::parse()
 	      for (unsigned i = 4; i < words.size(); i ++)
 		cbits[i - 4] = parse_cbit(t, words[i]);
 	      
-	      std::map<int, std::vector<bool>> in_val;	      
+	      std::map<int, unsigned> in_val;	      
 	      
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -566,20 +595,17 @@ ChipDBParser::parse()
 		  
 		  int n2 = std::stoi(words[1]);
 		  
-		  std::vector<bool> val;
+		  unsigned val = 0;
 		  for (unsigned i = 0; i < sval.size(); i ++)
 		    {
 		      if (sval[i] == '1')
-			val.push_back(true);
+			val |= (1 << i);
 		      else
 			{
 			  if (sval[i] != '0')
 			    fatal("invalid binary string");
-			  
-			  val.push_back(false);
 			}
 		    }
-		  assert(val.size() == cbits.size());
 		  
 		  extend(in_val, n2, val);
 		}
@@ -589,7 +615,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -614,7 +640,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -639,7 +665,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -661,7 +687,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 	      
 		  read_line();
 		  if (words.empty())
@@ -688,7 +714,7 @@ ChipDBParser::parse()
 	      for (;;)
 		{
 		  if (eof())
-		    return chipdb;
+		    goto M;
 		  
 		  read_line();
 		  if (words.empty())
@@ -724,7 +750,7 @@ ChipDBParser::parse()
 	      if (cell_type == "WARMBOOT")
 		chipdb->add_cell(CellType::WARMBOOT, Location(t, 0));
 	      else if (cell_type == "PLL")
-		chipdb->add_cell(CellType::PLL, Location(t, 4));
+		chipdb->add_cell(CellType::PLL, Location(t, 3));
 	      else
 		fatal(fmt("unknown extra cell type `" << cell_type << "'"));
 	      
@@ -734,7 +760,7 @@ ChipDBParser::parse()
 		  if (eof())
 		    {
 		      chipdb->extra_cell_mfvs.push_back(mfvs);
-		      return chipdb;
+		      goto M;
 		    }
 		  
 		  read_line();
@@ -763,6 +789,46 @@ ChipDBParser::parse()
       else
 	fatal(fmt("expected directive, got '" << words[0] << "'"));
     }
+  
+ M:
+  // FIXME move to ChipDB::finalize
+  for (int t = 0; t < chipdb->n_tiles; ++t)
+    {
+      if (chipdb->tile_type[t] != TileType::IO)
+	continue;
+      
+      int b = chipdb->tile_bank(t);
+      chipdb->bank_tiles[b].push_back(t);
+    }
+  
+  chipdb->tile_pos_cell.resize(chipdb->n_tiles);
+  for (int i = 0; i < chipdb->n_tiles; ++i)
+    {
+      switch(chipdb->tile_type[i])
+	{
+	case TileType::EMPTY:
+	  chipdb->tile_pos_cell[i].resize(1);  // FIXME warmboot
+	  break;
+	case TileType::LOGIC:
+	  chipdb->tile_pos_cell[i].resize(8);
+	  break;
+	case TileType::IO:
+	  chipdb->tile_pos_cell[i].resize(4);
+	  break;
+	case TileType::RAMT:
+	  chipdb->tile_pos_cell[i].resize(1);
+	  break;
+	default:
+	  break;
+	}
+    }
+  for (int i = 1; i <= chipdb->n_cells; ++i)
+    {
+      const Location &loc = chipdb->cell_location[i];
+      chipdb->tile_pos_cell[loc.tile()][loc.pos()] = i;
+    }
+  
+  return chipdb;
 }
 
 int
@@ -781,14 +847,175 @@ ChipDB::find_switch(int in, int out) const
   return s;
 }
 
+void
+ChipDB::bwrite(obstream &obs) const
+{
+  std::vector<std::string> net_names;
+  std::map<std::string, int> net_name_idx;
+  
+  std::vector<std::map<int, int>> tile_nets_idx(n_tiles);
+  for (int t = 0; t < n_tiles; ++t)
+    {
+      for (const auto &p : tile_nets[t])
+	{
+	  int ni;
+	  auto i = net_name_idx.find(p.first);
+	  if (i == net_name_idx.end())
+	    {
+	      ni = net_name_idx.size();
+	      net_names.push_back(p.first);
+	      net_name_idx.insert(std::make_pair(p.first, ni));
+	    }
+	  else
+	    ni = i->second;
+	  extend(tile_nets_idx[t], ni, p.second);
+	}
+    }
+  
+  obs << device
+      << width
+      << height
+    // n_tiles = width * height
+      << n_nets
+    // n_global_nets = 8
+      << packages
+      << loc_pin_glb_num
+    // bank_tiles
+      << iolatch
+      << ieren
+      << extra_bits
+      << gbufin
+      << tile_colbuf_tile
+      << tile_type
+    // net_tile_name
+      << net_names
+      << tile_nets_idx // tile_nets
+      << tile_nonrouting_cbits
+      << extra_cell_tile
+      << extra_cell_type
+      << extra_cell_mfvs
+      << n_cells
+      << cell_type
+      << cell_location
+      << cell_type_cells
+      << switches
+    // in_switches, out_switches
+      << tile_cbits_block_size;
+}
+
+void
+ChipDB::bread(ibstream &ibs)
+{
+  std::vector<std::string> net_names;
+  std::vector<std::map<int, int>> tile_nets_idx;
+  
+  ibs >> device
+      >> width
+      >> height
+    // n_tiles = width * height
+      >> n_nets
+    // n_global_nets = 8
+      >> packages
+      >> loc_pin_glb_num
+    // bank_tiles
+      >> iolatch
+      >> ieren
+      >> extra_bits
+      >> gbufin
+      >> tile_colbuf_tile
+      >> tile_type
+    // net_tile_name
+      >> net_names
+      >> tile_nets_idx // tile_nets
+      >> tile_nonrouting_cbits
+      >> extra_cell_tile
+      >> extra_cell_type
+      >> extra_cell_mfvs
+      >> n_cells
+      >> cell_type
+      >> cell_location
+      >> cell_type_cells
+      >> switches
+    // in_switches, out_switches
+      >> tile_cbits_block_size;
+  
+  n_tiles = width * height;
+  n_global_nets = 8;
+  bank_tiles.resize(4);
+  for (int t = 0; t < n_tiles; ++t)
+    {
+      if (tile_type[t] != TileType::IO)
+	continue;
+      
+      int b = tile_bank(t);
+      bank_tiles[b].push_back(t);
+    }
+  
+  tile_nets_idx.resize(n_tiles);
+  tile_nets.resize(n_tiles);
+  for (int i = 0; i < n_tiles; ++i)
+    {
+      for (const auto &p : tile_nets_idx[i])
+	extend(tile_nets[i], net_names[p.first], p.second);
+    }
+  
+  tile_pos_cell.resize(n_tiles);
+  for (int i = 0; i < n_tiles; ++i)
+    {
+      switch(tile_type[i])
+	{
+	case TileType::EMPTY:
+	  tile_pos_cell[i].resize(1);  // FIXME warmboot
+	  break;
+	case TileType::LOGIC:
+	  tile_pos_cell[i].resize(8);
+	  break;
+	case TileType::IO:
+	  tile_pos_cell[i].resize(4);
+	  break;
+	case TileType::RAMT:
+	  tile_pos_cell[i].resize(1);
+	  break;
+	default:
+	  break;
+	}
+    }
+  for (int i = 1; i <= n_cells; ++i)
+    {
+      const Location &loc = cell_location[i];
+      tile_pos_cell[loc.tile()][loc.pos()] = i;
+    }
+  
+  in_switches.resize(n_nets);
+  out_switches.resize(n_nets);
+  for (size_t s = 0;  s < switches.size(); ++s)
+    {
+      int out = switches[s].out;
+      extend(out_switches[out], s);
+      for (const auto &p : switches[s].in_val)
+	extend(in_switches[p.first], s);
+    }
+}
+
 ChipDB *
 read_chipdb(const std::string &filename)
 {
   std::string expanded = expand_filename(filename);
-  std::ifstream fs(expanded);
-  if (fs.fail())
+  std::ifstream ifs(expanded);
+  if (ifs.fail())
     fatal(fmt("read_chipdb: failed to open `" << expanded << "': "
 	      << strerror(errno)));
-  ChipDBParser parser(filename, fs);
-  return parser.parse();
+  ChipDB *chipdb;
+  if (is_suffix(expanded, ".bin"))
+    {
+      chipdb = new ChipDB;
+      ibstream ibs(ifs);
+      chipdb->bread(ibs);
+    }
+  else
+    {
+      ChipDBParser parser(filename, ifs);
+      chipdb = parser.parse();
+    }
+  return chipdb;
 }

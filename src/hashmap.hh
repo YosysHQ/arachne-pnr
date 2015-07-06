@@ -107,8 +107,6 @@ public:
   void insert(InputIt first, InputIt last) { m.insert(first, last); }
   void insert(std::initializer_list<value_type> ilist) { return m.insert(ilist); }
   
-  // FIXME insert_or_assign
-  
   T &operator[](const Key &key) { return m[key]; }
   T &operator[](Key &&key) { return m[key]; }
   
@@ -126,5 +124,7 @@ public:
   underlying_t &underlying() { return m; }
   const underlying_t &underlying() const { return m; }
 };
+
+
 
 #endif

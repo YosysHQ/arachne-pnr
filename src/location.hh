@@ -17,11 +17,15 @@
 #define PNR_LOCATION_HH
 
 #include "util.hh"
+#include "bstream.hh"
+
 #include <ostream>
 
 class Location
 {
   friend std::ostream &operator<<(std::ostream &s, const Location &loc);
+  friend obstream &operator<<(obstream &obs, const Location &loc);
+  friend ibstream &operator>>(ibstream &ibs, Location &loc);
   template<typename T> friend struct std::hash;
   
   // pos is 0-7 for logic tiles, 0-4 (io_1, io_2, gb, pll) for io tiles
@@ -55,6 +59,16 @@ public:
     return m_pos < loc2.m_pos;
   }
 };
+
+inline obstream &operator<<(obstream &obs, const Location &loc)
+{
+  return obs << loc.m_tile << loc.m_pos;
+}
+
+inline ibstream &operator>>(ibstream &ibs, Location &loc)
+{
+  return ibs >> loc.m_tile >> loc.m_pos;
+}
 
 namespace std {
 

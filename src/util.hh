@@ -224,12 +224,25 @@ front(const C &c)
 }
 
 inline bool
-is_prefix(const std::string &s1, const std::string &s2)
+is_prefix(const std::string &prefix, const std::string &s)
 {
-  auto r = std::mismatch(s1.begin(), s1.end(), 
-			 s2.begin(),
+  if (prefix.size() > s.size())
+    return false;
+  auto r = std::mismatch(prefix.begin(), prefix.end(), 
+			 s.begin(),
 			 std::equal_to<char>());
-  return r.first == s1.end();
+  return r.first == prefix.end();
+}
+
+inline bool
+is_suffix(const std::string &s, const std::string &suffix)
+{
+  if (suffix.size() > s.size())
+    return false;
+  auto r = std::mismatch(s.rbegin(), s.rend(),
+			 suffix.rbegin(),
+			 std::equal_to<char>());
+  return r.second == suffix.rend();
 }
 
 extern std::string proc_self_dirname();

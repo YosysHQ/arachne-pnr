@@ -19,6 +19,7 @@
 #include "util.hh"
 #include "bitvector.hh"
 #include "line_parser.hh"
+#include "vector.hh"
 
 #include <string>
 #include <vector>
@@ -136,7 +137,7 @@ public:
   {
     if (!m_is_bits)
       m_lp.fatal("expected integer constant");
-    if (i >= m_bitval.size())
+    if (i >= (int)m_bitval.size())
       return 0;
     else
       return m_bitval[i];
@@ -226,8 +227,8 @@ public:
 class Node : public Identified
 {
 protected:
-  // FIXME maintain input order: vector
   std::map<std::string, Port *> m_ports;
+  std::vector<Port *> m_ordered_ports;
   
 public:
   typedef Node Base;
@@ -241,6 +242,8 @@ private:
   
 public:
   const std::map<std::string, Port *> &ports() const { return m_ports; }
+  const std::vector<Port *> &ordered_ports() const { return m_ordered_ports; }
+  
   Kind kind() const { return m_kind; }
   
   Node(Kind k) : m_kind(k) {}
@@ -363,7 +366,7 @@ public:
   std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
     index_internal_nets(const Design *d) const;
   
-  std::pair<std::vector<Instance *>, std::map<Instance *, int, IdLess>>
+  std::pair<BasedVector<Instance *, 1>, std::map<Instance *, int, IdLess>>
     index_instances() const;
   
   void prune();
