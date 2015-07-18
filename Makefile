@@ -41,15 +41,21 @@ simpletest: all tests/test_bv tests/test_us
 	@echo 'All tests passed.'
 	@echo
 
-# assumes icestorm, yosys and valgrind installed
-test: all tests/test_bv
+# assumes icestorm, yosys installed
+test: all tests/test_bv ./tests/test_us
 	./tests/test_bv
 	./tests/test_us
 	cd tests/simple && bash run-test.sh
-	cd tests/simple && bash run-valgrind-test.sh
 	cd tests/regression && bash run-test.sh
 	cd tests/fsm && bash run-test.sh
 	cd tests/combinatorial && bash run-test.sh
+	@echo
+	@echo 'All tests passed.'
+	@echo
+
+# assumes valgrind installed
+testvg:
+	cd tests/simple && bash run-valgrind-test.sh
 	@echo
 	@echo 'All tests passed.'
 	@echo
