@@ -34,7 +34,7 @@ public:
   bool empty() const { return v.empty(); }
   size_type size() const { return v.size(); }
   size_type max_size() const { return v.max_size(); }
-  void reserve(size_type capacity) const { v.reserve(capacity); }
+  void reserve(size_type new_cap) const { v.reserve(new_cap); }
   size_type capacity() const { return v.capacity(); }
   void clear() { v.clear(); }
   

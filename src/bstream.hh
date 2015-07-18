@@ -9,6 +9,9 @@
 #include <cstring>
 #include <cassert>
 
+#include <cstring>
+#include <climits>
+
 class obstream
 {
 private:

@@ -1010,5 +1010,6 @@ cell_type_name(CellType ct)
     case CellType::RAM:  return "RAM";
     case CellType::WARMBOOT:  return "WARMBOOT";
     case CellType::PLL:  return "PLL";
+    default:  abort();
     }
 }

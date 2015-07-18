@@ -88,7 +88,6 @@ for idx in range(50):
             print('endmodule')
     with file('temp/uut_%05d.ys' % idx, 'w') as f:
         with redirect_stdout(f):
-            print('read_verilog temp/uut_%05d_gate.v' % idx)
             print('rename uut_%05d gate' % idx)
             print('read_verilog temp/uut_%05d.v' % idx)
             print('rename uut_%05d gold' % idx)
@@ -97,7 +96,6 @@ for idx in range(50):
             print('sat -verify-no-timeout -timeout 60 -prove trigger 0 -show-inputs -show-outputs miter')
     with file('temp/uut_%05d_pp.ys' % idx, 'w') as f:
         with redirect_stdout(f):
-            print('read_verilog +/ice40/cells_sim.v temp/uut_%05d_pp.v' % idx)
             print('rename uut_%05d gate' % idx)
             print('read_verilog temp/uut_%05d.v' % idx)
             print('rename uut_%05d gold' % idx)

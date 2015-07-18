@@ -16,8 +16,10 @@
 #ifndef PNR_BITVECTOR_HH
 #define PNR_BITVECTOR_HH
 
-#include <cstdint>
 #include <vector>
+
+#include <cstddef>
+#include <cstdint>
 #include <cassert>
 
 template<size_t B>
@@ -100,5 +102,6 @@ public:
 };
 
 using BitVector = BasedBitVector<0>;
+using BitVector1 = BasedBitVector<1>;
 
 #endif
