@@ -262,18 +262,13 @@ Packer::pack_dffs()
 	  Port *d_driver = d_port->connection_other_port();
 	  
 	  Instance *lut_inst = nullptr;
-	  if (d_driver
-	      && d_driver->is_output())
+	  if (d_driver)
 	    {
-	      if (Instance *d_driver_inst = dyn_cast<Instance>(d_driver->node()))
-		{
-		  assert(d_driver->name() == "O"
-			 || d_driver->name() == "COUT");
-		  
-		  if (models.is_lut4(d_driver_inst)
-		      && d_driver->name() == "O")
-		    lut_inst = d_driver_inst;
-		}
+	      Instance *d_driver_inst = dyn_cast<Instance>(d_driver->node());
+	      if (d_driver_inst
+		  && models.is_lut4(d_driver_inst)
+		  && d_driver->name() == "O")
+		lut_inst = d_driver_inst;
 	    }
 	  
 	  lc_from_dff(lc_inst, inst);
