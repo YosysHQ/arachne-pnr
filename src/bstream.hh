@@ -1,10 +1,13 @@
 #ifndef PNR_BSTREAM_HH
 #define PNR_BSTREAM_HH
 
+#include "util.hh"
 #include <iostream>
 #include <vector>
 #include <string>
 #include <tuple>
+#include <cstring>
+#include <cassert>
 
 #include <cstring>
 #include <climits>
@@ -67,7 +70,7 @@ bwrite_signed_integral_type(obstream &obs, T x)
 	more = false;
       else
 	b |= 0x80;
-      assert (n < sizeof(T) + 1);
+      assert(n < sizeof(T) + 1);
       buf[n] = b;
       n ++;
     }
@@ -93,7 +96,7 @@ bwrite_unsigned_integral_type(obstream &obs, T x)
       else
 	b |= 0x80;
       
-      assert (n < sizeof(T) + 1);
+      assert(n < sizeof(T) + 1);
       buf[n] = b;
       n ++;
     }

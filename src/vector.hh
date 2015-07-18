@@ -6,8 +6,6 @@
 
 #include <vector>
 
-// FIXME rename vector.hh
-
 template<typename T,
 	 typename std::vector<T>::size_type B>
 class BasedVector

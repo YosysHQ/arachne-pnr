@@ -23,7 +23,6 @@
 #include <cassert>
 #include <set>
 
-// FIXME
 class Promoter
 {
   std::vector<uint8_t> global_classes;

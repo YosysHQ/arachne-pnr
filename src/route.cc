@@ -146,7 +146,7 @@ Router::port_cnet(Instance *inst, Port *p)
       else if (p_name == "I3")
 	tile_net_name = fmt("lutff_" << loc.pos() << "/in_3");
       else if (p_name == "CIN")
-	return -1;  // FIXME make 0 out of band
+	return -1;
       else if (p_name == "COUT")
 	tile_net_name = fmt("lutff_" << loc.pos() << "/cout");
       else
@@ -197,8 +197,9 @@ Router::port_cnet(Instance *inst, Port *p)
       
       auto r = ram_gate_chip.at(p_name);
       tile_net_name = r.first;
-      if (r.second)
-	// ramb tile
+      
+      // FIXME if (r.second)
+      if (!contains(chipdb->tile_nets[t], tile_net_name))
 	t = chipdb->tile(chipdb->tile_x(loc.tile()),
 			 chipdb->tile_y(loc.tile()) - 1);
     }
@@ -311,14 +312,30 @@ Router::Router(const ChipDB *cdb,
 	   fmt("WADDR[" << i << "]"),
 	   std::make_pair(fmt("ram/WADDR_" << i), true));
   
-  for (int i = 0; i <= 7; ++i)
-    extend(ram_gate_chip,
-	   fmt("MASK[" << i << "]"),
-	   std::make_pair(fmt("ram/MASK_" << i), true));
-  for (int i = 8; i <= 15; ++i)
-    extend(ram_gate_chip,
-	   fmt("MASK[" << i << "]"),
-	   std::make_pair(fmt("ram/MASK_" << i), false));
+  if (chipdb->device == "1k")
+    {
+      for (int i = 0; i <= 7; ++i)
+	extend(ram_gate_chip,
+	       fmt("MASK[" << i << "]"),
+	       std::make_pair(fmt("ram/MASK_" << i), true));
+      for (int i = 8; i <= 15; ++i)
+	extend(ram_gate_chip,
+	       fmt("MASK[" << i << "]"),
+	       std::make_pair(fmt("ram/MASK_" << i), false));
+    }
+  else
+    {
+      assert(chipdb->device == "8k");
+      for (int i = 0; i <= 7; ++i)
+	extend(ram_gate_chip,
+	       fmt("MASK[" << i << "]"),
+	       std::make_pair(fmt("ram/MASK_" << i), false));
+      for (int i = 8; i <= 15; ++i)
+	extend(ram_gate_chip,
+	       fmt("MASK[" << i << "]"),
+	       std::make_pair(fmt("ram/MASK_" << i), true));
+
+    }
   
   for (int i = 0; i <= 7; ++i)
     extend(ram_gate_chip,
@@ -742,10 +759,8 @@ Router::route()
 	assert(p.second >= chipdb->n_global_nets);
 	if (p.first < chipdb->n_global_nets)
 	  {
-	    // FIXME no default
-	    int cb_t = lookup_or_default(chipdb->tile_colbuf_tile, sw.tile, sw.tile);
+	    int cb_t = chipdb->tile_colbuf_tile.at(sw.tile);
 	    
-	    // FIXME double check icestorm documentation
 	    if (chipdb->tile_type[cb_t] == TileType::RAMT)
 	      {
 		cb_t = chipdb->tile(chipdb->tile_x(cb_t),

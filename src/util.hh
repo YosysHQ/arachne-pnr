@@ -32,13 +32,12 @@
 
 #include <cassert>
 
-// FIXME doesn't match std::minstd_rand
 class random_generator
 {
   static const unsigned m = 2147483647;
   static const unsigned a = 48271;
   
-  unsigned state;
+  unsigned long long state;
   
 public:
   random_generator() : state(1) {}
@@ -52,7 +51,7 @@ public:
   unsigned random()
   {
     state = (a * state) % m;
-    return state;
+    return (unsigned)state;
   }
   unsigned operator()()
   {
