@@ -992,11 +992,11 @@ Design::create_standard_models()
 	
 	bram->add_port("RCLKE", Direction::IN, Value::ONE);
 	bram->add_port("RCLK", Direction::IN, Value::ZERO);
-	bram->add_port("RE", Direction::IN, Value::ONE);
+	bram->add_port("RE", Direction::IN, Value::ZERO);
 	
 	bram->add_port("WCLKE", Direction::IN, Value::ONE);
 	bram->add_port("WCLK", Direction::IN, Value::ZERO);
-	bram->add_port("WE", Direction::IN, Value::ONE);
+	bram->add_port("WE", Direction::IN, Value::ZERO);
 	
 	for (int i = 0; i <= 15; ++i)
 	  bram->set_param(fmt("INIT_" << (i < 10 ? '0' + i : 'A' + (i - 10))), "0");
