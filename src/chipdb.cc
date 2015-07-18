@@ -803,6 +803,16 @@ ChipDBParser::parse()
 void
 ChipDB::finalize()
 {
+  int t1c1 = tile(1, 1);
+  for (const auto &p : tile_nets[t1c1])
+    {
+      if (is_prefix("glb_netwk_", p.first))
+	{
+	  int n = std::stoi(&p.first[10]);
+	  extend(net_global, p.second, n);
+	}
+    }
+  
   for (int i = 1; i <= n_cells; ++i)
     {
       int t = cell_location[i].tile();
@@ -963,7 +973,6 @@ ChipDB::bread(ibstream &ibs)
       >> tile_cbits_block_size;
   
   n_tiles = width * height;
-  n_global_nets = 8;
   
   tile_nets_idx.resize(n_tiles);
   tile_nets.resize(n_tiles);

@@ -756,9 +756,11 @@ Router::route()
 	int s = chipdb->find_switch(p.first, p.second);
 	const Switch &sw = chipdb->switches[s];
 	
-	assert(p.second >= chipdb->n_global_nets);
-	if (p.first < chipdb->n_global_nets)
+	assert(!contains(chipdb->net_global, p.second));
+	if (contains(chipdb->net_global, p.first))
 	  {
+	    int g = chipdb->net_global.at(p.first);
+	    
 	    int cb_t = chipdb->tile_colbuf_tile.at(sw.tile);
 	    
 	    if (chipdb->tile_type[cb_t] == TileType::RAMT)
@@ -770,7 +772,7 @@ Router::route()
 	    
 	    const CBit &colbuf_cbit = (chipdb->tile_nonrouting_cbits
 				       .at(chipdb->tile_type[cb_t])
-				       .at(fmt("ColBufCtrl.glb_netwk_" << p.first))
+				       .at(fmt("ColBufCtrl.glb_netwk_" << g))
 				       [0]);
 	    conf.set_cbit(CBit(cb_t,
 			       colbuf_cbit.row,
