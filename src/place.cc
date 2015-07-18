@@ -918,7 +918,7 @@ Placer::place_initial()
 	  
 	  fatal(fmt("failed to place: placed "
 		    << cell_type_n_placed[ct_idx]
-		    << cell_type_name(ct) << "s of " << cell_type_n_gates[ct_idx]
+		    << " " << cell_type_name(ct) << "s of " << cell_type_n_gates[ct_idx]
 		    << " / " << chipdb->cell_type_cells[ct_idx].size()));
 	placed_gate:;
 	}
