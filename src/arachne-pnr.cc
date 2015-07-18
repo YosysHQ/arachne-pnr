@@ -109,9 +109,6 @@ struct null_ostream : public std::ostream
 int
 main(int argc, const char **argv)
 {
-  std::minstd_rand g1(1);
-  random_generator g2(1);
-  
   program_name = argv[0];
   
   bool help = false,
