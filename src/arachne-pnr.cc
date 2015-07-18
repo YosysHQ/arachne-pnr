@@ -65,7 +65,7 @@ usage()
     << "\n"
     << "    -c <file>, --chipdb <chipdb-file>\n"
     << "        Read chip database from <chipdb-file>.\n"
-    << "        Default: +share/arachne-pnr/chipdb-<device>.bin\n"
+    << "        Default: +/share/arachne-pnr/chipdb-<device>.bin\n"
     << "\n"
     << "    --write-binary-chipdb <file>\n"
     << "        Write binary chipdb to <file>.\n"
@@ -316,7 +316,7 @@ main(int argc, const char **argv)
   if (chipdb_file)
     chipdb_file_s = chipdb_file;
   else
-    chipdb_file_s = (std::string("+share/arachne-pnr/chipdb-")
+    chipdb_file_s = (std::string("+/share/arachne-pnr/chipdb-")
 		     + device 
 		     + ".bin");
   *logs << "read_chipdb " << chipdb_file_s << "...\n";
@@ -409,7 +409,7 @@ main(int argc, const char **argv)
 	if (pcf_file)
 	  {
 	    *logs << "read_pcf " << pcf_file << "...\n";
-	    read_pcf(pcf_file, d, constraints);
+	    read_pcf(pcf_file, package, d, constraints);
 	  }
 	
 	*logs << "instantiate_io...\n";

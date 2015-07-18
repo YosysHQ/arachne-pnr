@@ -24,16 +24,17 @@ class Design;
 class Constraints
 {
 public:
-  std::map<std::string, std::string> net_pin;
+  std::map<std::string, Location> net_pin_loc;
   
 public:
   Constraints() {}
-  Constraints(const std::map<std::string, std::string> &np)
-    : net_pin(np)
+  Constraints(const std::map<std::string, Location> &np)
+    : net_pin_loc(np)
   {}
 };
 
 void read_pcf(const std::string &filename,
+	      const Package &package,
 	      Design *d,
 	      Constraints &constraints);
 

@@ -804,12 +804,12 @@ Placer::place_initial()
 			 io_cells_vec.end());
   
   std::vector<Net *> bank_latch(4, nullptr);
-  for (const auto &p : constraints.net_pin)
+  for (const auto &p : constraints.net_pin_loc)
     {
       int g = top_port_io_gate(p.first);
       Instance *inst = gates[g];
       
-      Location loc = package.pin_loc.at(p.second);
+      const Location &loc = p.second;
       int t = loc.tile();
       int b = chipdb->tile_bank(t);
       
@@ -832,17 +832,20 @@ Placer::place_initial()
       Location loc_other(t,
 			 loc.pos() ? 0 : 1);
       int cell_other = chipdb->loc_cell(loc_other);
-      int g_other = cell_gate[cell_other];
-      if (g_other)
+      if (cell_other)
 	{
-	  Instance *inst_other = gates[g_other];
-	  if (inst->get_param("NEG_TRIGGER").get_bit(0)
-	      != inst_other->get_param("NEG_TRIGGER").get_bit(0))
+	  int g_other = cell_gate[cell_other];
+	  if (g_other)
 	    {
-	      int x = chipdb->tile_x(t),
-		y = chipdb->tile_y(t);
-	      fatal(fmt("pcf error: incompatible NEG_TRIGGER parameters in PIO at (" 
-			<< x << ", " << y << ")"));
+	      Instance *inst_other = gates[g_other];
+	      if (inst->get_param("NEG_TRIGGER").get_bit(0)
+		  != inst_other->get_param("NEG_TRIGGER").get_bit(0))
+		{
+		  int x = chipdb->tile_x(t),
+		    y = chipdb->tile_y(t);
+		  fatal(fmt("pcf error: incompatible NEG_TRIGGER parameters in PIO at (" 
+			    << x << ", " << y << ")"));
+		}
 	    }
 	}
       

@@ -167,7 +167,7 @@ expand_filename(const std::string &file)
 {
   if (file[0] == '+')
     return (proc_self_dirname()
-	    + "../"
+	    + ".."
 	    + std::string(file.begin() + 1,
 			  file.end()));
   else
