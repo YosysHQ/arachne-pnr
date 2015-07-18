@@ -239,10 +239,10 @@ is_suffix(const std::string &s, const std::string &suffix)
 {
   if (suffix.size() > s.size())
     return false;
-  auto r = std::mismatch(s.rbegin(), s.rend(),
-			 suffix.rbegin(),
+  auto r = std::mismatch(suffix.rbegin(), suffix.rend(),
+			 s.rbegin(),
 			 std::equal_to<char>());
-  return r.second == suffix.rend();
+  return r.first == suffix.rend();
 }
 
 extern std::string proc_self_dirname();

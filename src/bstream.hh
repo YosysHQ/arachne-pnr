@@ -6,6 +6,9 @@
 #include <string>
 #include <tuple>
 
+#include <cstring>
+#include <climits>
+
 class obstream
 {
 private:
