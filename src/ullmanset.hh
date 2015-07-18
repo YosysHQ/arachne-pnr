@@ -13,28 +13,28 @@
    You should have received a copy of the GNU General Public License
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
-#include <vector>
+#include "vector.hh"
+
 #include <cstddef>
 #include <cassert>
 
-// FIXME based
-
-class UllmanSet
+template<unsigned B>
+class BasedUllmanSet
 {
-  unsigned n;
+  size_t n;
   std::vector<int> key;
-  std::vector<unsigned> pos;
+  BasedVector<unsigned, B> pos;
   
 public:
-  UllmanSet()
+  BasedUllmanSet()
     : n(0)
   {}
-  UllmanSet(size_t cap)
+  BasedUllmanSet(size_t cap)
     : n(0), key(cap), pos(cap)
   {}
   
   size_t capacity() const { return key.size(); }
-  size_t size() const { return (size_t)n; }
+  size_t size() const { return n; }
   bool empty() const { return n == 0; }
   void clear() { n = 0; }
   void resize(size_t cap)
@@ -46,7 +46,6 @@ public:
   
   bool contains(int k) const
   {
-    assert(k >= 0 && k < (int)capacity());
     unsigned p = pos[k];
     return (p < n
 	    && key[p] == k);
@@ -92,3 +91,6 @@ public:
     return key[i];
   }
 };
+
+using UllmanSet = BasedUllmanSet<0>;
+using UllmanSet1 = BasedUllmanSet<1>;

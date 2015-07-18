@@ -10,10 +10,8 @@ OPTDEBUGFLAGS = -O0 -fno-inline -g
 CXXFLAGS = -Isrc -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Wglobal-constructors -Werror
 LIBS = -lm
 
-CHIPDBS = share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
-
 .PHONY: all
-all: bin/arachne-pnr
+all: bin/arachne-pnr # share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
 
 bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -36,6 +34,7 @@ tests/test_us: tests/test_us.o
 simpletest: bin/arachne-pnr $(CHIPDBS) tests/test_bv tests/test_us
 	./tests/test_bv
 	./tests/test_us
+	make -C examples/rot clean && make -C examples/rot
 	cd tests/simple && bash run-test.sh
 	@echo
 	@echo 'All tests passed.'
@@ -57,7 +56,11 @@ test: bin/arachne-pnr $(CHIPDBS) tests/test_bv
 
 .PHONY: install
 install: bin/arachne-pnr
+	mkdir -p /usr/local/bin
 	cp bin/arachne-pnr /usr/local/bin/arachne-pnr
+	mkdir -p /usr/local/share/arachne-pnr
+	cp share/arachne-pnr/chipdb-1k.bin /usr/local/share/arachne-pnr/chipdb-1k.bin
+	cp share/arachne-pnr/chipdb-8k.bin /usr/local/share/arachne-pnr/chipdb-8k.bin
 
 .PHONY: uninstall
 uninstall:

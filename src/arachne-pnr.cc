@@ -109,6 +109,9 @@ struct null_ostream : public std::ostream
 int
 main(int argc, const char **argv)
 {
+  std::minstd_rand g1(1);
+  random_generator g2(1);
+  
   program_name = argv[0];
   
   bool help = false,
@@ -282,10 +285,21 @@ main(int argc, const char **argv)
   unsigned seed = 0;
   if (seed_str)
     {
-      // FIXME catch exception
-      seed = (unsigned)atoi(seed_str);
-      if (!seed)
-	fatal("zero seed\n");
+      std::string seed_s = seed_str;
+      
+      if (seed_s.empty())
+	fatal("invalid empty seed");
+      
+      for (char ch : seed_s)
+	{
+	  if (ch >= '0'
+	      && ch <= '9')
+	    seed = seed * 10 + (unsigned)(ch - '0');
+	  else
+	    fatal(fmt("invalid character `" 
+		      << ch
+		      << "' in unsigned integer literal in seed"));
+	}
     }
   else
     {
@@ -295,6 +309,8 @@ main(int argc, const char **argv)
       } while (seed == 0);
     }
   *logs << "seed: " << seed << "\n";
+  if (!seed)
+    fatal("zero seed");
   
   random_generator rg(seed);
   

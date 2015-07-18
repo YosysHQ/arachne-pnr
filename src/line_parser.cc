@@ -91,29 +91,36 @@ LineParser::split_line()
 void
 LineParser::read_line()
 {
-  lp.next_line();
-  std::getline(s, line);
-  
- L:
-  std::size_t p = line.find('#');
-  if (p != std::string::npos)
-    line.resize(p);
-  else if (!line.empty()
-	   && line.back() == '\\')
-    {
-      if (s.eof())
-	fatal("unexpected backslash before eof");
-      
-      // drop backslash
-      line.pop_back();
-      
-      std::string line2;
-      lp.next_line();
-      std::getline(s, line2);
-      
-      line.append(line2);
-      goto L;
-    }
-  
-  split_line();
+  words.clear();
+  do {
+    line.clear();
+    if (s.eof())
+      return;
+    
+    lp.next_line();
+    std::getline(s, line);
+    
+  L:
+    std::size_t p = line.find('#');
+    if (p != std::string::npos)
+      line.resize(p);
+    else if (!line.empty()
+	     && line.back() == '\\')
+      {
+	if (s.eof())
+	  fatal("unexpected backslash before eof");
+	
+	// drop backslash
+	line.pop_back();
+	
+	std::string line2;
+	lp.next_line();
+	std::getline(s, line2);
+	
+	line.append(line2);
+	goto L;
+      }
+    
+    split_line();
+  } while (words.empty());
 }

@@ -136,6 +136,8 @@ enum class CellType : int {
   LOGIC, IO, GB, RAM, WARMBOOT, PLL,
 };
 
+extern std::string cell_type_name(CellType ct);
+
 inline obstream &operator<<(obstream &obs, TileType t)
 {
   return obs << static_cast<int>(t);
@@ -227,8 +229,6 @@ public:
   
   std::map<Location, int> loc_pin_glb_num;
   
-  std::vector<std::vector<int>> bank_tiles;
-  
   std::vector<int> iolatch;  // tiles
   std::map<Location, Location> ieren;
   std::map<std::string, std::tuple<int, int, int>> extra_bits;
@@ -253,7 +253,7 @@ public:
   int n_cells;
   BasedVector<CellType, 1> cell_type;
   BasedVector<Location, 1> cell_location;
-  
+
   std::vector<std::vector<int>> tile_pos_cell;
   int loc_cell(const Location &loc) const 
   {
@@ -261,6 +261,8 @@ public:
   }
   
   std::vector<std::vector<int>> cell_type_cells;
+  
+  std::vector<std::vector<int>> bank_cells;
   
   // buffers and routing
   std::vector<Switch> switches;
@@ -307,6 +309,7 @@ public:
   }
   
   void set_device(const std::string &d, int w, int h, int n_nets_);
+  void finalize();
   
 public:
   ChipDB();
