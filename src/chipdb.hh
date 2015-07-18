@@ -224,6 +224,7 @@ public:
   int n_tiles;
   int n_nets;
   int n_global_nets;
+  std::map<int, int> net_global;
   
   std::map<std::string, Package> packages;
   
