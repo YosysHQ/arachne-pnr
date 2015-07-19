@@ -3,7 +3,7 @@
 ## Updates
 
 2015-07-18: New version.  Release notes:
-* icestorm and arachne-pnr now support the iCE40LP/HX8K
+* IceStorm and arachne-pnr now support the iCE40LP/HX8K
 * huge speed improvements (~50x)
 * arachne-pnr now prints the random seed on each run.  The seed can be set with the `-s` option.  With the same seed, arachne-pnr should be deterministic across platforms and C++ compilers.
 
