@@ -1,5 +1,12 @@
 # Arachne-pnr
 
+## Updates
+
+2015-07-18: New version.  Release notes:
+* icestorm and arachne-pnr now support the iCE40LP/HX8K
+* huge speed improvements (~50x)
+* arachne-pnr now prints the random seed on each run.  The seed can be set with the `-s` option.  With the same seed, arachne-pnr should be deterministic across platforms and C++ compilers.
+
 ## What is arachne-pnr?
 
 Arachne-pnr implements the place and route step of the hardware
@@ -7,21 +14,20 @@ compilation process for FPGAs.  It accepts as input a
 technology-mapped netlist in BLIF format, as output by the
 [Yosys](http://www.clifford.at/yosys/) [0] synthesis suite for
 example.  It currently targets the Lattice Semiconductor
-[iCE40LP/HX1K](http://www.latticesemi.com/iCE40) FPGA [1].  Its output
-is a textual bitstream representation for assembly by the
+[iCE40](http://www.latticesemi.com/iCE40) family of FPGAs [1].  Its
+output is a textual bitstream representation for assembly by the
 [IceStorm](http://www.clifford.at/icestorm/) [2] `icepack` command.
 The output of `icepack` is a binary bitstream which can be uploaded to
 a harware device.
 
 Together, Yosys, arachne-pnr and IceStorm provide an fully open-source
-Verilog-to-bistream tool chain for iCE40LP/HX1K FPGA development.
+Verilog-to-bistream tool chain for iCE40 1K and 8K FPGA development.
 
 ## Warning!
 
 This is experimental software!  It might have bugs that cause it to
 produce bitstreams which could damage your FPGA!  So when you buy an
-[iCEstick](http://latticesemi.com/iCEstick) [3] evaluation board, get
-a few.
+evaluation board, get a few.
 
 We have done extensive verification-based testing (see `tests/`), but
 so far limited hardware-based testing.  This will change.
@@ -29,12 +35,12 @@ so far limited hardware-based testing.  This will change.
 ## Status
 
 Arachne-pnr uses a simulated annealing-based algorithm for placement
-and a multi-pass congestion-based router with A-star search.
-Arachne-pnr supports all features documented by IceStorm, although the
-Block RAM has not be extensively tested.  This should include
-everything on the chip except the PLL and timing information.  We plan
-to add suport for those, as well as the HX8K, as soon as they are
-documented by the IceStorm project.
+and a multi-pass congestion-based router.  Arachne-pnr supports all
+features documented by IceStorm, although the Block RAM has not been
+extensively tested.  This should include everything on the chip except
+PLLs and timing information.  Support for PLLs is in the works.  We
+hope to support timing information as soon as it is documented by the
+IceStorm project.
 
 ## Installing
 
@@ -50,6 +56,12 @@ $ make && sudo make install
 ```
 
 ## Invoking/Example
+
+Lattice has several low-cost breakout boards:
+[iCEstick](http://latticesemi.com/iCEstick) for the 1K [3] and
+[iCE40-HX8K Breakout
+Board](http://www.latticesemi.com/en/Products/DevelopmentBoardsAndKits/iCE40HX8KBreakoutBoard.aspx)
+[4] for the 8K.
 
 There is a simple example for the iCEstick evaluation board in
 `example/rot` which generates a rotating pattern on the user LEDs.
@@ -89,3 +101,5 @@ designs.  Thanks to contributor Larry Doolittle.
 [2] http://www.clifford.at/icestorm/
 
 [3] http://latticesemi.com/iCEstick
+
+[4] http://www.latticesemi.com/en/Products/DevelopmentBoardsAndKits/iCE40HX8KBreakoutBoard.aspx
