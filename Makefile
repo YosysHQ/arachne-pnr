@@ -11,6 +11,9 @@ OPTDEBUGFLAGS = -O2 # -DNDEBUG
 CXXFLAGS = -Isrc -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
 LIBS = -lm
 
+DESTDIR = /usr/local
+ICEBOX = /usr/local/share/icebox
+
 .PHONY: all
 all: bin/arachne-pnr share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
 
@@ -19,11 +22,11 @@ bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place
 
 share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 1k -c /usr/local/share/icebox/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
+	bin/arachne-pnr -d 1k -c $(ICEBOX)/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
 
 share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 8k -c /usr/local/share/icebox/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
+	bin/arachne-pnr -d 8k -c $(ICEBOX)/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
 
 tests/test_bv: tests/test_bv.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
@@ -64,16 +67,16 @@ testvg:
 
 .PHONY: install
 install: all
-	mkdir -p /usr/local/bin
-	cp bin/arachne-pnr /usr/local/bin/arachne-pnr
-	mkdir -p /usr/local/share/arachne-pnr
-	cp share/arachne-pnr/chipdb-1k.bin /usr/local/share/arachne-pnr/chipdb-1k.bin
-	cp share/arachne-pnr/chipdb-8k.bin /usr/local/share/arachne-pnr/chipdb-8k.bin
+	mkdir -p $(DESTDIR)/bin
+	cp bin/arachne-pnr $(DESTDIR)/bin/arachne-pnr
+	mkdir -p $(DESTDIR)/share/arachne-pnr
+	cp share/arachne-pnr/chipdb-1k.bin $(DESTDIR)/share/arachne-pnr/chipdb-1k.bin
+	cp share/arachne-pnr/chipdb-8k.bin $(DESTDIR)/share/arachne-pnr/chipdb-8k.bin
 
 .PHONY: uninstall
 uninstall:
-	rm -f /usr/local/bin/arachne-pnr
-	rm -f /usr/local/bin/share/arachne-pnr/*.bin
+	rm -f $(DESTDIR)/bin/arachne-pnr
+	rm -f $(DESTDIR)/bin/share/arachne-pnr/*.bin
 
 .PHONY: clean
 clean:
