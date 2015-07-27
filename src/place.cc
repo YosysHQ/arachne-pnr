@@ -377,6 +377,7 @@ Placer::valid(int t)
       int global_clk = 0,
 	global_sr = 0,
 	global_cen = 0;
+      int neg_clk = -1;
       tmp_local_np.clear();
       for (int q = 0; q < 8; q ++)
 	{
@@ -385,6 +386,8 @@ Placer::valid(int t)
 	  int g = cell_gate[cell];
 	  if (g)
 	    {
+	      Instance *inst = gates[g];
+	      
 	      int clk = gate_clk[g],
 		sr = gate_sr[g],
 		cen = gate_cen[g];
@@ -402,6 +405,12 @@ Placer::valid(int t)
 	      if (!global_cen)
 		global_cen = cen;
 	      else if (global_cen != cen)
+		return false;
+	      
+	      int g_neg_clk = (int)inst->get_param("NEG_CLK").get_bit(0);
+	      if (neg_clk == -1)
+		neg_clk = g_neg_clk;
+	      else if (neg_clk != g_neg_clk)
 		return false;
 	      
 	      for (int np : gate_local_np[g])

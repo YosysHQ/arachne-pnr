@@ -159,7 +159,7 @@ Router::port_cnet(Instance *inst, Port *p)
     {
       if (p_name == "LATCH_INPUT_VALUE")
 	tile_net_name = fmt("io_global/latch");
-      if (p_name == "CLOCK_ENABLE")
+      else if (p_name == "CLOCK_ENABLE")
 	tile_net_name = fmt("io_global/cen");
       else if (p_name == "INPUT_CLK")
 	tile_net_name = fmt("io_global/inclk");
