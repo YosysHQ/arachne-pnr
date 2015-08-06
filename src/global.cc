@@ -93,6 +93,9 @@ Promoter::port_gc(Port *conn, bool indirect)
 	  || conn->name() == "OUTPUT_CLOCK")
 	return gc_clk;
     }
+  else if (models.is_warmboot(inst))
+    {
+    }
   else
     {
       assert(models.is_ramX(inst));

@@ -156,6 +156,8 @@ Placer::gate_cell_type(int g)
     return CellType::IO;
   else if (models.is_gb(inst))
     return CellType::GB;
+  else if (models.is_warmboot(inst))
+    return CellType::WARMBOOT;
   else
     {
       assert(models.is_ramX(inst));
@@ -918,7 +920,8 @@ Placer::place_initial()
 	      cell_gate[c] = i;
 	      gate_cell[i] = c;
 	      
-	      if (!valid(chipdb->cell_location[c].tile()))
+	      if (ct != CellType::WARMBOOT &&
+		  !valid(chipdb->cell_location[c].tile()))
 		cell_gate[c] = 0;
 	      else
 		{
@@ -999,6 +1002,11 @@ Placer::configure()
       int cell = gate_cell[g];
       const Location &loc = chipdb->cell_location[cell];
       
+      if (models.is_warmboot(inst)) {
+	placement[inst] = cell;
+	continue;
+      }
+
       int t = loc.tile();
       const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(chipdb->tile_type[t]);
       

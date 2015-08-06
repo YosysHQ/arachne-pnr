@@ -418,7 +418,8 @@ public:
     *ram,
     *ramnr,
     *ramnw,
-    *ramnrnw;
+    *ramnrnw,
+    *warmboot;
   
 public:
   Models(Design *d);
@@ -437,6 +438,7 @@ public:
   bool is_ramnr(Instance *inst) const { return inst->instance_of() == ramnr; }
   bool is_ramnw(Instance *inst) const { return inst->instance_of() == ramnw; }
   bool is_ramnrnw(Instance *inst) const { return inst->instance_of() == ramnrnw; }
+  bool is_warmboot(Instance *inst) const { return inst->instance_of() == warmboot; }
   
   bool is_ramX(Instance *inst) const
   { 
