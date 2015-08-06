@@ -5,6 +5,7 @@ set -ex
 seed=7
 arachne_pnr="../../bin/arachne-pnr -s $seed"
 devices='1k 8k'
+ICEBOX=/usr/local/share/icebox
 
 rm -f txt.sum
 
@@ -12,7 +13,7 @@ for d in $devices; do
     rm -rf $d
     mkdir $d
     
-    $arachne_pnr -d $d -c /usr/local/share/icebox/chipdb-$d.txt --write-binary-chipdb $d/chipdb-$d.bin
+    $arachne_pnr -d $d -c $ICEBOX/chipdb-$d.txt --write-binary-chipdb $d/chipdb-$d.bin
     $arachne_pnr -d $d -c $d/chipdb-$d.bin --write-binary-chipdb $d/chipdb2-$d.bin
     cmp $d/chipdb-$d.bin $d/chipdb2-$d.bin
     
@@ -26,7 +27,7 @@ for d in $devices; do
     icepack $d/sb_up3down5_l.txt $d/sb_up3down5_l.bin
     
     $arachne_pnr -d $d sb_up3down5.blif -B $d/sb_up3down5_packed.blif -o $d/sb_up3down5.txt
-    $arachne_pnr -d $d sb_up3down5_packed.blif -o $d/sb_up3down5_packed.txt
+    $arachne_pnr -d $d $d/sb_up3down5_packed.blif -o $d/sb_up3down5_packed.txt
     shasum $d/sb_up3down5_packed.txt >> txt.sum
     icepack $d/sb_up3down5_packed.txt $d/sb_up3down5_packed.bin
     

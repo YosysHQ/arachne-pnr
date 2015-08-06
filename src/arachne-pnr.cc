@@ -91,8 +91,12 @@ usage()
     << "        Target package <package>.\n"
     << "        Default: tq144 for 1k, ct256 for 8k\n"
     << "\n"
+    << "    -r\n"
+    << "        Randomize seed.\n"
+    << "\n"
     << "    -s <int>, --seed <int>\n"
     << "        Set seed for random generator to <int>.\n"
+    << "        Default: 1\n"
     << "\n"
     << "    -w <pcf-file>, --write-pcf <pcf-file>\n"
     << "        Write pin assignments to <pcf-file> after placement.\n"
@@ -114,7 +118,8 @@ main(int argc, const char **argv)
   bool help = false,
     quiet = false,
     do_promote_globals = true,
-    route_only = false;
+    route_only = false,
+    randomize_seed = false;
   std::string device = "1k";
   const char *chipdb_file = nullptr,
     *input_file = nullptr,
@@ -213,6 +218,8 @@ main(int argc, const char **argv)
 	      ++i;
 	      package_name_cp = argv[i];
 	    }
+	  else if (!strcmp(argv[i], "-r"))
+	    randomize_seed = true;
 	  else if (!strcmp(argv[i], "-w")
 		   || !strcmp(argv[i], "--write-pcf"))
 	    {
@@ -299,12 +306,16 @@ main(int argc, const char **argv)
 	}
     }
   else
+    seed = 1;
+  
+  if (randomize_seed)
     {
       std::random_device rd;
       do {
 	seed = rd();
       } while (seed == 0);
     }
+  
   *logs << "seed: " << seed << "\n";
   if (!seed)
     fatal("zero seed");

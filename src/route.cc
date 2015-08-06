@@ -763,7 +763,8 @@ Router::route()
 	    
 	    int cb_t = chipdb->tile_colbuf_tile.at(sw.tile);
 	    
-	    if (chipdb->tile_type[cb_t] == TileType::RAMT)
+	    if (chipdb->device == "1k"
+		&& chipdb->tile_type[cb_t] == TileType::RAMT)
 	      {
 		cb_t = chipdb->tile(chipdb->tile_x(cb_t),
 				    chipdb->tile_y(cb_t) - 1);

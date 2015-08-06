@@ -2,6 +2,8 @@
 
 ## Updates
 
+2015-08-06: Interface change: Default seed is 1, can be randomized with `-r` option.
+
 2015-07-18: New version.  Release notes:
 * IceStorm and arachne-pnr now support the iCE40LP/HX8K
 * huge speed improvements (~50x)
@@ -90,7 +92,7 @@ Arachne-pnr would not have been possible without Clifford Wolf and
 Mathias Lasser's IceStorm project to reverse-engineer the iCE40 FPGAs
 and build supporting tools.  Also, it would not be useful without
 Clifford Wolf's Yosys project to synthesize and technology map
-designs.  Thanks to contributor Larry Doolittle.
+designs.  Thanks to contributors Larry Doolittle and Clifford Wolf.
 
 ## References
 

@@ -6,9 +6,10 @@
 # build optimized without -DNDEBUG
 # OPTDEBUGFLAGS = -O0 -fno-inline -g
 OPTDEBUGFLAGS = -O2 # -DNDEBUG
+SRC = src
 
 # clang only: -Wglobal-constructors
-CXXFLAGS = -Isrc -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
+CXXFLAGS = -I$(SRC) -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
 LIBS = -lm
 
 DESTDIR = /usr/local
