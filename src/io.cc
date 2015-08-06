@@ -68,7 +68,7 @@ instantiate_io(Design *d)
 	  assert(p->direction() == Direction::OUT);
 	  if (t)
 	    io_inst->find_port("D_OUT_0")->connect(n);
-	  io_inst->set_param("PIN_TYPE", BitVector(6, 0x18)); // 011000
+	  io_inst->set_param("PIN_TYPE", BitVector(6, 0x19)); // 011001
 	}
     }
 }
