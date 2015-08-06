@@ -20,11 +20,11 @@ all: bin/arachne-pnr share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k
 bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr
+share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr /usr/local/share/icebox/chipdb-1k.txt
 	mkdir -p share/arachne-pnr
 	bin/arachne-pnr -d 1k -c $(ICEBOX)/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
 
-share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr
+share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr /usr/local/share/icebox/chipdb-8k.txt
 	mkdir -p share/arachne-pnr
 	bin/arachne-pnr -d 8k -c $(ICEBOX)/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
 
