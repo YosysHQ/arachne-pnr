@@ -567,7 +567,8 @@ Packer::pack()
     n_lc_dff = 0,
     n_lc_carry_dff = 0,
     n_gb = 0,
-    n_bram = 0;
+    n_bram = 0,
+    n_warmboot = 0;
   for (Instance *inst : top->instances())
     {
       if (models.is_lc(inst))
@@ -590,6 +591,8 @@ Packer::pack()
 	++n_io;
       else if (models.is_gb(inst))
 	++n_gb;
+      else if (models.is_warmboot(inst))
+	++n_warmboot;
       else
 	{ 
 	  assert(models.is_ramX(inst));
@@ -604,6 +607,13 @@ Packer::pack()
 	++n_logic_tiles;
     }
   
+  int n_warmboot_cells = 0;
+  for (int i = 0; i < chipdb->n_cells; ++i)
+    {
+      if (chipdb->cell_type[i+1] == CellType::WARMBOOT)
+	++n_warmboot_cells;
+    }
+
   *logs << "\nAfter packing:\n"
 	<< "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
 	<< "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
@@ -613,6 +623,7 @@ Packer::pack()
 	<< "  DFF PASS   " << n_dff_pass_through << "\n"
 	<< "  CARRY PASS " << n_carry_pass_through << "\n"
 	<< "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
+	<< "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
 	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n\n";
 }
 

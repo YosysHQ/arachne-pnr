@@ -1003,6 +1003,11 @@ Design::create_standard_models()
 	bram->set_param("READ_MODE", BitVector(2, 0));
 	bram->set_param("WRITE_MODE", BitVector(2, 0));
       }
+
+  Model *warmboot = new Model(this, "SB_WARMBOOT");
+  warmboot->add_port("BOOT", Direction::IN, Value::ZERO);
+  warmboot->add_port("S1", Direction::IN, Value::ZERO);
+  warmboot->add_port("S0", Direction::IN, Value::ZERO);
 }
 
 Model *
@@ -1058,4 +1063,5 @@ Models::Models(Design *d)
   ramnr = d->find_model("SB_RAM40_4KNR");
   ramnw = d->find_model("SB_RAM40_4KNW");
   ramnrnw = d->find_model("SB_RAM40_4KNRNW");
+  warmboot = d->find_model("SB_WARMBOOT");
 }
