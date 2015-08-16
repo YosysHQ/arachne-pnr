@@ -8,7 +8,7 @@ before_install:
   - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
   - git clone https://github.com/cliffordwolf/icestorm.git
-  - cd icestorm && make && sudo make install
+  - (cd icestorm && make && sudo make install)
 compiler:
   - clang
   - gcc
