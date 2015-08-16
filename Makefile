@@ -39,7 +39,6 @@ tests/test_us: tests/test_us.o
 simpletest: all tests/test_bv tests/test_us
 	./tests/test_bv
 	./tests/test_us
-	make -C examples/rot clean && make -C examples/rot
 	cd tests/simple && bash run-test.sh
 	@echo
 	@echo 'All tests passed.'
@@ -49,6 +48,7 @@ simpletest: all tests/test_bv tests/test_us
 test: all tests/test_bv ./tests/test_us
 	./tests/test_bv
 	./tests/test_us
+	make -C examples/rot clean && make -C examples/rot
 	cd tests/simple && bash run-test.sh
 	cd tests/regression && bash run-test.sh
 	cd tests/fsm && bash run-test.sh
