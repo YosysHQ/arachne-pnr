@@ -1,4 +1,4 @@
-script: make && make simpletest
+script: make && make test
 language: cpp
 before_install:
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
@@ -9,6 +9,8 @@ before_install:
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
   - git clone https://github.com/cliffordwolf/icestorm.git
   - (cd icestorm && make && sudo make install)
+  - git clone https://github.com/cliffordwolf/yosys.git
+  - (cd yosys && make && sudo make install)
 compiler:
 #  - clang
   - gcc
