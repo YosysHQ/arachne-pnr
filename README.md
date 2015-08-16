@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/cseed/arachne-pnr.svg?branch=master)](https://travis-ci.org/cseed/arachne-pnr)
-
 # Arachne-pnr
 
 ## Updates
