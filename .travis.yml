@@ -1,0 +1,8 @@
+script: make && make simpletest
+language: cpp
+compiler:
+  - clang
+  - gcc
+os:
+  - linux
+  - osx
