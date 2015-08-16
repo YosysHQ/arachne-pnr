@@ -19,12 +19,12 @@
 #include "chipdb.hh"
 #include "carry.hh"
 
-#include <unordered_set>
 #include <cstring>
 
 class Packer
 {
   const ChipDB *chipdb;
+  const Package &package;
   Design *d;
   
   Models models;
@@ -38,7 +38,7 @@ class Packer
   Net *const0;
   Net *const1;
   
-  std::unordered_set<Instance *> ready;
+  std::set<Instance *, IdLess> ready;
   
   void lc_from_dff(Instance *lc_inst, Instance *dff_inst);
   void lc_from_lut(Instance *lc_inst, Instance *lut_inst);
@@ -55,13 +55,14 @@ class Packer
   void pack_carries();
   
 public:
-  Packer(const ChipDB *cdb, Design *d_, CarryChains &chains_);
+  Packer(const ChipDB *cdb, const Package &package_, Design *d_, CarryChains &chains_);
   
   void pack();
 };
 
-Packer::Packer(const ChipDB *cdb, Design *d_, CarryChains &chains_)
+Packer::Packer(const ChipDB *cdb, const Package &package_, Design *d_, CarryChains &chains_)
   : chipdb(cdb), 
+    package(package_),
     d(d_), 
     models(d),
     top(d->top()),
@@ -263,14 +264,11 @@ Packer::pack_dffs()
 	  Instance *lut_inst = nullptr;
 	  if (d_driver)
 	    {
-	      if (Instance *d_driver_inst = dyn_cast<Instance>(d_driver->node()))
-		{
-		  if (models.is_lut4(d_driver_inst))
-		    {
-		      assert(d_driver->name() == "O");
-		      lut_inst = d_driver_inst;
-		    }
-		}
+	      Instance *d_driver_inst = dyn_cast<Instance>(d_driver->node());
+	      if (d_driver_inst
+		  && models.is_lut4(d_driver_inst)
+		  && d_driver->name() == "O")
+		lut_inst = d_driver_inst;
 	    }
 	  
 	  lc_from_dff(lc_inst, inst);
@@ -559,7 +557,7 @@ Packer::pack()
   int n_ramt_tiles = 0;
   for (int i = 0; i < chipdb->n_tiles; ++i)
     {
-      if (chipdb->tile_type[i] == TileType::RAMT_TILE)
+      if (chipdb->tile_type[i] == TileType::RAMT)
 	++n_ramt_tiles;
     }
   
@@ -570,7 +568,8 @@ Packer::pack()
     n_lc_carry_dff = 0,
     n_gb = 0,
     n_bram = 0,
-    n_pll = 0;
+    n_pll = 0,
+    n_warmboot = 0;
   for (Instance *inst : top->instances())
     {
       if (models.is_lc(inst))
@@ -595,6 +594,8 @@ Packer::pack()
 	++n_gb;
       else if (models.is_ramX(inst))
 	  ++n_bram;
+      else if (models.is_warmboot(inst))
+	++n_warmboot;
       else
 	{ 
 	  assert(models.is_pllX(inst));
@@ -605,12 +606,19 @@ Packer::pack()
   int n_logic_tiles = 0;
   for (int i = 0; i < chipdb->n_tiles; ++i)
     {
-      if (chipdb->tile_type[i] == TileType::LOGIC_TILE)
+      if (chipdb->tile_type[i] == TileType::LOGIC)
 	++n_logic_tiles;
     }
   
+  int n_warmboot_cells = 0;
+  for (int i = 0; i < chipdb->n_cells; ++i)
+    {
+      if (chipdb->cell_type[i+1] == CellType::WARMBOOT)
+	++n_warmboot_cells;
+    }
+
   *logs << "\nAfter packing:\n"
-	<< "IOs          " << n_io << " / " << chipdb->pin_loc.size() << "\n"
+	<< "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
 	<< "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
 	<< "  DFF        " << n_lc_dff << "\n"
 	<< "  CARRY      " << n_lc_carry << "\n"
@@ -618,14 +626,15 @@ Packer::pack()
 	<< "  DFF PASS   " << n_dff_pass_through << "\n"
 	<< "  CARRY PASS " << n_carry_pass_through << "\n"
 	<< "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
-	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
     // FIXME
-	<< "PLLs         " << n_pll << " / 1\n\n";
+	<< "PLLs         " << n_pll << " / 1\n"
+	<< "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
+	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n\n";
 }
 
 void
-pack(const ChipDB *chipdb, Design *d, CarryChains &chains)
+pack(const ChipDB *chipdb, const Package &package, Design *d, CarryChains &chains)
 {
-  Packer packer(chipdb, d, chains);
+  Packer packer(chipdb, package, d, chains);
   packer.pack();
 }

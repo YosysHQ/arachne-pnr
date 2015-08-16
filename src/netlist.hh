@@ -19,12 +19,12 @@
 #include "util.hh"
 #include "bitvector.hh"
 #include "line_parser.hh"
+#include "vector.hh"
 
 #include <string>
 #include <vector>
 #include <set>
 #include <map>
-#include <unordered_map>
 
 class Net;
 class Port;
@@ -32,6 +32,51 @@ class Node;
 class Instance;
 class Model;
 class Design;
+
+class Identified
+{
+private:
+  template<typename T> friend struct std::hash;
+  friend class IdLess;
+  
+  static int id_counter;
+  int id;
+  
+public:
+  Identified()
+    : id(id_counter++)
+  {
+  }
+};
+
+class IdLess
+{
+public:
+  bool operator()(const Identified *lhs, const Identified *rhs) const
+  {
+    return lhs->id < rhs->id;
+  }
+};
+
+namespace std {
+  
+template<>
+struct hash<Identified *>
+{
+public:
+  size_t operator()(const Identified *x) const
+  {
+    std::hash<int> hasher;
+    return hasher(x->id);
+  }
+};
+
+template<> struct hash<Net *> : public std::hash<Identified *> {};
+template<> struct hash<Node *> : public std::hash<Identified *> {};
+template<> struct hash<Instance *> : public std::hash<Identified *> {};
+template<> struct hash<Model *> : public std::hash<Identified *> {};
+
+}
 
 enum class Direction
 {
@@ -92,7 +137,7 @@ public:
   {
     if (!m_is_bits)
       m_lp.fatal("expected integer constant");
-    if (i >= m_bitval.size())
+    if (i >= (int)m_bitval.size())
       return 0;
     else
       return m_bitval[i];
@@ -102,7 +147,7 @@ public:
 };
 
 
-class Net
+class Net : public Identified
 {
   friend class Port;
   friend class Model;
@@ -111,7 +156,7 @@ class Net
   bool m_is_constant;
   Value m_constant;
   
-  std::set<Port *> m_connections;
+  std::set<Port *, IdLess> m_connections;
   
 public:
   const std::string &name() const { return m_name; }
@@ -121,11 +166,13 @@ public:
   Value constant() const { return m_constant; }
   void set_constant(Value c) { m_constant = c; }
   
-  const std::set<Port *> &connections() const { return m_connections; }
+  const std::set<Port *, IdLess> &connections() const { return m_connections; }
   
   Net(const std::string &n)
     : m_name(n), m_is_constant(false), m_constant(Value::X)
-  {}
+  {
+  }
+  
   ~Net()
   {
     assert(m_connections.empty());
@@ -134,7 +181,7 @@ public:
   void replace(Net *new_n);
 };
 
-class Port
+class Port : public Identified
 {
   Node *m_node;
   std::string m_name;
@@ -177,10 +224,11 @@ public:
   Port *connection_other_port() const;
 };
 
-class Node
+class Node : public Identified
 {
 protected:
-  std::unordered_map<std::string, Port *> m_ports;
+  std::map<std::string, Port *> m_ports;
+  std::vector<Port *> m_ordered_ports;
   
 public:
   typedef Node Base;
@@ -193,7 +241,9 @@ private:
   Kind m_kind;
   
 public:
-  const std::unordered_map<std::string, Port *> &ports() const { return m_ports; }
+  const std::map<std::string, Port *> &ports() const { return m_ports; }
+  const std::vector<Port *> &ordered_ports() const { return m_ordered_ports; }
+  
   Kind kind() const { return m_kind; }
   
   Node(Kind k) : m_kind(k) {}
@@ -210,51 +260,51 @@ class Instance : public Node
   Model *m_parent;
   Model *m_instance_of;
   
-  std::unordered_map<std::string, Const> m_params;
-  std::unordered_map<std::string, Const> m_attrs;
+  std::map<std::string, Const> m_params;
+  std::map<std::string, Const> m_attrs;
   
 public:
   static const Kind kindof = Kind::instance;
   
   Model *parent() const { return m_parent; }
   Model *instance_of() const { return m_instance_of; }
-  const std::unordered_map<std::string, Const> &attrs() const { return m_attrs; }
-  const std::unordered_map<std::string, Const> &params() const { return m_params; }
+  const std::map<std::string, Const> &attrs() const { return m_attrs; }
+  const std::map<std::string, Const> &params() const { return m_params; }
   
   Instance(Model *p, Model *inst_of);
   
-  void set_attr(const std::string &id, const Const &val) { m_attrs[id] = val; }
+  void set_attr(const std::string &an, const Const &val) { m_attrs[an] = val; }
   
-  bool has_attr(const std::string &id) const
+  bool has_attr(const std::string &an) const
   {
-    return contains_key(m_attrs, id);
+    return contains_key(m_attrs, an);
   }
   
-  const Const &get_attr(const std::string &id) const
+  const Const &get_attr(const std::string &an) const
   {
-    return m_attrs.at(id);
+    return m_attrs.at(an);
   }
   
   void merge_attrs(const Instance *inst);
   
-  void set_param(const std::string &id, const Const &val) { m_params[id] = val; }
+  void set_param(const std::string &pn, const Const &val) { m_params[pn] = val; }
   
-  bool has_param(const std::string &id) const;
-  const Const &get_param(const std::string &id) const;
+  bool has_param(const std::string &pn) const;
+  const Const &get_param(const std::string &pn) const;
   
-  bool self_has_param(const std::string &id) const { return contains_key(m_params, id); }
+  bool self_has_param(const std::string &pn) const { return contains_key(m_params, pn); }
   const Const &
-  self_get_param(const std::string &id) const
+  self_get_param(const std::string &pn) const
   {
-    return m_params.at(id);
+    return m_params.at(pn);
   }
   
   void remove();
   
   void write_blif(std::ostream &s,
-		  const std::unordered_map<Net *, std::string> &net_name) const;
+		  const std::map<Net *, std::string, IdLess> &net_name) const;
   void write_verilog(std::ostream &s,
-		     const std::unordered_map<Net *, std::string> &net_name,
+		     const std::map<Net *, std::string, IdLess> &net_name,
 		     const std::string &inst_name) const;
 };
 
@@ -266,18 +316,18 @@ class Model : public Node
   
   std::string m_name;
   std::map<std::string, Net *> m_nets;
-  std::set<Instance *> m_instances;
+  std::set<Instance *, IdLess> m_instances;
   
-  std::unordered_map<std::string, Const> m_params;
+  std::map<std::string, Const> m_params;
   
 public:
   static const Kind kindof = Kind::model;
   
   const std::string &name() const { return m_name; }
   
-  const std::set<Instance *> &instances() const { return m_instances; }
+  const std::set<Instance *, IdLess> &instances() const { return m_instances; }
   const std::map<std::string, Net *> &nets() const { return m_nets; }
-  const std::unordered_map<std::string, Const> &params() const { return m_params; }
+  const std::map<std::string, Const> &params() const { return m_params; }
   
   Model(Design *d, const std::string &n);
   ~Model();
@@ -291,38 +341,38 @@ public:
   Instance *add_instance(Model *inst_of);
   
   void
-  set_param(const std::string &id, const std::string &val)
+  set_param(const std::string &pn, const std::string &val)
   {
-    m_params[id] = Const(val);
+    m_params[pn] = Const(val);
   }
   
   void
-  set_param(const std::string &id, const BitVector &val)
+  set_param(const std::string &pn, const BitVector &val)
   {
-    m_params[id] = Const(val);
+    m_params[pn] = Const(val);
   }
   
   const Const &
-  get_param(const std::string &id)
+  get_param(const std::string &pn)
   { 
-    return m_params.at(id); 
+    return m_params.at(pn);
   }
   
-  bool has_param(const std::string &id) { return contains_key(m_params, id); }
+  bool has_param(const std::string &pn) { return contains_key(m_params, pn); }
   
-  std::unordered_set<Net *> boundary_nets(const Design *d) const;
-  std::pair<std::vector<Net *>, std::unordered_map<Net *, int>>
+  std::set<Net *, IdLess> boundary_nets(const Design *d) const;
+  std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
     index_nets() const;
-  std::pair<std::vector<Net *>, std::unordered_map<Net *, int>>
+  std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
     index_internal_nets(const Design *d) const;
   
-  std::pair<std::vector<Instance *>, std::unordered_map<Instance *, int>>
+  std::pair<BasedVector<Instance *, 1>, std::map<Instance *, int, IdLess>>
     index_instances() const;
   
   void prune();
 
-  std::pair<std::unordered_map<Net *, std::string>,
-	    std::unordered_set<Net *>>
+  std::pair<std::map<Net *, std::string, IdLess>,
+	    std::set<Net *, IdLess>>
     shared_names() const;
   void write_verilog(std::ostream &s) const;
   void write_blif(std::ostream &s) const;
@@ -337,7 +387,7 @@ class Design
   friend class Model;
   
   Model *m_top;
-  std::unordered_map<std::string, Model *> m_models;
+  std::map<std::string, Model *> m_models;
   
 public:
   Model *top() const { return m_top; }
@@ -368,7 +418,8 @@ public:
     *ram,
     *ramnr,
     *ramnw,
-    *ramnrnw;
+    *ramnrnw,
+    *warmboot;
   
 public:
   Models(Design *d);
@@ -387,6 +438,7 @@ public:
   bool is_ramnr(const Instance *inst) const { return inst->instance_of() == ramnr; }
   bool is_ramnw(const Instance *inst) const { return inst->instance_of() == ramnw; }
   bool is_ramnrnw(const Instance *inst) const { return inst->instance_of() == ramnrnw; }
+  bool is_warmboot(const Instance *inst) const { return inst->instance_of() == warmboot; }
   
   bool is_ramX(const Instance *inst) const
   { 

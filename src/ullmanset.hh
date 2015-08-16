@@ -13,47 +13,69 @@
    You should have received a copy of the GNU General Public License
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
-class UllmanSet
+#include "vector.hh"
+
+#include <cstddef>
+#include <cassert>
+
+template<unsigned B>
+class BasedUllmanSet
 {
-  int n;
+  size_t n;
   std::vector<int> key;
-  std::vector<int> pos;
+  BasedVector<unsigned, B> pos;
   
 public:
-  UllmanSet()
+  BasedUllmanSet()
     : n(0)
   {}
-  UllmanSet(int cap)
+  BasedUllmanSet(size_t cap)
     : n(0), key(cap), pos(cap)
   {}
   
-  int capacity() const { return key.size(); }
-  int size() const { return n; }
+  size_t capacity() const { return key.size(); }
+  size_t size() const { return n; }
+  bool empty() const { return n == 0; }
+  void clear() { n = 0; }
+  void resize(size_t cap)
+  {
+    key.resize(cap);
+    pos.resize(cap);
+    n = 0;
+  }
   
   bool contains(int k) const
   {
-    assert(k >= 0 && k < capacity());
-    int p = pos[k];
+    unsigned p = pos[k];
     return (p < n
 	    && key[p] == k);
   }
   
-  void insert(int k) const
+  void insert(int k)
   {
     if (contains(k))
       return;
     
-    p = n++;
+    unsigned p = n++;
     key[p] = k;
     pos[k] = p;
   }
-
-  void erase(int k) const
+  
+  void extend(int k)
+  {
+    assert(!contains(k));
+    
+    unsigned p = n++;
+    key[p] = k;
+    pos[k] = p;
+  }
+  
+  void erase(int k)
   {
     if (!contains(k))
       return;
     
-    int p = pos[k];
+    unsigned p = pos[k];
     --n;
     if (p != n)
       {
@@ -65,7 +87,10 @@ public:
   
   int ith(int i)
   {
-    assert(i >= 0 && i < n);
+    assert(i >= 0 && i < (int)n);
     return key[i];
   }
 };
+
+using UllmanSet = BasedUllmanSet<0>;
+using UllmanSet1 = BasedUllmanSet<1>;

@@ -16,30 +16,31 @@
 #ifndef PNR_CONFIGURATION_HH
 #define PNR_CONFIGURATION_HH
 
+#include "util.hh"
 #include <ostream>
-#include <unordered_map>
 
 class ChipDB;
 class Design;
 class Instance;
 class Net;
+class IdLess;
 
 class Configuration
 {
 public:
-  std::unordered_map<CBit, bool> cbits;
+  std::map<CBit, bool> cbits;
   
 public:
   Configuration();
   
   void set_cbit(const CBit &cbit, bool value);
   void set_cbits(const std::vector<CBit> &value_cbits,
-		 const std::vector<bool> &value);
+		 unsigned value);
   
   void write_txt(std::ostream &s,
 		 const ChipDB *chipdb,
 		 Design *d,
-		 const std::unordered_map<Instance *, Location> &placement,
+		 const std::map<Instance *, int, IdLess> &placement,
 		 const std::vector<Net *> &cnet_net);
 };
 

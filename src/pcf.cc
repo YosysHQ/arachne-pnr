@@ -14,6 +14,7 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "util.hh"
+#include "chipdb.hh"
 #include "netlist.hh"
 #include "pcf.hh"
 #include "line_parser.hh"
@@ -28,13 +29,15 @@ class Constraints;
 
 class PCFParser : public LineParser
 {
+  const Package &package;
   Design *d;
   Model *top;
   Constraints &constraints;
   
 public:
-  PCFParser(const std::string &f, std::istream &s_, Design *d_, Constraints &c)
+  PCFParser(const std::string &f, std::istream &s_, const Package &p, Design *d_, Constraints &c)
     : LineParser(f, s_),
+      package(p),
       d(d_),
       top(d->top()),
       constraints(c)
@@ -46,7 +49,7 @@ public:
 void
 PCFParser::parse()
 {
-  std::unordered_map<std::string, int> net_pin;
+  std::map<std::string, Location> net_pin_loc;
   
   for (;;)
     {
@@ -68,22 +71,29 @@ PCFParser::parse()
 	  if (!p)
 	    fatal(fmt("no port `" << net_name << "' in top-level module `" << top->name() << "'"));
 	  
-	  int pin = std::stoi(words[2]);
-	  auto i = net_pin.find(net_name);
-	  if (i == net_pin.end())
-	    net_pin[net_name] = pin;
-	  else
+	  auto i = package.pin_loc.find(words[2]);
+	  if (i == package.pin_loc.end())
+	    fatal(fmt("unknown pin `" << words[2] << "' on package `"
+		      << package.name << "'"));
+	  
+	  const Location &loc = i->second;
+	  
+	  auto j = net_pin_loc.find(net_name);
+	  if (j != net_pin_loc.end())
 	    fatal(fmt("duplicate pin constraints for net `" << net_name << "'"));
+	  
+	  extend(net_pin_loc, net_name, loc);
 	}
       else
 	fatal(fmt("unknown command `" << cmd << "'"));
     }
   
-  constraints.net_pin = net_pin;
+  constraints.net_pin_loc = net_pin_loc;
 }
 
 void
 read_pcf(const std::string &filename,
+	 const Package &package,
 	 Design *d,
 	 Constraints &constraints)
 {
@@ -92,6 +102,6 @@ read_pcf(const std::string &filename,
   if (fs.fail())
     fatal(fmt("read_pcf: failed to open `" << expanded << "': "
 	      << strerror(errno)));
-  PCFParser parser(filename, fs, d, constraints);
+  PCFParser parser(filename, fs, package, d, constraints);
   return parser.parse();
 }

@@ -19,7 +19,7 @@
 class Design;
 class ChipDB;
 
-#include <unordered_map>
+#include "util.hh"
 
 static const uint8_t gc_clk = 0xff;
 static const uint8_t gc_cen = 0xaa; // 1357
@@ -34,7 +34,7 @@ extern const char *global_class_name(uint8_t gc);
 
 extern std::vector<uint8_t> global_classes;
 
-extern std::unordered_map<Instance *, uint8_t>
+extern std::map<Instance *, uint8_t, IdLess>
 promote_globals(const ChipDB *chipdb, Design *d, bool promote);
 
 #endif

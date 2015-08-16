@@ -17,18 +17,32 @@
 #include "global.hh"
 #include "chipdb.hh"
 #include "casting.hh"
+#include "util.hh"
 
 #include <queue>
 #include <cassert>
-#include <unordered_set>
 #include <set>
 
-std::vector<uint8_t> global_classes = {
-  gc_clk, gc_cen, gc_sr, gc_rclke, gc_re,
+class Promoter
+{
+  std::vector<uint8_t> global_classes;
+  static const char *global_class_name(uint8_t gc);
+  
+  Design *d;
+  Models models;
+  
+  std::map<Instance *, uint8_t, IdLess> gb_inst_gc;
+  
+  uint8_t port_gc(Port *conn, bool indirect);
+  
+public:
+  Promoter(const ChipDB *chipdb, Design *d);
+  
+  std::map<Instance *, uint8_t, IdLess> promote(bool do_promote);
 };
 
 const char *
-global_class_name(uint8_t gc)
+Promoter::global_class_name(uint8_t gc)
 {
   switch(gc)
     {
@@ -43,25 +57,12 @@ global_class_name(uint8_t gc)
     }
 }
 
-class Promoter
-{
-  Design *d;
-  Models models;
-  
-  std::unordered_map<Instance *, uint8_t> gb_inst_gc;
-  
-  uint8_t port_gc(Port *conn, bool indirect);
-  
-public:
-  Promoter(const ChipDB *chipdb, Design *d);
-  
-  std::unordered_map<Instance *, uint8_t> promote(bool do_promote);
-};
-
 Promoter::Promoter(const ChipDB *cdb, Design *d_)
-  : d(d_),
+  : global_classes{
+      gc_clk, gc_cen, gc_sr, gc_rclke, gc_re,
+    },
+    d(d_),
     models(d)
-
 {
 }
 
@@ -92,6 +93,9 @@ Promoter::port_gc(Port *conn, bool indirect)
 	  || conn->name() == "OUTPUT_CLOCK")
 	return gc_clk;
     }
+  else if (models.is_warmboot(inst))
+    {
+    }
   else if (models.is_ramX(inst))
     {
       if (conn->name() == "WCLK"
@@ -116,40 +120,40 @@ Promoter::port_gc(Port *conn, bool indirect)
   return 0;
 }
 
-std::unordered_map<Instance *, uint8_t>
+std::map<Instance *, uint8_t, IdLess>
 Promoter::promote(bool do_promote)
 {
   Model *top = d->top();
   // top->dump();
   
   std::vector<Net *> nets;
-  std::unordered_map<Net *, int> net_idx;
+  std::map<Net *, int, IdLess> net_idx;
   std::tie(nets, net_idx) = top->index_nets();
   int n_nets = nets.size();
   
   int n_global = 0;
   
-  std::unordered_map<uint8_t, int> gc_global;
-  std::unordered_map<uint8_t, int> gc_used;
+  std::map<uint8_t, int> gc_global;
+  std::map<uint8_t, int> gc_used;
   for (uint8_t gc : global_classes)
     {
       extend(gc_global, gc, 0);
       extend(gc_used, gc, 0);
     }
   
-  std::unordered_set<Net *> boundary_nets = top->boundary_nets(d);
+  std::set<Net *, IdLess> boundary_nets = top->boundary_nets(d);
   
   std::set<std::pair<int, int>, std::greater<std::pair<int, int>>> promote_q;
-  std::unordered_map<int, uint8_t> net_gc;
-  std::unordered_map<int, Port *> net_driver;
-  for (int i = 0; i < n_nets; ++i)
+  std::map<int, uint8_t> net_gc;
+  std::map<int, Port *> net_driver;
+  for (int i = 1; i < n_nets; ++i) // skip 0, nullptr
     {
       Net *n = nets[i];
       if (contains(boundary_nets, n)
 	  || n->is_constant())
 	continue;
       
-      std::unordered_map<uint8_t, int> n_gc;
+      std::map<uint8_t, int> n_gc;
       for (uint8_t gc : global_classes)
 	extend(n_gc, gc, 0);
       
@@ -209,7 +213,7 @@ Promoter::promote(bool do_promote)
     }
   
   int n_promoted = 0;
-  std::unordered_map<uint8_t, int> gc_promoted;
+  std::map<uint8_t, int> gc_promoted;
   for (int gc : global_classes)
     extend(gc_promoted, gc, 0);
   
@@ -300,7 +304,7 @@ Promoter::promote(bool do_promote)
   return gb_inst_gc;
 }
 
-std::unordered_map<Instance *, uint8_t>
+std::map<Instance *, uint8_t, IdLess>
 promote_globals(const ChipDB *chipdb, Design *d, bool do_promote)
 {
   Promoter promoter(chipdb, d);

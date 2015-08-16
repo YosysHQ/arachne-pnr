@@ -32,6 +32,71 @@
 
 #include <cassert>
 
+class random_generator
+{
+  static const unsigned m = 2147483647;
+  static const unsigned a = 48271;
+  
+  unsigned long long state;
+  
+public:
+  random_generator() : state(1) {}
+  random_generator(unsigned seed)
+    : state(seed % m)
+  {
+    assert(seed != 0);
+  }
+  
+  // uniformly random between 0 .. m
+  unsigned random()
+  {
+    state = (a * state) % m;
+    return (unsigned)state;
+  }
+  unsigned operator()()
+  {
+    return random();
+  }
+  
+  int random_int(int min, int max)
+  {
+    assert(max >= min);
+    unsigned d = max - min + 1;
+    assert(d <= m);
+    
+    unsigned k = m / d;
+    assert(k >= 1);
+    
+    for (;;)
+      {
+	// randomly distributed 0 .. (m-1)
+	unsigned x = random();
+	if (x >= k*d)
+	  continue;
+	
+	// randomly disributed 0 ..(k*m-1)
+	int r = min + (int)(x % d);
+	assert(min <= r && r <= max);
+	return r;
+      }
+  }
+  
+  double random_real(double min, double max)
+  {
+    assert(max >= min);
+    if (min == max)
+      return min;
+    
+    double d = max - min;
+    assert(d > 0);
+    
+    unsigned x = random();
+    double r = min + d*(double)x / (double)(m-1);
+    assert(min <= r && r <= max);
+    return r;
+  }
+};
+
 extern std::ostream *logs;
 
 template<class T> std::ostream &
@@ -123,16 +188,6 @@ keys(const M &m)
   return std::move(keys);
 }
 
-template<typename M> inline std::unordered_set<typename M::key_type>
-unordered_keys(const M &m)
-{
-  std::unordered_set<typename M::key_type> keys;
-  std::transform(m.begin(), m.end(),
-		 std::inserter(keys, keys.end()),
-		 [](const typename M::value_type &p) { return p.first; });
-  return std::move(keys);
-}
-
 extern std::string unescape(const std::string &s);
 
 template<typename K, typename V> inline const V &
@@ -168,12 +223,25 @@ front(const C &c)
 }
 
 inline bool
-is_prefix(const std::string &s1, const std::string &s2)
+is_prefix(const std::string &prefix, const std::string &s)
 {
-  auto r = std::mismatch(s1.begin(), s1.end(), 
-			 s2.begin(),
+  if (prefix.size() > s.size())
+    return false;
+  auto r = std::mismatch(prefix.begin(), prefix.end(), 
+			 s.begin(),
 			 std::equal_to<char>());
-  return r.first == s1.end();
+  return r.first == prefix.end();
+}
+
+inline bool
+is_suffix(const std::string &s, const std::string &suffix)
+{
+  if (suffix.size() > s.size())
+    return false;
+  auto r = std::mismatch(suffix.rbegin(), suffix.rend(),
+			 s.rbegin(),
+			 std::equal_to<char>());
+  return r.first == suffix.rend();
 }
 
 extern std::string proc_self_dirname();
@@ -187,17 +255,17 @@ hexdigit(int i, char a = 'a')
 	  : a + (i - 10));
 }
 
-template<typename T, typename RG> inline const T &
-random_element(const std::vector<T> &v, RG &rg)
+template<typename T> inline const T &
+random_element(const std::vector<T> &v, random_generator &rg)
 {
-  return v[std::uniform_int_distribution<int>(0, v.size() - 1)(rg)];
+  return v[rg.random_int(0, v.size()-1)];
 }
 
-template<typename RG> inline int
-random_int(int min, int max, RG &rg)
+inline int
+random_int(int min, int max, random_generator &rg)
 {
   assert(min <= max);
-  return std::uniform_int_distribution<int>(min, max)(rg);
+  return rg.random_int(min, max);
 }
 
 template<typename T> inline std::size_t
@@ -210,19 +278,34 @@ hash_combine(std::size_t h, const T &v)
 namespace std {
 
 template<typename S, typename T>
-struct hash<pair<S, T>>
+struct hash<std::pair<S, T>>
 {
 public:
-  size_t operator() (const pair<S, T> &p) const
+  size_t operator() (const std::pair<S, T> &p) const
   {
-    hash<int> hasher;
-    size_t h = hasher(p.first);
-    return hash_combine(h, hasher(p.second));
+    std::hash<S> Shasher;
+    size_t h = Shasher(p.first);
+    
+    std::hash<T> Thasher;
+    return hash_combine(h, Thasher(p.second));
   }
 };
 
 }
 
 extern std::string expand_filename(const std::string &file);
+
+template<typename T> void
+pop(std::vector<T> &v, int i)
+{
+  assert(i < (int)v.size());
+  if (i == (int)v.size())
+    v.pop_back();
+  else
+    {
+      std::swap(v[i], v.back());
+      v.pop_back();
+    }
+}
 
 #endif

@@ -30,6 +30,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <cstdlib>
 
 const char *program_name;
 
@@ -59,11 +60,15 @@ usage()
     << "    -d <device>, --device <device>\n"
     << "        Target device <device>.  Supported devices:\n"
     << "          1k - Lattice Semiconductor iCE40LP/HX1K\n"
+    << "          8k - Lattice Semiconductor iCE40LP/HX8K\n"
     << "        Default: 1k\n"
     << "\n"
     << "    -c <file>, --chipdb <chipdb-file>\n"
     << "        Read chip database from <chipdb-file>.\n"
-    << "        Default: /usr/local/share/icebox/chipdb-<device>.txt\n"
+    << "        Default: +/share/arachne-pnr/chipdb-<device>.bin\n"
+    << "\n"
+    << "    --write-binary-chipdb <file>\n"
+    << "        Write binary chipdb to <file>.\n"
     << "\n"
     << "    -l, --no-promote-globals\n"
     << "        Don't promote nets to globals.\n"
@@ -73,8 +78,25 @@ usage()
     << "    -V <file>, --post-pack-verilog <file>\n"
     << "        Write post-pack netlist to <file> as Verilog.\n"
     << "\n"
+    << "    --post-place-blif <file>\n"
+    << "        Write post-place netlist to <file> as BLIF.\n"
+    << "\n"
+    << "    --route-only\n"
+    << "        Input must include placement.\n"
+    << "\n"
     << "    -p <pcf-file>, --pcf-file <pcf-file>\n"
     << "        Read physical constraints from <pcf-file>.\n"
+    << "\n"
+    << "    -P <package>, --package <package>\n"
+    << "        Target package <package>.\n"
+    << "        Default: tq144 for 1k, ct256 for 8k\n"
+    << "\n"
+    << "    -r\n"
+    << "        Randomize seed.\n"
+    << "\n"
+    << "    -s <int>, --seed <int>\n"
+    << "        Set seed for random generator to <int>.\n"
+    << "        Default: 1\n"
     << "\n"
     << "    -w <pcf-file>, --write-pcf <pcf-file>\n"
     << "        Write pin assignments to <pcf-file> after placement.\n"
@@ -95,15 +117,21 @@ main(int argc, const char **argv)
   
   bool help = false,
     quiet = false,
-    do_promote_globals = true;
-  const char *device = nullptr,
-    *chipdb_file = nullptr,
+    do_promote_globals = true,
+    route_only = false,
+    randomize_seed = false;
+  std::string device = "1k";
+  const char *chipdb_file = nullptr,
     *input_file = nullptr,
+    *package_name_cp = nullptr,
     *pcf_file = nullptr,
     *post_place_pcf = nullptr,
     *pack_blif = nullptr,
     *pack_verilog = nullptr,
-    *output_file = nullptr;
+    *place_blif = nullptr,
+    *output_file = nullptr,
+    *seed_str = nullptr,
+    *binary_chipdb = nullptr;
   
   for (int i = 1; i < argc; ++i)
     {
@@ -133,11 +161,19 @@ main(int argc, const char **argv)
 	      ++i;
 	      chipdb_file = argv[i];
 	    }
+	  else if (!strcmp(argv[i], "--write-binary-chipdb"))
+	    {
+	      if (i + 1 >= argc)
+		fatal(fmt(argv[i] << ": expected argument"));
+	      
+	      ++i;
+	      binary_chipdb = argv[i];
+	    }
 	  else if (!strcmp(argv[i], "-l")
 		   || !strcmp(argv[i], "--no-promote-globals"))
 	    do_promote_globals = false;
 	  else if (!strcmp(argv[i], "-B")
-	      || !strcmp(argv[i], "--pack-blif"))
+	      || !strcmp(argv[i], "--post-pack-blif"))
 	    {
 	      if (i + 1 >= argc)
 		fatal(fmt(argv[i] << ": expected argument"));
@@ -146,7 +182,7 @@ main(int argc, const char **argv)
 	      pack_blif = argv[i];
 	    }
 	  else if (!strcmp(argv[i], "-V")
-	      || !strcmp(argv[i], "--pack-verilog"))
+	      || !strcmp(argv[i], "--post-pack-verilog"))
 	    {
 	      if (i + 1 >= argc)
 		fatal(fmt(argv[i] << ": expected argument"));
@@ -154,6 +190,16 @@ main(int argc, const char **argv)
 	      ++i;
 	      pack_verilog = argv[i];
 	    }
+	  else if (!strcmp(argv[i], "--post-place-blif"))
+	    {
+	      if (i + 1 >= argc)
+		fatal(fmt(argv[i] << ": expected argument"));
+	      
+	      ++i;
+	      place_blif = argv[i];
+	    }
+	  else if (!strcmp(argv[i], "--route-only"))
+	    route_only = true;
 	  else if (!strcmp(argv[i], "-p")
 		   || !strcmp(argv[i], "--pcf-file"))
 	    {
@@ -163,6 +209,17 @@ main(int argc, const char **argv)
 	      ++i;
 	      pcf_file = argv[i];
 	    }
+	  else if (!strcmp(argv[i], "-P")
+		   || !strcmp(argv[i], "--package"))
+	    {
+	      if (i + 1 >= argc)
+		fatal(fmt(argv[i] << ": expected argument"));
+	      
+	      ++i;
+	      package_name_cp = argv[i];
+	    }
+	  else if (!strcmp(argv[i], "-r"))
+	    randomize_seed = true;
 	  else if (!strcmp(argv[i], "-w")
 		   || !strcmp(argv[i], "--write-pcf"))
 	    {
@@ -171,6 +228,15 @@ main(int argc, const char **argv)
 	      
 	      ++i;
 	      post_place_pcf = argv[i];
+	    }
+	  else if (!strcmp(argv[i], "-s")
+		   || !strcmp(argv[i], "--seed"))
+	    {
+	      if (i + 1 >= argc)
+		fatal(fmt(argv[i] << ": expected argument"));
+	      
+	      ++i;
+	      seed_str = argv[i];
 	    }
 	  else if (!strcmp(argv[i], "-o")
 		   || !strcmp(argv[i], "--output-file"))
@@ -199,8 +265,20 @@ main(int argc, const char **argv)
       exit(EXIT_SUCCESS);
     }
   
-  if (!device)
-    device = "1k";
+  if (device != "1k"
+      && device != "8k")
+    fatal(fmt("unknown device: " << device));
+  
+  std::string package_name;
+  if (package_name_cp)
+    package_name = package_name_cp;
+  else if (device == "1k")
+    package_name = "tq144";
+  else
+    {
+      assert(device == "8k");
+      package_name = "ct256";
+    }
   
   std::ostream *null_ostream = nullptr;
   if (quiet)
@@ -208,18 +286,97 @@ main(int argc, const char **argv)
   else
     logs = &std::cerr;
   
-  *logs << "device: " << device << "\n";
+  unsigned seed = 0;
+  if (seed_str)
+    {
+      std::string seed_s = seed_str;
+      
+      if (seed_s.empty())
+	fatal("invalid empty seed");
+      
+      for (char ch : seed_s)
+	{
+	  if (ch >= '0'
+	      && ch <= '9')
+	    seed = seed * 10 + (unsigned)(ch - '0');
+	  else
+	    fatal(fmt("invalid character `" 
+		      << ch
+		      << "' in unsigned integer literal in seed"));
+	}
+    }
+  else
+    seed = 1;
   
+  if (randomize_seed)
+    {
+      std::random_device rd;
+      do {
+	seed = rd();
+      } while (seed == 0);
+    }
+  
+  *logs << "seed: " << seed << "\n";
+  if (!seed)
+    fatal("zero seed");
+  
+  random_generator rg(seed);
+  
+  *logs << "device: " << device << "\n";
   std::string chipdb_file_s;
   if (chipdb_file)
     chipdb_file_s = chipdb_file;
   else
-    chipdb_file_s = (std::string("/usr/local/share/icebox/chipdb-")
+    chipdb_file_s = (std::string("+/share/arachne-pnr/chipdb-")
 		     + device 
-		     + ".txt");
+		     + ".bin");
   *logs << "read_chipdb " << chipdb_file_s << "...\n";
   const ChipDB *chipdb = read_chipdb(chipdb_file_s);
+  
+  if (binary_chipdb)
+    {
+      *logs << "write_binary_chipdb " << binary_chipdb << "\n";
+      
+      std::string expanded = expand_filename(binary_chipdb);
+      std::ofstream ofs(expanded);
+      if (ofs.fail())
+	fatal(fmt("write_binary_chidpb: failed to open `" << expanded << "': "
+		  << strerror(errno)));
+      obstream obs(ofs);
+      chipdb->bwrite(obs);
+      
+      // clean up
+      if (chipdb)
+	delete chipdb;
+      
+      logs = nullptr;
+      if (null_ostream)
+	{
+	  delete null_ostream;
+	  null_ostream = nullptr;
+	}
+      
+      return 0;
+    }
+  
+  *logs << "  supported packages: ";
+  bool first = true;
+  for (const auto &p : chipdb->packages)
+    {
+      if (first)
+	first = false;
+      else
+	*logs << ", ";
+      *logs << p.first;
+    }
+  *logs << "\n";
+  
   // chipdb->dump(std::cout);
+  
+  auto package_i = chipdb->packages.find(package_name);
+  if (package_i == chipdb->packages.end())
+    fatal(fmt("unknown package `" << package_name << "'"));
+  const Package &package = package_i->second;
   
   Design *d;
   if (input_file)
@@ -243,97 +400,135 @@ main(int argc, const char **argv)
   
   {
     Models models(d);
-    
-    Constraints constraints;
-    if (pcf_file)
-      {
-	*logs << "read_pcf " << pcf_file << "...\n";
-	read_pcf(pcf_file, d, constraints);
-      }
-    
-    *logs << "instantiate_io...\n";
-    instantiate_io(d);
-#ifndef NDEBUG
-    d->check();
-#endif
-    // d->dump();
-    
-    CarryChains chains;
-    
-    *logs << "pack...\n";
-    pack(chipdb, d, chains);
-#ifndef NDEBUG
-    d->check();
-#endif
-    // d->dump();
-    
-    if (pack_blif)
-      {
-	*logs << "write_blif " << pack_blif << "\n";
-	std::string expanded = expand_filename(pack_blif);
-	std::ofstream fs(expanded);
-	if (fs.fail())
-	  fatal(fmt("write_blif: failed to open `" << expanded << "': "
-		    << strerror(errno)));
-	d->write_blif(fs);
-      }
-    if (pack_verilog)
-      {
-	*logs << "write_verilog " << pack_verilog << "\n";
-	std::string expanded = expand_filename(pack_verilog);
-	std::ofstream fs(expanded);
-	if (fs.fail())
-	  fatal(fmt("write_verilog: failed to open `" << expanded << "': "
-		    << strerror(errno)));
-	d->write_verilog(fs);
-      }
-    
-    *logs << "promote_globals...\n";
-    std::unordered_map<Instance *, uint8_t> gb_inst_gc
-      = promote_globals(chipdb, d, do_promote_globals);
-#ifndef NDEBUG
-    d->check();
-#endif
-    // d->dump();
-    
-    *logs << "realize_constants...\n";
-    realize_constants(chipdb, d);
-#ifndef NDEBUG
-    d->check();
-#endif
-    
     Configuration conf;
     
-    *logs << "place...\n";
-    // d->dump();
-    std::unordered_map<Instance *, Location> placement = place(chipdb, d,
-							       chains, constraints, gb_inst_gc,
-							       conf);
+    std::map<Instance *, int, IdLess> placement;
+    if (route_only)
+      {
+	Model *top = d->top();
+	for (Instance *inst : top->instances())
+	  {
+	    const std::string &loc_attr = inst->get_attr("loc").as_string();
+	    int cell;
+	    sscanf(loc_attr.c_str(), "%d", &cell);
+	    extend(placement, inst, cell);
+	  }
+      }
+    else
+      {
+	Constraints constraints;
+	if (pcf_file)
+	  {
+	    *logs << "read_pcf " << pcf_file << "...\n";
+	    read_pcf(pcf_file, package, d, constraints);
+	  }
+	
+	*logs << "instantiate_io...\n";
+	instantiate_io(d);
 #ifndef NDEBUG
-    d->check();
+	d->check();
+#endif
+	// d->dump();
+    
+	CarryChains chains;
+    
+	*logs << "pack...\n";
+	pack(chipdb, package, d, chains);
+#ifndef NDEBUG
+	d->check();
+#endif
+	// d->dump();
+    
+	if (pack_blif)
+	  {
+	    *logs << "write_blif " << pack_blif << "\n";
+	    std::string expanded = expand_filename(pack_blif);
+	    std::ofstream fs(expanded);
+	    if (fs.fail())
+	      fatal(fmt("write_blif: failed to open `" << expanded << "': "
+			<< strerror(errno)));
+	    d->write_blif(fs);
+	  }
+	if (pack_verilog)
+	  {
+	    *logs << "write_verilog " << pack_verilog << "\n";
+	    std::string expanded = expand_filename(pack_verilog);
+	    std::ofstream fs(expanded);
+	    if (fs.fail())
+	      fatal(fmt("write_verilog: failed to open `" << expanded << "': "
+			<< strerror(errno)));
+	    d->write_verilog(fs);
+	  }
+    
+	*logs << "promote_globals...\n";
+	std::map<Instance *, uint8_t, IdLess> gb_inst_gc
+	  = promote_globals(chipdb, d, do_promote_globals);
+#ifndef NDEBUG
+	d->check();
+#endif
+	// d->dump();
+    
+	*logs << "realize_constants...\n";
+	realize_constants(chipdb, d);
+#ifndef NDEBUG
+	d->check();
 #endif
     
-    if (post_place_pcf)
-      {
-	*logs << "write_pcf " << post_place_pcf << "...\n";
-	std::string expanded = expand_filename(post_place_pcf);
-	std::ofstream fs(expanded);
-	if (fs.fail())
-	  fatal(fmt("write_pcf: failed to open `" << expanded << "': "
-		    << strerror(errno)));
-	for (const auto &p : placement)
+	*logs << "place...\n";
+	// d->dump();
+	placement = place(rg, chipdb, package, d,
+			  chains, constraints, gb_inst_gc,
+			  conf);
+#ifndef NDEBUG
+	d->check();
+#endif
+    
+	if (post_place_pcf)
 	  {
-	    if (models.is_io(p.first))
+	    *logs << "write_pcf " << post_place_pcf << "...\n";
+	    std::string expanded = expand_filename(post_place_pcf);
+	    std::ofstream fs(expanded);
+	    if (fs.fail())
+	      fatal(fmt("write_pcf: failed to open `" << expanded << "': "
+			<< strerror(errno)));
+	    for (const auto &p : placement)
 	      {
-		int pin = chipdb->loc_pin.at(p.second);
-		Port *top_port = (p.first
-				  ->find_port("PACKAGE_PIN")
-				  ->connection_other_port());
-		assert(isa<Model>(top_port->node())
-		       && cast<Model>(top_port->node()) == d->top());
-		
-		fs << "set_io " << top_port->name() << " " << pin << "\n";
+		if (models.is_io(p.first))
+		  {
+		    const Location &loc = chipdb->cell_location[p.second];
+		    std::string pin = package.loc_pin.at(loc);
+		    Port *top_port = (p.first
+				      ->find_port("PACKAGE_PIN")
+				      ->connection_other_port());
+		    assert(isa<Model>(top_port->node())
+			   && cast<Model>(top_port->node()) == d->top());
+		    
+		    fs << "set_io " << top_port->name() << " " << pin << "\n";
+		  }
 	      }
+	  }
+	
+	if (place_blif)
+	  {
+	    for (const auto &p : placement)
+	      {
+		// p.first->set_attr("loc", fmt(p.second));
+		const Location &loc = chipdb->cell_location[p.second];
+		int t = loc.tile();
+		int pos = loc.pos();
+		p.first->set_attr("loc",
+				  fmt(chipdb->tile_x(t)
+				      << "," << chipdb->tile_y(t)
+				      << "/" << pos));
+	      }
+	    
+	    *logs << "write_blif " << place_blif << "\n";
+	    std::string expanded = expand_filename(place_blif);
+	    std::ofstream fs(expanded);
+	    if (fs.fail())
+	      fatal(fmt("write_blif: failed to open `" << expanded << "': "
+			<< strerror(errno)));
+	    d->write_blif(fs);
 	  }
       }
     
@@ -360,8 +555,11 @@ main(int argc, const char **argv)
       }
   }
   
+  if (d)
   delete d;
-  delete chipdb;
+  
+  if (chipdb)
+    delete chipdb;
   
   logs = nullptr;
   if (null_ostream)

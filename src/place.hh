@@ -16,23 +16,26 @@
 #ifndef PNR_PLACE_HH
 #define PNR_PLACE_HH
 
-#include <unordered_map>
+#include "util.hh"
 #include <ostream>
 
 class Design;
 class Instance;
-class Location;
 class Configuration;
 class ChipDB;
+class Package;
 class Constraints;
 class CarryChains;
+class IdLess;
 
-extern std::unordered_map<Instance *, Location>
-place(const ChipDB *chipdb, 
+extern std::map<Instance *, int, IdLess>
+place(random_generator &rg,
+      const ChipDB *chipdb, 
+      const Package &package,
       Design *d,
       CarryChains &chains,
       const Constraints &constraints,
-      const std::unordered_map<Instance *, uint8_t> &gb_inst_gc,
+      const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc,
       Configuration &conf);
 
 #endif

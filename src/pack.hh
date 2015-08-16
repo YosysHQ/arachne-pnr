@@ -18,6 +18,6 @@
 
 class CarryChains;
 
-extern void pack(const ChipDB *chipdb, Design *d, CarryChains &chains);
+extern void pack(const ChipDB *chipdb, const Package &package, Design *d, CarryChains &chains);
 
 #endif

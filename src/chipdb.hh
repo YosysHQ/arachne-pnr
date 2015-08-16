@@ -18,6 +18,9 @@
 
 #include "location.hh"
 #include "util.hh"
+#include "hashmap.hh"
+#include "bstream.hh"
+#include "vector.hh"
 
 #include <ostream>
 #include <string>
@@ -30,19 +33,20 @@ class CBit
 {
 public:
   friend std::ostream &operator<<(std::ostream &s, const CBit &cbit);
+  friend obstream &operator<<(obstream &obs, const CBit &cbit);
+  friend ibstream &operator>>(ibstream &ibs, CBit &cbit);
   template<typename T> friend struct std::hash;
   
-  int x;  // tile
-  int y;
+  int tile;
   int row;
   int col;
   
 public:
   CBit()
-    : x(0), y(0), row(0), col(0)
+    : tile(0), row(0), col(0)
   {}
-  CBit(int x_, int y_, int r, int c)
-    : x(x_), y(y_), row(r), col(c)
+  CBit(int tile_, int r, int c)
+    : tile(tile_), row(r), col(c)
   {}
   
   bool operator==(const CBit &rhs) const;
@@ -50,6 +54,16 @@ public:
   
   bool operator<(const CBit &rhs) const;
 };
+
+inline obstream &operator<<(obstream &obs, const CBit &cbit)
+{
+  return obs << cbit.tile << cbit.row << cbit.col;
+}
+
+inline ibstream &operator>>(ibstream &ibs, CBit &cbit)
+{
+  return ibs >> cbit.tile >> cbit.row >> cbit.col;
+}
 
 namespace std {
 
@@ -59,9 +73,8 @@ struct hash<CBit>
 public:
   size_t operator() (const CBit &cbit) const
   {
-    hash<int> hasher;
-    size_t h = hasher(cbit.x);
-    h = hash_combine(h, hasher(cbit.y));
+    std::hash<int> hasher;
+    size_t h = hasher(cbit.tile);
     h = hash_combine(h, hasher(cbit.row));
     return hash_combine(h, hasher(cbit.col));
   }
@@ -74,24 +87,27 @@ class CBitVal
 public:
   friend std::ostream &operator<<(std::ostream &s, const CBitVal &cbits);
   
-  std::unordered_map<CBit, bool> cbit_val;
+  std::map<CBit, bool> cbit_val;
   
 public:
   CBitVal() {}
-  CBitVal(const std::unordered_map<CBit, bool> &cbv)
+  CBitVal(const std::map<CBit, bool> &cbv)
     : cbit_val(cbv)
   {}
   
-  std::unordered_set<CBit> cbits() const;
+  std::set<CBit> cbits() const;
 };
 
 class Switch
 {
 public:
+  friend obstream &operator<<(obstream &obs, const Switch &sw);
+  friend ibstream &operator>>(ibstream &ibs, Switch &sw);
+  
   bool bidir; // routing
   int tile;
   int out;
-  std::unordered_map<int, std::vector<bool>> in_val;
+  std::map<int, unsigned> in_val;
   std::vector<CBit> cbits;
   
 public:
@@ -99,7 +115,7 @@ public:
   Switch(bool bi,
 	 int t,
 	 int o,
-	 const std::unordered_map<int, std::vector<bool>> &iv,
+	 const std::map<int, unsigned> &iv,
 	 const std::vector<CBit> &cb)
     : bidir(bi),
       tile(t),
@@ -109,9 +125,51 @@ public:
   {}
 };
 
-enum class TileType {
-  NO_TILE, IO_TILE, LOGIC_TILE, RAMB_TILE, RAMT_TILE,
+extern obstream &operator<<(obstream &obs, const Switch &sw);
+extern ibstream &operator>>(ibstream &ibs, Switch &sw);
+
+enum class TileType : int {
+  EMPTY, IO, LOGIC, RAMB, RAMT,
 };
+
+enum class CellType : int {
+  LOGIC, IO, GB, RAM, WARMBOOT, PLL,
+};
+
+extern std::string cell_type_name(CellType ct);
+
+inline obstream &operator<<(obstream &obs, TileType t)
+{
+  return obs << static_cast<int>(t);
+}
+
+inline ibstream &operator>>(ibstream &ibs, TileType &t)
+{
+  int x;
+  ibs >> x;
+  t = static_cast<TileType>(x);
+  return ibs;
+}
+
+constexpr int cell_type_idx(CellType type)
+{
+  return static_cast<int>(type);
+}
+
+static const int n_cell_types = cell_type_idx(CellType::PLL) + 1;
+
+inline obstream &operator<<(obstream &obs, CellType t)
+{
+  return obs << static_cast<int>(t);
+}
+
+inline ibstream &operator>>(ibstream &ibs, CellType &t)
+{
+  int x;
+  ibs >> x;
+  t = static_cast<CellType>(x);
+  return ibs;
+}
 
 namespace std {
 
@@ -121,16 +179,40 @@ struct hash<TileType>
 public:
   size_t operator() (TileType x) const
   {
-    using underlying_t = typename underlying_type<TileType>::type;
-    hash<underlying_t> hasher;
-    return hasher(static_cast<underlying_t>(x));
+    std::hash<int> hasher;
+    return hasher(static_cast<int>(x));
   }
 };
 
 }
 
 extern std::string tile_type_name(TileType t);
+
+class Package
+{
+  friend obstream &operator<<(obstream &obs, const Package &pkg);
+  friend ibstream &operator>>(ibstream &ibs, Package &pkg);
   
+public:
+  std::string name;
+  
+  std::map<std::string, Location> pin_loc;
+  std::map<Location, std::string> loc_pin;
+};
+
+inline obstream &operator<<(obstream &obs, const Package &pkg)
+{
+  return obs << pkg.name << pkg.pin_loc;
+}
+
+inline ibstream &operator>>(ibstream &ibs, Package &pkg)
+{
+  ibs >> pkg.name >> pkg.pin_loc;
+  for (const auto &p : pkg.pin_loc)
+    extend(pkg.loc_pin, p.second, p.first);
+  return ibs;
+}
+
 class ChipDB
 {
 public:
@@ -142,6 +224,7 @@ public:
   int n_tiles;
   int n_nets;  // FIXME rename n_cnets
   int n_global_nets;  // FIXME n_global_cnets
+  std::map<int, int> net_global;
   
 #if 0
   // FIXME Placement maps gate -> cell, not Location
@@ -176,32 +259,44 @@ public:
   std::vector<std::map<std::string, std::string>> warmboot_mfvs;
 #endif
   
-  std::string package;
-  std::unordered_map<int, Location> pin_loc;
-  std::unordered_map<Location, int> loc_pin;
-  std::unordered_map<Location, int> loc_pin_glb_num;
+  std::map<std::string, Package> packages;
   
-  std::vector<std::vector<int>> bank_tiles;
+  std::map<Location, int> loc_pin_glb_num;
   
   std::vector<int> iolatch;  // tiles
-  std::unordered_map<Location, Location> ieren;
-  std::unordered_map<std::string, std::tuple<int, int, int>> extra_bits;
+  std::map<Location, Location> ieren;
+  std::map<std::string, std::tuple<int, int, int>> extra_bits;
   
-  std::unordered_map<std::pair<int, int>, int> gbufin;
+  std::map<std::pair<int, int>, int> gbufin;
   
-  std::unordered_map<int, int> tile_colbuf_tile;
+  std::map<int, int> tile_colbuf_tile;
   
   std::vector<TileType> tile_type;
+  
   std::vector<std::pair<int, std::string>> net_tile_name;  // FIXME remove
-  std::vector<std::unordered_map<std::string, int>> tile_nets;
-  std::unordered_map<TileType,
-		     std::unordered_map<std::string, std::vector<CBit>>> tile_nonrouting_cbits;
+  std::vector<std::map<std::string, int>> tile_nets;
+  std::map<TileType,
+	   std::map<std::string, std::vector<CBit>>> tile_nonrouting_cbits;
   
   // FIXME remove for general cell above
   std::vector<int> extra_cell_tile;
-  std::vector<std::string> extra_cell_name;
+  std::vector<std::string> extra_cell_type;
   std::vector<std::map<std::string, std::pair<int, std::string>>>
     extra_cell_mfvs;
+  
+  int n_cells;
+  BasedVector<CellType, 1> cell_type;
+  BasedVector<Location, 1> cell_location;
+
+  std::vector<std::vector<int>> tile_pos_cell;
+  int loc_cell(const Location &loc) const 
+  {
+    return tile_pos_cell[loc.tile()][loc.pos()];
+  }
+  
+  std::vector<std::vector<int>> cell_type_cells;
+  
+  std::vector<std::vector<int>> bank_cells;
   
   // buffers and routing
   std::vector<Switch> switches;
@@ -209,8 +304,9 @@ public:
   std::vector<std::set<int>> out_switches;
   std::vector<std::set<int>> in_switches;
   
-  std::unordered_map<TileType, std::pair<int, int>> tile_cbits_block_size;
+  std::map<TileType, std::pair<int, int>> tile_cbits_block_size;
   
+  void add_cell(CellType type, const Location &loc);
   bool is_global_net(int i) const { return i < n_global_nets; }
   int find_switch(int in, int out) const;
   
@@ -235,13 +331,26 @@ public:
   }
   
   int tile_bank(int t) const;
+  int ramt_ramb_tile(int ramt_t) const
+  {
+    assert(tile_type[ramt_t] == TileType::RAMT);
+    
+    int ramb_t = ramt_t - width;
+    assert(ramb_t == tile(tile_x(ramt_t),
+			  tile_y(ramt_t)-1));
+    assert(tile_type[ramb_t] == TileType::RAMB);
+    return ramb_t;
+  }
   
   void set_device(const std::string &d, int w, int h, int n_nets_);
+  void finalize();
   
 public:
   ChipDB();
   
   void dump(std::ostream &s) const;
+  void bwrite(obstream &obs) const;
+  void bread(ibstream &ibs);
 };
 
 extern ChipDB *read_chipdb(const std::string &filename);

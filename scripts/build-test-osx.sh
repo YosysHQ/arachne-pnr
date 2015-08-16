@@ -11,4 +11,8 @@ make OPTDEBUGFLAGS='-O2' simpletest
 make clean
 make OPTDEBUGFLAGS='-O2 -DNDEBUG' simpletest
 
+# full test with default options
+make clean
+make test
+
 make clean

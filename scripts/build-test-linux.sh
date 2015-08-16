@@ -23,5 +23,6 @@ make CC=gcc CXX=g++ OPTDEBUGFLAGS='-O2 -DNDEBUG' simpletest
 # full test with default options
 make clean
 make test
+make testvg
 
 make clean

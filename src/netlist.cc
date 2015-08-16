@@ -73,6 +73,8 @@ opposite_direction(Direction d)
     }
 }
 
+int Identified::id_counter = 0;
+
 void
 Const::write_verilog(std::ostream &s) const
 {
@@ -162,12 +164,13 @@ Port::is_input() const
 
 Node::~Node()
 {
-  for (const auto &p : m_ports)
+  for (Port *p : m_ordered_ports)
     {
-      p.second->disconnect();
-      delete p.second;
+      p->disconnect();
+      delete p;
     }
   m_ports.clear();
+  m_ordered_ports.clear();
 }
 
 Port *
@@ -175,6 +178,7 @@ Node::add_port(Port *t)
 {
   Port *new_port = new Port(this, t->name(), t->direction(), t->undriven());
   extend(m_ports, new_port->name(), new_port);
+  m_ordered_ports.push_back(new_port);
   return new_port;
 }
 
@@ -183,6 +187,7 @@ Node::add_port(const std::string &n, Direction dir)
 {
   Port *new_port = new Port(this, n, dir);
   extend(m_ports, new_port->name(), new_port);
+  m_ordered_ports.push_back(new_port);
   return new_port;
 }
 
@@ -191,6 +196,7 @@ Node::add_port(const std::string &n, Direction dir, Value u)
 {
   Port *new_port = new Port(this, n, dir, u);
   extend(m_ports, new_port->name(), new_port);
+  m_ordered_ports.push_back(new_port);
   return new_port;
 }
 
@@ -205,8 +211,8 @@ Instance::Instance(Model *parent_, Model *inst_of)
     m_parent(parent_),
     m_instance_of(inst_of)
 {
-  for (const auto &p : m_instance_of->m_ports)
-    add_port(p.second);
+  for (Port *p : m_instance_of->m_ordered_ports)
+    add_port(p);
 }
 
 void
@@ -224,18 +230,18 @@ Instance::merge_attrs(const Instance *inst)
 }
 
 bool
-Instance::has_param(const std::string &id) const
+Instance::has_param(const std::string &pn) const
 { 
-  return (contains_key(m_params, id)
-	  || m_instance_of->has_param(id));
+  return (contains_key(m_params, pn)
+	  || m_instance_of->has_param(pn));
 }
 
 const Const &
-Instance::get_param(const std::string &id) const
+Instance::get_param(const std::string &pn) const
 {
-  auto i = m_params.find(id);
+  auto i = m_params.find(pn);
   if (i == m_params.end())
-    return m_instance_of->get_param(id);  // default
+    return m_instance_of->get_param(pn);  // default
   else
     return i->second;
 }
@@ -250,14 +256,14 @@ Instance::remove()
 
 void
 Instance::write_blif(std::ostream &s,
-		     const std::unordered_map<Net *, std::string> &net_name) const
+		     const std::map<Net *, std::string, IdLess> &net_name) const
 {
   s << ".gate " << m_instance_of->name();
-  for (const auto &p : m_ports)
+  for (Port *p : m_ordered_ports)
     {
-      s << " " << p.first << "=";
-      if (p.second->connected())
-	s << net_name.at(p.second->connection());
+      s << " " << p->name() << "=";
+      if (p->connected())
+	s << net_name.at(p->connection());
     }
   s << "\n";
   
@@ -290,7 +296,7 @@ write_verilog_name(std::ostream &s, const std::string &name)
 
 void
 Instance::write_verilog(std::ostream &s,
-			const std::unordered_map<Net *, std::string> &net_name,
+			const std::map<Net *, std::string, IdLess> &net_name,
 			const std::string &inst_name) const
 {
   if (!m_attrs.empty())
@@ -335,9 +341,9 @@ Instance::write_verilog(std::ostream &s,
   write_verilog_name(s, inst_name);
   s << " (";
   bool first = true;
-  for (const auto &p : m_ports)
+  for (Port *p : m_ordered_ports)
     {
-      Net *conn = p.second->connection();
+      Net *conn = p->connection();
       if (conn)
 	{
 	  if (first)
@@ -345,7 +351,7 @@ Instance::write_verilog(std::ostream &s,
 	  else
 	    s << ",";
 	  s << "\n    .";
-	  write_verilog_name(s, p.first);
+	  write_verilog_name(s, p->name());
 	  s << "(";
 	  write_verilog_name(s, conn->name());
 	  s << ")";
@@ -370,8 +376,8 @@ Model::~Model()
   m_instances.clear();
   
   // disconnect ports before deleting nets
-  for (const auto &p : m_ports)
-    p.second->disconnect();
+  for (Port *p : m_ordered_ports)
+    p->disconnect();
   
   for (const auto &p : m_nets)
     delete p.second;
@@ -438,17 +444,17 @@ Model::add_instance(Model *inst_of)
   return new_inst;
 }
 
-std::unordered_set<Net *>
+std::set<Net *, IdLess>
 Model::boundary_nets(const Design *d) const
 {
   Model *io_model = d->find_model("SB_IO");
-  std::unordered_set<Net *> bnets;
-  for (const auto &p : m_ports)
+  std::set<Net *, IdLess> bnets;
+  for (Port *p : m_ordered_ports)
     {
-      Net *n = p.second->connection();
+      Net *n = p->connection();
       if (n)
 	{
-	  Port *q = p.second->connection_other_port();
+	  Port *q = p->connection_other_port();
 	  if (q
 	      && isa<Instance>(q->node())
 	      && cast<Instance>(q->node())->instance_of() == io_model
@@ -459,16 +465,17 @@ Model::boundary_nets(const Design *d) const
   return bnets;
 }
 
-std::pair<std::vector<Net *>, std::unordered_map<Net *, int>>
+std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
 Model::index_nets() const
 {
   int n_nets = 0;
   std::vector<Net *> vnets;
-  std::unordered_map<Net *, int> net_idx;
+  std::map<Net *, int, IdLess> net_idx;
+  vnets.push_back(nullptr);
+  ++n_nets;
   for (const auto &p : m_nets)
     {
       Net *n = p.second;
-      
       vnets.push_back(n);
       extend(net_idx, n, n_nets);
       ++n_nets;
@@ -476,13 +483,13 @@ Model::index_nets() const
   return std::make_pair(vnets, net_idx);
 }
 
-std::pair<std::vector<Net *>, std::unordered_map<Net *, int>>
+std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
 Model::index_internal_nets(const Design *d) const
 {
-  std::unordered_set<Net *> bnets = boundary_nets(d);
+  std::set<Net *, IdLess> bnets = boundary_nets(d);
   
   std::vector<Net *> vnets;
-  std::unordered_map<Net *, int> net_idx;
+  std::map<Net *, int, IdLess> net_idx;
   
   int n_nets = 0;
   for (const auto &p : m_nets)
@@ -498,20 +505,18 @@ Model::index_internal_nets(const Design *d) const
   return std::make_pair(vnets, net_idx);
 }
 
-std::pair<std::vector<Instance *>, std::unordered_map<Instance *, int>>
+std::pair<BasedVector<Instance *, 1>, std::map<Instance *, int, IdLess>>
 Model::index_instances() const
 {
-  std::vector<Instance *> gates;
-  std::unordered_map<Instance *, int> gate_idx;
+  BasedVector<Instance *, 1> gates;
+  std::map<Instance *, int, IdLess> gate_idx;
   
   int n_gates = 0;
-  gates.push_back(nullptr);
-  ++n_gates;
   for (Instance *inst : m_instances)
     {
+      ++n_gates;
       gates.push_back(inst);
       extend(gate_idx, inst, n_gates);
-      ++n_gates;
     }
   return std::make_pair(gates, gate_idx);
 }
@@ -589,14 +594,14 @@ Model::check(const Design *d) const
 {
   Model *io_model = d->find_model("SB_IO");
   
-  for (const auto &p : m_ports)
+  for (Port *p : m_ordered_ports)
     {
-      if (p.second->is_bidir())
+      if (p->is_bidir())
 	{
-	  Net *n = p.second->connection();
+	  Net *n = p->connection();
 	  if (n)
 	    {
-	      Port *q = p.second->connection_other_port();
+	      Port *q = p->connection_other_port();
 	      assert (q
 		      && isa<Instance>(q->node())
 		      && cast<Instance>(q->node())->instance_of() == io_model
@@ -605,23 +610,7 @@ Model::check(const Design *d) const
 	}
     }
   
-  // FIXME call boundary_nets?
-  std::unordered_set<Net *> bnets;
-  for (Instance *inst : m_instances)
-    {
-      if (inst->instance_of() == io_model)
-	{
-	  Port *p = inst->find_port("PACKAGE_PIN");
-	  
-	  Net *n = p->connection();
-	  extend(bnets, n);
-	  
-	  Port *q = p->connection_other_port();
-	  assert(n
-		 && q
-		 && isa<Model>(q->node()));
-	}
-    }
+  std::set<Net *, IdLess> bnets = boundary_nets(d);
   
   for (const auto &p : m_nets)
     {
@@ -650,21 +639,21 @@ Model::check(const Design *d) const
 }
 #endif
 
-std::pair<std::unordered_map<Net *, std::string>,
-	  std::unordered_set<Net *>>
+std::pair<std::map<Net *, std::string, IdLess>,
+	  std::set<Net *, IdLess>>
 Model::shared_names() const
 {
-  std::unordered_set<std::string> names;
-  std::unordered_map<Net *, std::string> net_name;
-  std::unordered_set<Net *> is_port;
-  for (auto i : m_ports)
+  std::set<std::string> names;
+  std::map<Net *, std::string, IdLess> net_name;
+  std::set<Net *, IdLess> is_port;
+  for (Port *p : m_ordered_ports)
     {
-      Net *n = i.second->connection();
-      extend(names, i.first);
+      Net *n = p->connection();
+      extend(names, p->name());
       if (n
-	  && n->name() == i.first)
+	  && n->name() == p->name())
 	{
-	  extend(net_name, n, i.first);
+	  extend(net_name, n, p->name());
 	  extend(is_port, n);
 	}
     }
@@ -694,25 +683,25 @@ Model::write_blif(std::ostream &s) const
   s << ".model " << m_name << "\n";
   
   s << ".inputs";
-  for (auto i : m_ports)
+  for (Port *p : m_ordered_ports)
     {
-      if (i.second->direction() == Direction::IN
-	  || i.second->direction() == Direction::INOUT)
-	s << " " << i.second->name();
+      if (p->direction() == Direction::IN
+	  || p->direction() == Direction::INOUT)
+	s << " " << p->name();
     }
   s << "\n";
   
   s << ".outputs";
-  for (auto i : m_ports)
+  for (Port *p : m_ordered_ports)
     {
-      if (i.second->direction() == Direction::OUT
-	  || i.second->direction() == Direction::INOUT)
-	s << " " << i.second->name();
+      if (p->direction() == Direction::OUT
+	  || p->direction() == Direction::INOUT)
+	s << " " << p->name();
     }
   s << "\n";
   
-  std::unordered_map<Net *, std::string> net_name;
-  std::unordered_set<Net *> is_port;
+  std::map<Net *, std::string, IdLess> net_name;
+  std::set<Net *, IdLess> is_port;
   std::tie(net_name, is_port) = shared_names();
   
   for (const auto &p : net_name)
@@ -736,18 +725,18 @@ Model::write_blif(std::ostream &s) const
   for (auto i : m_instances)
     i->write_blif(s, net_name);
   
-  for (auto i : m_ports)
+  for (Port *p : m_ordered_ports)
     {
-      Net *n = i.second->connection();
+      Net *n = p->connection();
       if (n
-	  && n->name() != i.first)
+	  && n->name() != p->name())
 	{
-	  if (i.second->is_input())
-	    s << ".names " << net_name.at(n) << " " << i.first << "\n";
+	  if (p->is_input())
+	    s << ".names " << net_name.at(n) << " " << p->name() << "\n";
 	  else
 	    {
-	      assert(i.second->is_output());
-	      s << ".names " << i.first << " " << net_name.at(n) << "\n";
+	      assert(p->is_output());
+	      s << ".names " << p->name() << " " << net_name.at(n) << "\n";
 	    }
 	  s << "1 1\n";
 	}
@@ -763,13 +752,13 @@ Model::write_verilog(std::ostream &s) const
   write_verilog_name(s, m_name);
   s << "(";
   bool first = true;
-  for (auto i : m_ports)
+  for (Port *p : m_ordered_ports)
     {
       if (first)
 	first = false;
       else
 	s << ", ";
-      switch(i.second->direction())
+      switch(p->direction())
 	{
 	case Direction::IN:
 	  s << "input ";
@@ -781,12 +770,12 @@ Model::write_verilog(std::ostream &s) const
 	  s << "inout ";
 	  break;
 	}
-      write_verilog_name(s, i.first);
+      write_verilog_name(s, p->name());
     }
   s << ");\n";
   
-  std::unordered_map<Net *, std::string> net_name;
-  std::unordered_set<Net *> is_port;
+  std::map<Net *, std::string, IdLess> net_name;
+  std::set<Net *, IdLess> is_port;
   std::tie(net_name, is_port) = shared_names();
   
   for (const auto &p : net_name)
@@ -816,22 +805,22 @@ Model::write_verilog(std::ostream &s) const
       s << ";\n";
     }
   
-  for (auto i : m_ports)
+  for (Port *p : m_ordered_ports)
     {
-      Net *n = i.second->connection();
+      Net *n = p->connection();
       if (n
-	  && n->name() != i.first)
+	  && n->name() != p->name())
 	{
-	  if (i.second->is_input())
+	  if (p->is_input())
 	    {
 	      s << "  assign ";
 	      write_verilog_name(s, net_name.at(n));
-	      s << " = " << i.first << ";\n";
+	      s << " = " << p->name() << ";\n";
 	    }
 	  else
 	    {
-	      assert(i.second->is_output());
-	      s << "  assign " << i.first << " = ";
+	      assert(p->is_output());
+	      s << "  assign " << p->name() << " = ";
 	      write_verilog_name(s, net_name.at(n));
 	      s << ";\n";
 	    }
@@ -1003,22 +992,17 @@ Design::create_standard_models()
 	
 	bram->add_port("RCLKE", Direction::IN, Value::ONE);
 	bram->add_port("RCLK", Direction::IN, Value::ZERO);
-	bram->add_port("RE", Direction::IN, Value::ONE);
+	bram->add_port("RE", Direction::IN, Value::ZERO);
 	
 	bram->add_port("WCLKE", Direction::IN, Value::ONE);
 	bram->add_port("WCLK", Direction::IN, Value::ZERO);
-	bram->add_port("WE", Direction::IN, Value::ONE);
+	bram->add_port("WE", Direction::IN, Value::ZERO);
 	
 	for (int i = 0; i <= 15; ++i)
 	  bram->set_param(fmt("INIT_" << (i < 10 ? '0' + i : 'A' + (i - 10))), "0");
 	bram->set_param("READ_MODE", BitVector(2, 0));
 	bram->set_param("WRITE_MODE", BitVector(2, 0));
       }
-  
-  Model *warmboot = new Model(this, "SB_WARMBOOT");
-  warmboot->add_port("BOOT", Direction::IN);
-  warmboot->add_port("S0", Direction::IN);
-  warmboot->add_port("S1", Direction::IN);
   
   // FIXME defaults
   Model *pll_core = new Model(this, "SB_PLL40_CORE");
@@ -1206,6 +1190,11 @@ Design::create_standard_models()
   pll_2f_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
   pll_2f_pad->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
   pll_2f_pad->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
+
+  Model *warmboot = new Model(this, "SB_WARMBOOT");
+  warmboot->add_port("BOOT", Direction::IN, Value::ZERO);
+  warmboot->add_port("S1", Direction::IN, Value::ZERO);
+  warmboot->add_port("S0", Direction::IN, Value::ZERO);
 }
 
 Model *
@@ -1261,4 +1250,5 @@ Models::Models(Design *d)
   ramnr = d->find_model("SB_RAM40_4KNR");
   ramnw = d->find_model("SB_RAM40_4KNW");
   ramnrnw = d->find_model("SB_RAM40_4KNRNW");
+  warmboot = d->find_model("SB_WARMBOOT");
 }

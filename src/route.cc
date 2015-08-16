@@ -20,6 +20,8 @@
 #include "chipdb.hh"
 #include "configuration.hh"
 #include "bitvector.hh"
+#include "ullmanset.hh"
+#include "priorityq.hh"
 
 #include <cassert>
 #include <ostream>
@@ -27,51 +29,56 @@
 #include <iomanip>
 #include <fstream>
 #include <set>
-#include <unordered_set>
 #include <map>
 #include <vector>
 #include <ctime>
 
 class Router;
 
-class CnetCompare
+class Comp
 {
-  const Router *router;
-  
 public:
-  CnetCompare()
-    : router(nullptr)
-  {}
+  Comp() {}
   
-  CnetCompare(const Router *r)
-    : router(r)
-  {}
-  
-  bool operator()(int lhs, int rhs) const;
+  bool operator()(const std::pair<int, int> &lhs,
+		  const std::pair<int, int> &rhs) const
+  {
+    return (lhs.second > rhs.second
+	    || (lhs.second == rhs.second
+		&& lhs.first > rhs.first));
+  }
 };
 
 class Router
 {
-  friend class CnetCompare;
-  
   const ChipDB *chipdb;
   Design *d;
   Configuration &conf;
-  const std::unordered_map<Instance *, Location> &placement;
+  const std::map<Instance *, int, IdLess> &placement;
   
   Models models;
   
-  std::unordered_map<std::string, std::pair<std::string, bool>> ram_gate_chip;
+  BitVector cnet_global,
+    cnet_local;
+  std::vector<std::vector<int>> cnet_outs;
+  
+  std::map<std::string, std::pair<std::string, bool>> ram_gate_chip;
   std::unordered_map<std::string, std::string> pll_gate_chip;
   
   std::vector<Net *> cnet_net;
   std::vector<std::vector<int>> cnet_tiles;
+  // cnet_bbox
+  std::vector<int> cnet_xmin,
+    cnet_xmax,
+    cnet_ymin,
+    cnet_ymax;
   
   int n_nets;  // to route
   std::vector<int> net_source;
   std::vector<std::vector<int>> net_targets;
+  std::vector<Net *> net_net;
   
-  static const int max_passes = 10;
+  static const int max_passes = 50;
   int passes;
   
   int n_shared;
@@ -81,11 +88,14 @@ class Router
   
   // per net
   int current_net;
-  std::unordered_set<int> unrouted;
+  UllmanSet current_net_target_tiles;
+  UllmanSet unrouted;
   
-  BitVector visited;
+  UllmanSet visited;
   
-  std::set<int, CnetCompare> frontier;
+  UllmanSet frontier;
+  // cn, cost[cn]
+  PriorityQ<std::pair<int, int>, Comp> frontierq;
   
   std::vector<int> backptr;
   std::vector<int> cost;
@@ -106,27 +116,18 @@ public:
   Router(const ChipDB *cdb,
 	 Design *d_,
 	 Configuration &c,
-	 const std::unordered_map<Instance *, Location> &p);
+	 const std::map<Instance *, int, IdLess> &p);
   
   std::vector<Net *> route();
 };
-
-bool
-CnetCompare::operator()(int lhs, int rhs) const
-{
-  assert(router);
-  
-  return (router->cost[lhs] < router->cost[rhs]
-	  || (router->cost[lhs] == router->cost[rhs]
-	      && lhs < rhs));
-}
 
 int
 Router::port_cnet(Instance *inst, Port *p)
 {
   const auto &p_name = p->name();
-  const auto &loc = placement.at(inst);
-  int t = chipdb->tile(loc.x(), loc.y());
+  int cell = placement.at(inst);
+  const Location &loc = chipdb->cell_location[cell];
+  int t = loc.tile();
   
   std::string tile_net_name;
   if (models.is_lc(inst))
@@ -159,7 +160,7 @@ Router::port_cnet(Instance *inst, Port *p)
     {
       if (p_name == "LATCH_INPUT_VALUE")
 	tile_net_name = fmt("io_global/latch");
-      if (p_name == "CLOCK_ENABLE")
+      else if (p_name == "CLOCK_ENABLE")
 	tile_net_name = fmt("io_global/cen");
       else if (p_name == "INPUT_CLK")
 	tile_net_name = fmt("io_global/inclk");
@@ -182,7 +183,7 @@ Router::port_cnet(Instance *inst, Port *p)
   else if (models.is_gb(inst))
     {
       if (p_name == "USER_SIGNAL_TO_GLOBAL_BUFFER")
-	tile_net_name = fmt("wire_gbuf/in");
+	tile_net_name = fmt("fabout");
       else
 	{
 	  assert(p_name == "GLOBAL_BUFFER_OUTPUT");
@@ -191,24 +192,37 @@ Router::port_cnet(Instance *inst, Port *p)
 	  tile_net_name = fmt("glb_netwk_" << g);
 	}
     }
+  else if (models.is_warmboot(inst))
+    {
+      auto xcell = std::find(chipdb->extra_cell_tile.begin(),
+			    chipdb->extra_cell_tile.end(), t);
+      assert(xcell != chipdb->extra_cell_tile.end());
+      const auto &mfvs =
+	chipdb->extra_cell_mfvs[xcell - chipdb->extra_cell_tile.begin()];
+      auto mfv = mfvs.find(p_name);
+      assert(mfv != mfvs.end());
+      t = mfv->second.first;
+      tile_net_name = mfv->second.second;
+    }
   else if (models.is_ramX(inst))
     {
       auto r = ram_gate_chip.at(p_name);
       tile_net_name = r.first;
-      if (r.second)
-	// ramb tile
-	t = chipdb->tile(loc.x(),
-			 loc.y() - 1);
+      
+      // FIXME if (r.second)
+      if (!contains(chipdb->tile_nets[t], tile_net_name))
+	t = chipdb->tile(chipdb->tile_x(loc.tile()),
+			 chipdb->tile_y(loc.tile()) - 1);
     }
   else
     {
       assert(models.is_pllX(inst));
       // FIXME
       std::string r = lookup_or_default(pll_gate_chip, p_name, p_name);
-      for (int i = 0; i < chipdb->extra_cell_tile.size(); ++i)
+      for (int i = 0; i < (int)chipdb->extra_cell_tile.size(); ++i)
 	{
 	  if (t != chipdb->extra_cell_tile[i]
-	      || chipdb->extra_cell_name[i] != "PLL")
+	      || chipdb->extra_cell_type[i] != "PLL")
 	    continue;
 	  
 	  const auto &p2 = chipdb->extra_cell_mfvs[i].at(r);
@@ -230,7 +244,7 @@ Router::port_cnet(Instance *inst, Port *p)
     }
   
   int n = chipdb->tile_nets[t].at(tile_net_name);
-  *logs << "n=" << n << "\n";
+  // *logs << "n=" << n << "\n";
   return n;
 }
 
@@ -258,23 +272,67 @@ Router::check()
 Router::Router(const ChipDB *cdb, 
 	       Design *d_, 
 	       Configuration &c,
-	       const std::unordered_map<Instance *, Location> &placement_)
+	       const std::map<Instance *, int, IdLess> &placement_)
   : chipdb(cdb),
     d(d_),
     conf(c),
     placement(placement_),
     models(d),
+    cnet_global(chipdb->n_nets),
+    cnet_local(chipdb->n_nets),
+    cnet_outs(chipdb->n_nets),
     cnet_net(chipdb->n_nets, nullptr),
     cnet_tiles(chipdb->n_nets),
+    cnet_xmin(chipdb->n_nets),
+    cnet_xmax(chipdb->n_nets),
+    cnet_ymin(chipdb->n_nets),
+    cnet_ymax(chipdb->n_nets),
     n_nets(0),
     n_shared(0),
     demand(chipdb->n_nets, 0),
     historical_demand(chipdb->n_nets, 0),
+    current_net_target_tiles(chipdb->n_tiles),
+    unrouted(chipdb->n_nets),
     visited(chipdb->n_nets),
-    frontier(CnetCompare(this)),
+    frontier(chipdb->n_nets),
     backptr(chipdb->n_nets),
     cost(chipdb->n_nets)
 {
+  for (int t = 0; t < chipdb->n_tiles; ++t)
+    {
+      for (const auto &p : chipdb->tile_nets[t])
+	{
+	  if (is_prefix("local_", p.first))
+	    {
+	      if (!cnet_local[p.second])
+		{
+		  cnet_local[p.second] = true;
+		  break;
+		}
+	    }
+	  else if (is_prefix("glb_netwk_", p.first))
+	    {
+	      if (!cnet_global[p.second])
+		{
+		  cnet_global[p.second] = true;
+		  break;
+		}
+	    }
+	}
+    }
+  
+  for (int i = 0; i < chipdb->n_nets; ++i)
+    {
+      for (int s : chipdb->in_switches[i])
+	{
+	  assert(contains_key(chipdb->switches[s].in_val, i));
+	  int j = chipdb->switches[s].out;
+	  assert(j != i);
+	  
+	  cnet_outs[i].push_back(j);
+	}
+    }
+  
   for (int i = 0; i <= 7; ++i)
     extend(ram_gate_chip,
 	   fmt("RDATA[" << i << "]"),
@@ -294,14 +352,30 @@ Router::Router(const ChipDB *cdb,
 	   fmt("WADDR[" << i << "]"),
 	   std::make_pair(fmt("ram/WADDR_" << i), true));
   
-  for (int i = 0; i <= 7; ++i)
-    extend(ram_gate_chip,
-	   fmt("MASK[" << i << "]"),
-	   std::make_pair(fmt("ram/MASK_" << i), true));
-  for (int i = 8; i <= 15; ++i)
-    extend(ram_gate_chip,
-	   fmt("MASK[" << i << "]"),
-	   std::make_pair(fmt("ram/MASK_" << i), false));
+  if (chipdb->device == "1k")
+    {
+      for (int i = 0; i <= 7; ++i)
+	extend(ram_gate_chip,
+	       fmt("MASK[" << i << "]"),
+	       std::make_pair(fmt("ram/MASK_" << i), true));
+      for (int i = 8; i <= 15; ++i)
+	extend(ram_gate_chip,
+	       fmt("MASK[" << i << "]"),
+	       std::make_pair(fmt("ram/MASK_" << i), false));
+    }
+  else
+    {
+      assert(chipdb->device == "8k");
+      for (int i = 0; i <= 7; ++i)
+	extend(ram_gate_chip,
+	       fmt("MASK[" << i << "]"),
+	       std::make_pair(fmt("ram/MASK_" << i), false));
+      for (int i = 8; i <= 15; ++i)
+	extend(ram_gate_chip,
+	       fmt("MASK[" << i << "]"),
+	       std::make_pair(fmt("ram/MASK_" << i), true));
+
+    }
   
   for (int i = 0; i <= 7; ++i)
     extend(ram_gate_chip,
@@ -336,19 +410,43 @@ Router::Router(const ChipDB *cdb,
     for (const auto &p : chipdb->tile_nets[t])
       cnet_tiles[p.second].push_back(t);
   
+
   for (int i = 0; i < 8; ++i)
     extend(pll_gate_chip, 
 	   fmt("DYNAMICDELAY[" << i << "]"),
 	   fmt("DYNAMICDELAY_" << i));
   extend(pll_gate_chip, "PLLOUTCOREA", "PLLOUT_A");
   extend(pll_gate_chip, "PLLOUTCOREB", "PLLOUT_B");
+
+  for (int i = 0; i < chipdb->n_nets; ++i)
+    {
+      assert(!cnet_tiles[i].empty());
+      int t0 = cnet_tiles[i][0];
+      int xmin, xmax, ymin, ymax;
+      xmin = xmax = chipdb->tile_x(t0);
+      ymin = ymax = chipdb->tile_y(t0);
+      for (int j = 1; j < (int)cnet_tiles[i].size(); ++j)
+	{
+	  int t = cnet_tiles[i][j];
+	  xmin = std::min(xmin, chipdb->tile_x(t));
+	  xmax = std::max(xmax, chipdb->tile_x(t));
+	  ymin = std::min(ymin, chipdb->tile_y(t));
+	  ymax = std::max(ymax, chipdb->tile_y(t));
+	}
+      cnet_xmin[i] = xmin;
+      cnet_xmax[i] = xmax;
+      cnet_ymin[i] = ymin;
+      cnet_ymax[i] = ymax;
+    }
 }
 
 void
 Router::start(int net)
 {
-  visited.zero();
+  visited.clear();
+  
   frontier.clear();
+  frontierq.clear();
   
   int source = net_source[net];
   cost[source] = 0;
@@ -358,6 +456,7 @@ Router::start(int net)
   for (const auto &p : net_route[net])
     {
       frontier.erase(p.second);
+      
       cost[p.second] = 0;
       backptr[p.second] = -1;
       visit(p.second);
@@ -367,20 +466,24 @@ Router::start(int net)
 void
 Router::visit(int cn)
 {
-  assert(!contains(frontier, cn));
+  assert(!frontier.contains(cn));
+  visited.extend(cn);
   
-  assert(!visited[cn]);
-  visited[cn] = true;
-  
-  for (int s : chipdb->in_switches[cn])
+  for (int cn2 : cnet_outs[cn])
     {
-      assert(contains_key(chipdb->switches[s].in_val, cn));
-      int cn2 = chipdb->switches[s].out;
-      assert(cn2 != cn);
-      
-      if (visited[cn2])
+      if (visited.contains(cn2))
 	continue;
-       
+      
+#if 0
+      if (cnet_local[cn2])
+	{
+	  assert(cnet_tiles[cn2].size() == 1);
+	  int t = cnet_tiles[cn2][0];
+	  if (!current_net_target_tiles.contains(t))
+	    continue;
+	}
+#endif
+      
       int cn2_cost = 1;  // base
       if (passes == max_passes)
 	{
@@ -393,65 +496,32 @@ Router::visit(int cn)
 	  cn2_cost *= (1 + 3 * demand[cn2]);
 	}
       
-      int h = 0;
-      if (!contains(unrouted, cn2))
-	{
-	  ++h; // local
-	  
-	  bool rowcol = false;
-	  for (int t : cnet_tiles[cn2])
-	    {
-	      int tx = chipdb->tile_x(t),
-		ty = chipdb->tile_y(t);
-	      
-	      for (int s2 : net_targets[current_net])
-		{
-		  assert(cnet_tiles[s2].size() == 1);
-		  int t2 = cnet_tiles[s2][0];
-		  if (t2 == t)
-		    goto L;
-		  
-		  int t2x = chipdb->tile_x(t2),
-		    t2y = chipdb->tile_y(t2);
-		  
-		  int x_dist = std::abs(tx - t2x),
-		    y_dist = std::abs(ty - t2y);
-		  
-		  if ((tx == t2x  // span12
-		       && y_dist <= 12)
-		      || (ty == t2y
-			  && x_dist <= 12)
-		      // and span4 vertical
-		      || (x_dist == 1
-			  && y_dist <= 3))
-		    {
-		      rowcol = true;
-		    }
-		}
-	    }
-	  ++h;  // off tile
-	  if (!rowcol)
-	    ++h;
-	}
+      int new_cost = cost[cn] + cn2_cost;
       
-    L:
-      int new_cost = cost[cn] + cn2_cost + h;
-      
-      if (contains(frontier, cn2))
+      if (frontier.contains(cn2))
 	{
 	  if (new_cost < cost[cn2])
 	    {
-	      frontier.erase(cn2);
+#if 0
+	      std::cout << "update cn " << cn2
+			<< " old_cost " << cost[cn2]
+			<< " new_cost " << new_cost << "\n";
+#endif
 	      cost[cn2] = new_cost;
 	      backptr[cn2] = cn;
-	      frontier.insert(cn2);
+	      frontierq.push(std::make_pair(cn2, new_cost));
 	    }
 	}
       else
 	{
 	  cost[cn2] = new_cost;
 	  backptr[cn2] = cn;
+#if 0
+	  std::cout << "add cn " << cn2
+		    << " cost " << new_cost << "\n";
+#endif
 	  frontier.insert(cn2);
+	  frontierq.push(std::make_pair(cn2, new_cost));
 	}
     }
 }
@@ -459,14 +529,19 @@ Router::visit(int cn)
 int
 Router::pop()
 {
-  assert(!frontier.empty());
+ L:
+  assert(!frontierq.empty());
+  int cn, cn_cost;
+  std::tie(cn, cn_cost) = frontierq.pop();
+  if (!frontier.contains(cn))
+    goto L;
   
-  int cn = *frontier.begin();
-  frontier.erase(frontier.begin());
+  // *logs << "pop " << cn << "\n";
+  assert(cn_cost == cost[cn]);
+  assert(frontierq.empty()
+	 || cn_cost <= frontierq.top().second);
   
-  assert(frontier.empty()
-	 || (cost[cn] <= cost[*frontier.begin()]
-	     && cost[cn] <= cost[*frontier.rbegin()]));
+  frontier.erase(cn);
   
   return cn;
 }
@@ -509,7 +584,7 @@ Router::route()
   
   Model *top = d->top();
   
-  std::unordered_set<Net *> boundary_nets = top->boundary_nets(d);
+  std::set<Net *, IdLess> boundary_nets = top->boundary_nets(d);
   for (const auto &p : top->nets())
     {
       Net *n = p.second;
@@ -529,7 +604,8 @@ Router::route()
 	      if (models.is_lc(inst)
 		  && p2->name() == "CIN")
 		{
-		  const Location &loc = placement.at(inst);
+		  int cell = placement.at(inst);
+		  const Location &loc = chipdb->cell_location[cell];
 		  if (loc.pos() == 0)
 		    continue;
 		}
@@ -588,8 +664,19 @@ Router::route()
 	  && !targets.empty())
 	{
 	  ++n_nets;
+	  
+#if 0
+	  *logs << "net " << n_nets
+		<< " " << n->name()
+		<< " " << source;
+	  for (int cn : targets)
+	    *logs << " " << cn;
+	  *logs << "\n";
+#endif
+	  
 	  net_source.push_back(source);
 	  net_targets.push_back(std::move(targets));
+	  net_net.push_back(n);
 	}
     }
   
@@ -603,6 +690,14 @@ Router::route()
 	  
 	  const auto &targets = net_targets[n];
 	  
+	  current_net_target_tiles.clear();
+	  for (int cn : targets)
+	    {
+	      assert(cnet_tiles[cn].size() == 1);
+	      int t = cnet_tiles[cn][0];
+	      current_net_target_tiles.insert(t);
+	    }
+	  
 	  if (passes > 1)
 	    {
 	      assert(net_route[n].size() > 0);
@@ -615,8 +710,10 @@ Router::route()
 	    }
 	  
 	M:
-	  unrouted = std::unordered_set<int>(targets.begin(),
-					     targets.end());
+	  unrouted.clear();
+	  for (int i : targets)
+	    // not extend, e.g., lutff_global/clk
+	    unrouted.insert(i);
 	  
 	  ripup(n);
 	  
@@ -628,10 +725,9 @@ Router::route()
 	    {
 	      int cn = pop();
 	      
-	      auto i = unrouted.find(cn);
-	      if (i != unrouted.end())
+	      if (unrouted.contains(cn))
 		{
-		  unrouted.erase(i);
+		  unrouted.erase(cn);
 		  traceback(n, cn);
 		  
 		  if (unrouted.empty())
@@ -670,6 +766,32 @@ Router::route()
 		historical_demand[i] += demand[i];
 	    }
 	}
+
+#if 0
+      for (int i = 0; i < n_nets; ++i)
+	{
+	  for (const auto &p : net_route[i])
+	    {
+	      bool print = false;
+	      if (demand[p.second] > 1)
+		{
+		  print = true;
+		  *logs << "demand " << i << " " << p.second << "\n";
+		}
+	      if (print)
+		{
+		  *logs << "  net " << i << " " << net_net[i]->name() << "\n";
+		  *logs << "  " << net_source[i] << " -> ";
+		  for (int cn : net_targets[i])
+		    *logs << " " << cn;
+		  *logs << "\n";
+		  *logs << "route\n";
+		  for (const auto &p2 : net_route[i])
+		    *logs << "  " << p2.first << " -> " << p2.second << "\n";
+		}
+	    }
+	}
+#endif
     }
   
   if (n_shared)
@@ -681,16 +803,26 @@ Router::route()
 	int s = chipdb->find_switch(p.first, p.second);
 	const Switch &sw = chipdb->switches[s];
 	
-	assert(p.second >= chipdb->n_global_nets);
-	if (p.first < chipdb->n_global_nets)
+	assert(!contains(chipdb->net_global, p.second));
+	if (contains(chipdb->net_global, p.first))
 	  {
+	    int g = chipdb->net_global.at(p.first);
+	    
 	    int cb_t = chipdb->tile_colbuf_tile.at(sw.tile);
+	    
+	    if (chipdb->device == "1k"
+		&& chipdb->tile_type[cb_t] == TileType::RAMT)
+	      {
+		cb_t = chipdb->tile(chipdb->tile_x(cb_t),
+				    chipdb->tile_y(cb_t) - 1);
+		assert(chipdb->tile_type[cb_t] == TileType::RAMB);
+	      }
+	    
 	    const CBit &colbuf_cbit = (chipdb->tile_nonrouting_cbits
 				       .at(chipdb->tile_type[cb_t])
-				       .at(fmt("ColBufCtrl.glb_netwk_" << p.first))
+				       .at(fmt("ColBufCtrl.glb_netwk_" << g))
 				       [0]);
-	    conf.set_cbit(CBit(chipdb->tile_x(cb_t),
-			       chipdb->tile_y(cb_t),
+	    conf.set_cbit(CBit(cb_t,
 			       colbuf_cbit.row,
 			       colbuf_cbit.col),
 			  1);
@@ -707,7 +839,7 @@ std::vector<Net *>
 route(const ChipDB *chipdb, 
       Design *d, 
       Configuration &conf,
-      const std::unordered_map<Instance *, Location> &placement)
+      const std::map<Instance *, int, IdLess> &placement)
 {
   Router router(chipdb, d, conf, placement);
   

@@ -18,5 +18,5 @@
 std::ostream &
 operator<<(std::ostream &s, const Location &loc)
 {
-  return s << loc.m_x << " " << loc.m_y << "/" << loc.m_pos;
+  return s << loc.m_tile << "/" << loc.m_pos;
 }
