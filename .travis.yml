@@ -38,7 +38,7 @@ before_install:
   - (cd iverilog && autoconf && ./configure --prefix=$HOME/extras && make && make install)
   - export PATH=$PATH:$HOME/extras/bin
   - git clone https://github.com/cliffordwolf/icestorm.git
-  - (cd icestorm && patch -p1 ../scripts/icestorm.patch && make && make DESTDIR=$HOME/extras install)
+  - (cd icestorm && if [ "$TRAVIS_OS_NAME" = "osx" ]; then patch -p1 < ../scripts/icestorm.patch; fi && make && make DESTDIR=$HOME/extras install)
   - git clone https://github.com/cliffordwolf/yosys.git
   - (cd yosys && make && make test && make DESTDIR=$HOME/extras install)
 compiler:
