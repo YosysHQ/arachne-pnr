@@ -1,0 +1,29 @@
+diff --git a/iceprog/Makefile b/iceprog/Makefile
+index 86c69f4..243fcd8 100644
+--- a/iceprog/Makefile
++++ b/iceprog/Makefile
+@@ -1,6 +1,6 @@
+ # CC = clang
+-LDLIBS = -lftdi -lm
+-CFLAGS = -MD -O0 -ggdb -Wall -std=c99
++LDLIBS = -L/usr/local/Cellar/libftdi/1.1/lib -lftdi1 -lm
++CFLAGS = -MD -O0 -ggdb -Wall -std=c99 -I/usr/local/Cellar/libftdi/1.1/include
+ DESTDIR = /usr/local
+ 
+ all: iceprog
+diff --git a/iceprog/iceprog.c b/iceprog/iceprog.c
+index 1288fe3..917f987 100644
+--- a/iceprog/iceprog.c
++++ b/iceprog/iceprog.c
+@@ -24,9 +24,10 @@
+ 
+ #define _GNU_SOURCE
+ 
+-#include <ftdi.h>
++#include <libftdi1/ftdi.h>
+ #include <stdio.h>
+ #include <stdint.h>
++#include <stdlib.h>
+ #include <stdbool.h>
+ #include <unistd.h>
+ #include <string.h>
