@@ -26,8 +26,8 @@ addons:
     - g++-4.8
     - clang-3.6
 before_install:
-  - printenv
   - pwd
+  - printenv
   - echo HOME=$HOME
   - ls -F $HOME
   - mkdir -p $HOME/extras/bin
