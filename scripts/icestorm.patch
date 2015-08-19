@@ -1,3 +1,420 @@
+diff --git a/icebox/Makefile b/icebox/Makefile
+index cc78073..f9ebf71 100644
+--- a/icebox/Makefile
++++ b/icebox/Makefile
+@@ -3,11 +3,11 @@ DESTDIR = /usr/local
+ all: chipdb-1k.txt chipdb-8k.txt
+ 
+ chipdb-1k.txt: icebox.py iceboxdb.py icebox_chipdb.py
+-	python2 icebox_chipdb.py > chipdb-1k.new
++	python icebox_chipdb.py > chipdb-1k.new
+ 	mv chipdb-1k.new chipdb-1k.txt
+ 
+ chipdb-8k.txt: icebox.py iceboxdb.py icebox_chipdb.py
+-	python2 icebox_chipdb.py -8 > chipdb-8k.new
++	python icebox_chipdb.py -8 > chipdb-8k.new
+ 	mv chipdb-8k.new chipdb-8k.txt
+ 
+ clean:
+diff --git a/icebox/icebox.py b/icebox/icebox.py
+index 2473506..a6ed67f 100644
+--- a/icebox/icebox.py
++++ b/icebox/icebox.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ #
+ #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
+ #
+diff --git a/icebox/icebox_chipdb.py b/icebox/icebox_chipdb.py
+old mode 100755
+new mode 100644
+index bf7db26..6fa0eaf
+--- a/icebox/icebox_chipdb.py
++++ b/icebox/icebox_chipdb.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ #
+ #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
+ #
+diff --git a/icebox/icebox_colbuf.py b/icebox/icebox_colbuf.py
+old mode 100755
+new mode 100644
+index 6267bc6..104be46
+--- a/icebox/icebox_colbuf.py
++++ b/icebox/icebox_colbuf.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ #
+ #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
+ #
+diff --git a/icebox/icebox_diff.py b/icebox/icebox_diff.py
+old mode 100755
+new mode 100644
+index b9d552b..efea717
+--- a/icebox/icebox_diff.py
++++ b/icebox/icebox_diff.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ #
+ #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
+ #
+diff --git a/icebox/icebox_explain.py b/icebox/icebox_explain.py
+old mode 100755
+new mode 100644
+index 9d72faa..346c273
+--- a/icebox/icebox_explain.py
++++ b/icebox/icebox_explain.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ #
+ #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
+ #
+diff --git a/icebox/icebox_html.py b/icebox/icebox_html.py
+old mode 100755
+new mode 100644
+index 7684632..53cbdb2
+--- a/icebox/icebox_html.py
++++ b/icebox/icebox_html.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ #
+ #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
+ #
+@@ -566,7 +566,7 @@ if outdir is not None:
+                 print_tile(x, y)
+ 
+     print("Writing %s/%s..." % (outdir, chipdbfile), file=stdout)
+-    os.system("python2 icebox_chipdb.py > %s/%s" % (outdir, chipdbfile))
++    os.system("python icebox_chipdb.py > %s/%s" % (outdir, chipdbfile))
+ 
+     sys.stdout = stdout
+     
+diff --git a/icebox/icebox_maps.py b/icebox/icebox_maps.py
+old mode 100755
+new mode 100644
+index 2a74400..ff90eb1
+--- a/icebox/icebox_maps.py
++++ b/icebox/icebox_maps.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ #
+ #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
+ #
+diff --git a/icebox/icebox_vlog.py b/icebox/icebox_vlog.py
+old mode 100755
+new mode 100644
+index 9d27db6..4aa93bc
+--- a/icebox/icebox_vlog.py
++++ b/icebox/icebox_vlog.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ #
+ #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
+ #
+diff --git a/icefuzz/Makefile b/icefuzz/Makefile
+index 8c93413..d388f3f 100644
+--- a/icefuzz/Makefile
++++ b/icefuzz/Makefile
+@@ -27,8 +27,8 @@ else
+ 	cp cached_ramb_8k.txt bitdata_ramb_8k.txt
+ 	cp cached_ramt_8k.txt bitdata_ramt_8k.txt
+ endif
+-	python2 database.py
+-	python2 export.py
++	python database.py
++	python export.py
+ 	diff -U0 cached_io.txt bitdata_io.txt || cp -v bitdata_io.txt cached_io.txt
+ 	diff -U0 cached_logic.txt bitdata_logic.txt || cp -v bitdata_logic.txt cached_logic.txt
+ 	diff -U0 cached_ramb.txt bitdata_ramb.txt || cp -v bitdata_ramb.txt cached_ramb.txt
+@@ -63,13 +63,13 @@ datafiles: $(addprefix data_,$(addsuffix .txt,$(TESTS)))
+ define data_template
+ data_$(1).txt: make_$(1).py ../icepack/icepack
+ ifeq ($(EIGTHK),_8k)
+-	ICE8KPINS=1 python2 make_$(1).py
++	ICE8KPINS=1 python make_$(1).py
+ 	ICEDEV=hx8k-ct256 $$(MAKE) -C work_$(1)
+-	python2 extract.py -8 work_$(1)/*.glb > $$@
++	python extract.py -8 work_$(1)/*.glb > $$@
+ else
+-	python2 make_$(1).py
++	python make_$(1).py
+ 	$$(MAKE) -C work_$(1)
+-	python2 extract.py work_$(1)/*.glb > $$@
++	python extract.py work_$(1)/*.glb > $$@
+ endif
+ endef
+ 
+diff --git a/icefuzz/convert_ram8k.py b/icefuzz/convert_ram8k.py
+index 551f9e3..ba4fdae 100644
+--- a/icefuzz/convert_ram8k.py
++++ b/icefuzz/convert_ram8k.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ # convert 1k ramb/ramt to 8k ramb/ramt and vice versa
+ 
+ subst_rules = [
+diff --git a/icefuzz/database.py b/icefuzz/database.py
+index 3af772d..b589f77 100644
+--- a/icefuzz/database.py
++++ b/icefuzz/database.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/export.py b/icefuzz/export.py
+index 7f4e66f..dc1a66f 100644
+--- a/icefuzz/export.py
++++ b/icefuzz/export.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/extract.py b/icefuzz/extract.py
+index ac35e22..9fa8a8c 100644
+--- a/icefuzz/extract.py
++++ b/icefuzz/extract.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/glbmapbits.py b/icefuzz/glbmapbits.py
+index e284211..c971088 100644
+--- a/icefuzz/glbmapbits.py
++++ b/icefuzz/glbmapbits.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_binop.py b/icefuzz/make_binop.py
+index b2a113e..ac7740c 100644
+--- a/icefuzz/make_binop.py
++++ b/icefuzz/make_binop.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_cluster.py b/icefuzz/make_cluster.py
+index 7b5194d..a2af710 100644
+--- a/icefuzz/make_cluster.py
++++ b/icefuzz/make_cluster.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_fanout.py b/icefuzz/make_fanout.py
+index a6c0435..aceffe8 100644
+--- a/icefuzz/make_fanout.py
++++ b/icefuzz/make_fanout.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_fflogic.py b/icefuzz/make_fflogic.py
+index b2df1ca..9bc2c5d 100644
+--- a/icefuzz/make_fflogic.py
++++ b/icefuzz/make_fflogic.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_gbio.py b/icefuzz/make_gbio.py
+index 740b48f..8f08202 100644
+--- a/icefuzz/make_gbio.py
++++ b/icefuzz/make_gbio.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_gbio2.py b/icefuzz/make_gbio2.py
+index 7ffebfa..bd8158a 100644
+--- a/icefuzz/make_gbio2.py
++++ b/icefuzz/make_gbio2.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_io.py b/icefuzz/make_io.py
+index 91299f8..60d967b 100644
+--- a/icefuzz/make_io.py
++++ b/icefuzz/make_io.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_iopack.py b/icefuzz/make_iopack.py
+index 5bc3c01..1ad41ee 100644
+--- a/icefuzz/make_iopack.py
++++ b/icefuzz/make_iopack.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_logic.py b/icefuzz/make_logic.py
+index 3e7f54b..69a5641 100644
+--- a/icefuzz/make_logic.py
++++ b/icefuzz/make_logic.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_mesh.py b/icefuzz/make_mesh.py
+index 5fc0d2e..c3da800 100644
+--- a/icefuzz/make_mesh.py
++++ b/icefuzz/make_mesh.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_pin2pin.py b/icefuzz/make_pin2pin.py
+index 34615a1..34e40cd 100644
+--- a/icefuzz/make_pin2pin.py
++++ b/icefuzz/make_pin2pin.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_pll.py b/icefuzz/make_pll.py
+index fc1dd75..93a168a 100644
+--- a/icefuzz/make_pll.py
++++ b/icefuzz/make_pll.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_prim.py b/icefuzz/make_prim.py
+index 168d388..54dc538 100644
+--- a/icefuzz/make_prim.py
++++ b/icefuzz/make_prim.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/make_ram40.py b/icefuzz/make_ram40.py
+index 0b88d2e..0d3eb32 100644
+--- a/icefuzz/make_ram40.py
++++ b/icefuzz/make_ram40.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python
+ 
+ from __future__ import division
+ from __future__ import print_function
+diff --git a/icefuzz/pinloc/pinloc-1k-tq144.sh b/icefuzz/pinloc/pinloc-1k-tq144.sh
+index 909ecfe..64f9f69 100644
+--- a/icefuzz/pinloc/pinloc-1k-tq144.sh
++++ b/icefuzz/pinloc/pinloc-1k-tq144.sh
+@@ -29,5 +29,5 @@ pins="
+ 
+ set -ex
+ make -f pinloc-1k-tq144.mk -j4
+-python2 pinlocdb.py pinloc-1k-tq144_*.exp > pinloc-1k-tq144.txt
++python pinlocdb.py pinloc-1k-tq144_*.exp > pinloc-1k-tq144.txt
+ 
+diff --git a/icefuzz/pinloc/pinloc-8k-ct256.sh b/icefuzz/pinloc/pinloc-8k-ct256.sh
+index 321c031..d3cf419 100644
+--- a/icefuzz/pinloc/pinloc-8k-ct256.sh
++++ b/icefuzz/pinloc/pinloc-8k-ct256.sh
+@@ -41,4 +41,4 @@ pins="
+ 
+ set -ex
+ make -f pinloc-8k-ct256.mk -j4
+-python2 pinlocdb.py pinloc-8k-ct256_*.exp > pinloc-8k-ct256.txt
++python pinlocdb.py pinloc-8k-ct256_*.exp > pinloc-8k-ct256.txt
+diff --git a/icefuzz/tests/colbuf.sh b/icefuzz/tests/colbuf.sh
+index c565015..61b31cc 100644
+--- a/icefuzz/tests/colbuf.sh
++++ b/icefuzz/tests/colbuf.sh
+@@ -1,7 +1,7 @@
+ #!/bin/bash
+ 
+ # for f in colbuf_io.work/*.exp colbuf_logic.work/*.exp colbuf_ram.work/*.exp; do
+-# 	python2 colbuf.py $f
++# 	python colbuf.py $f
+ # done | sort -u > colbuf.txt
+ 
+ get_colbuf_data()
+diff --git a/icefuzz/tests/colbuf_8k.sh b/icefuzz/tests/colbuf_8k.sh
+index aabcb0c..b333075 100644
+--- a/icefuzz/tests/colbuf_8k.sh
++++ b/icefuzz/tests/colbuf_8k.sh
+@@ -2,7 +2,7 @@
+ 
+ for f in colbuf_io_8k.work/*.exp colbuf_logic_8k.work/*.exp colbuf_ram_8k.work/*.exp; do
+ 	echo $f >&2
+-	python2 colbuf.py $f
++	python colbuf.py $f
+ done | sort -u > colbuf_8k.txt
+ 
+ get_colbuf_data()
+diff --git a/icefuzz/tests/ioctrl.sh b/icefuzz/tests/ioctrl.sh
+index 84523fc..77fdccf 100644
+--- a/icefuzz/tests/ioctrl.sh
++++ b/icefuzz/tests/ioctrl.sh
+@@ -24,7 +24,7 @@ done
+ set +x
+ echo "--snip--"
+ for pin in $pins; do
+-	python2 ../ioctrl.py ioctrl_${pin}.exp
++	python ../ioctrl.py ioctrl_${pin}.exp
+ done | tee ioctrl_db.txt
+ echo "--snap--"
+ 
+diff --git a/icefuzz/tests/test_pio.sh b/icefuzz/tests/test_pio.sh
+index 0e50860..4987259 100644
+--- a/icefuzz/tests/test_pio.sh
++++ b/icefuzz/tests/test_pio.sh
+@@ -49,7 +49,7 @@ for OUTTYPE in 0000 0110 1010 1110 0101 1001 1101 \
+ 		EOT
+ 		bash ../../icecube.sh ${pf}.v > ${pf}.log 2>&1
+ 	fi
+-	python2 ../../../icebox/icebox_vlog.py -P ${pf}.psb ${pf}.txt > ${pf}_out.v
++	python ../../../icebox/icebox_vlog.py -P ${pf}.psb ${pf}.txt > ${pf}_out.v
+ 	iverilog -D"VCDFILE=\"${pf}_tb.vcd\"" -DINTYPE=${INTYPE} -o ${pf}_tb \
+ 			-s testbench ../test_pio_tb.v ${pf}.v ${pf}_out.v $lattice_simlib 2> /dev/null
+ 	./${pf}_tb > ${pf}_tb.txt
 diff --git a/iceprog/Makefile b/iceprog/Makefile
 index 86c69f4..243fcd8 100644
 --- a/iceprog/Makefile
