@@ -1,18 +1,44 @@
-script: make && (cd yosys && make test) && make test
+sudo: false
+script: make ICEBOX=$HOME/extras/share/icebox && make test
 language: cpp
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise-3.6
+    packages:
+    - gperf
+    - libftdi-dev
+    - build-essential
+    - clang
+    - bison
+    - flex
+    - libreadline-dev
+    - gawk
+    - tcl-dev
+    - libffi-dev
+    - git
+    - mercurial
+    - graphviz
+    - xdot
+    - pkg-config
+    - python
+    - g++-4.8
+    - clang-3.6
 before_install:
-  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq libftdi-dev build-essential clang bison flex libreadline-dev gawk tcl-dev libffi-dev git mercurial graphviz xdot pkg-config python
-#  - if [ "$CXX" = "clang++" ]; then sudo apt-get install -qq libc++-dev; fi
-  - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
+  - printenv
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+  - if [ "$CXX" = "clang++" ]; then export CXX="clang++-3.6" CC="clang-3.6"; fi
+  - mkdir -p $HOME/extras/bin
+  - git clone git://github.com/steveicarus/iverilog.git
+  - (cd iverilog && autoconf && ./configure --prefix=$HOME/extras && make && make extras)
+  - export PATH=$PATH:$HOME/extras/bin
   - git clone https://github.com/cliffordwolf/icestorm.git
-  - (cd icestorm && make && sudo make install)
+  - (cd icestorm && make && sudo DESTDIR=$HOME/extras extras)
   - git clone https://github.com/cliffordwolf/yosys.git
-  - (cd yosys && make && sudo make install)
+  - (cd yosys && make && make test && make DESTDIR=$HOME/extras extras)
 compiler:
-#  - clang
+  - clang
   - gcc
 os:
   - linux
