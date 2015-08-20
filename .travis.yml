@@ -47,3 +47,6 @@ compiler:
 os:
   - linux
   - osx
+branches:
+  except:
+    - dummy
