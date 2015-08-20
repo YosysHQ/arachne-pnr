@@ -42,7 +42,7 @@ def random_expr(variables):
         return "%d'd%s" % (bits, random.randint(0, 2**bits-1))
     raise AssertionError
 
-for idx in range(50):
+for idx in range(25):
     with file('temp/uut_%05d.v' % idx, 'w') as f:
         with redirect_stdout(f):
             rst2 = random.choice([False, True])
