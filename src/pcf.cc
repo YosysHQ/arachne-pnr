@@ -63,17 +63,50 @@ PCFParser::parse()
       const std::string &cmd = words[0];
       if (cmd == "set_io")
 	{
-	  if (words.size() != 3)
-	    fatal("set_io: wrong number of arguments");
+	  bool err_no_port = true;
 	  
-	  const std::string &net_name = words[1];
+	  const char *net_name = nullptr,
+	    *pin_name = nullptr;
+	  for (int i = 1; i < (int)words.size(); ++i)
+	    {	  
+	      if (words[i][0] == '-')
+		{
+		  if (words[1] == "--warn-no-port")
+		    err_no_port = false;
+		  else
+		    fatal(fmt("unknown option `" << words[1] << "'"));
+		}
+	      else
+		{
+		  if (net_name == nullptr)
+		    net_name = words[i].c_str();
+		  else if (pin_name == nullptr)
+		    pin_name = words[i].c_str();
+		  else
+		    fatal("set_io: too many arguments");
+		}
+	    }
+	  
+	  if (!net_name || !pin_name)
+	    fatal("set_io: too few arguments");
+	  
 	  Port *p = top->find_port(net_name);
 	  if (!p)
-	    fatal(fmt("no port `" << net_name << "' in top-level module `" << top->name() << "'"));
+	    {
+	      if (err_no_port)
+		fatal(fmt("no port `" << net_name << "' in top-level module `"
+			  << top->name() << "'"));
+	      else
+		{
+		  warning(fmt("no port `" << net_name << "' in top-level module `"
+			      << top->name() << "', constraint ignored."));
+		  continue;
+		}
+	    }
 	  
-	  auto i = package.pin_loc.find(words[2]);
+	  auto i = package.pin_loc.find(pin_name);
 	  if (i == package.pin_loc.end())
-	    fatal(fmt("unknown pin `" << words[2] << "' on package `"
+	    fatal(fmt("unknown pin `" << pin_name << "' on package `"
 		      << package.name << "'"));
 	  
 	  const Location &loc = i->second;

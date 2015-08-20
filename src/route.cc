@@ -147,7 +147,12 @@ Router::port_cnet(Instance *inst, Port *p)
       else if (p_name == "I3")
 	tile_net_name = fmt("lutff_" << loc.pos() << "/in_3");
       else if (p_name == "CIN")
-	return -1;
+	{
+	  if (loc.pos() == 0)
+	    tile_net_name = "carry_in_mux";
+	  else
+	    return -1;
+	}
       else if (p_name == "COUT")
 	tile_net_name = fmt("lutff_" << loc.pos() << "/cout");
       else

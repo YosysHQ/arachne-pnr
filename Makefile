@@ -39,8 +39,7 @@ tests/test_us: tests/test_us.o
 simpletest: all tests/test_bv tests/test_us
 	./tests/test_bv
 	./tests/test_us
-	make -C examples/rot clean && make -C examples/rot
-	cd tests/simple && bash run-test.sh
+	cd tests/simple && ICEBOX=$(ICEBOX) bash run-test.sh
 	@echo
 	@echo 'All tests passed.'
 	@echo
@@ -49,7 +48,8 @@ simpletest: all tests/test_bv tests/test_us
 test: all tests/test_bv ./tests/test_us
 	./tests/test_bv
 	./tests/test_us
-	cd tests/simple && bash run-test.sh
+	make -C examples/rot clean && make -C examples/rot
+	cd tests/simple && ICEBOX=$(ICEBOX) bash run-test.sh
 	cd tests/regression && bash run-test.sh
 	cd tests/fsm && bash run-test.sh
 	cd tests/combinatorial && bash run-test.sh

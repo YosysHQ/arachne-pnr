@@ -2,9 +2,10 @@
 
 set -ex
 
-arachne_pnr=../../bin/arachne-pnr
+arachne_pnr="../../bin/arachne-pnr"
+
 devices='1k 8k'
-ICEBOX=/usr/local/share/icebox
+: ${ICEBOX:=/usr/local/share/icebox}
 
 rm -f txt.sum
 

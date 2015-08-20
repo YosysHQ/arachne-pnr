@@ -438,7 +438,7 @@ main(int argc, const char **argv)
 	d->check();
 #endif
 	// d->dump();
-    
+	
 	if (pack_blif)
 	  {
 	    *logs << "write_blif " << pack_blif << "\n";
@@ -459,7 +459,7 @@ main(int argc, const char **argv)
 			<< strerror(errno)));
 	    d->write_verilog(fs);
 	  }
-    
+	
 	*logs << "promote_globals...\n";
 	std::map<Instance *, uint8_t, IdLess> gb_inst_gc
 	  = promote_globals(chipdb, d, do_promote_globals);
@@ -473,7 +473,7 @@ main(int argc, const char **argv)
 #ifndef NDEBUG
 	d->check();
 #endif
-    
+	
 	*logs << "place...\n";
 	// d->dump();
 	placement = place(rg, chipdb, package, d,
@@ -482,6 +482,7 @@ main(int argc, const char **argv)
 #ifndef NDEBUG
 	d->check();
 #endif
+	// d->dump();
     
 	if (post_place_pcf)
 	  {

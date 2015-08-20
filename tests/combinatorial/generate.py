@@ -28,7 +28,7 @@ def random_term(variables):
         for i in range(0, n_terms)])
     return term
 
-for idx in range(50):
+for idx in range(25):
     with file('temp/uut_%05d.v' % idx, 'w') as f:
         with redirect_stdout(f):
             pins = 96
