@@ -1,21 +1,23 @@
+diff --git a/Makefile b/Makefile
+index 3892dcd..3da92b4 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,4 +1,4 @@
+-PYTHON ?= python2
++PYTHON ?= python
+ CXX ?= clang
+ 
+ all:
 diff --git a/icebox/Makefile b/icebox/Makefile
-index cc78073..f9ebf71 100644
+index cd92235..0d90223 100644
 --- a/icebox/Makefile
 +++ b/icebox/Makefile
-@@ -3,11 +3,11 @@ DESTDIR = /usr/local
+@@ -1,4 +1,4 @@
+-PYTHON ?= python2
++PYTHON ?= python
+ DESTDIR = /usr/local
+ 
  all: chipdb-1k.txt chipdb-8k.txt
- 
- chipdb-1k.txt: icebox.py iceboxdb.py icebox_chipdb.py
--	python2 icebox_chipdb.py > chipdb-1k.new
-+	python icebox_chipdb.py > chipdb-1k.new
- 	mv chipdb-1k.new chipdb-1k.txt
- 
- chipdb-8k.txt: icebox.py iceboxdb.py icebox_chipdb.py
--	python2 icebox_chipdb.py -8 > chipdb-8k.new
-+	python icebox_chipdb.py -8 > chipdb-8k.new
- 	mv chipdb-8k.new chipdb-8k.txt
- 
- clean:
 diff --git a/icebox/icebox.py b/icebox/icebox.py
 index 2473506..a6ed67f 100644
 --- a/icebox/icebox.py
@@ -119,39 +121,6 @@ index 9d27db6..4aa93bc
  #
  #  Copyright (C) 2015  Clifford Wolf <clifford@clifford.at>
  #
-diff --git a/icefuzz/Makefile b/icefuzz/Makefile
-index 8c93413..d388f3f 100644
---- a/icefuzz/Makefile
-+++ b/icefuzz/Makefile
-@@ -27,8 +27,8 @@ else
- 	cp cached_ramb_8k.txt bitdata_ramb_8k.txt
- 	cp cached_ramt_8k.txt bitdata_ramt_8k.txt
- endif
--	python2 database.py
--	python2 export.py
-+	python database.py
-+	python export.py
- 	diff -U0 cached_io.txt bitdata_io.txt || cp -v bitdata_io.txt cached_io.txt
- 	diff -U0 cached_logic.txt bitdata_logic.txt || cp -v bitdata_logic.txt cached_logic.txt
- 	diff -U0 cached_ramb.txt bitdata_ramb.txt || cp -v bitdata_ramb.txt cached_ramb.txt
-@@ -63,13 +63,13 @@ datafiles: $(addprefix data_,$(addsuffix .txt,$(TESTS)))
- define data_template
- data_$(1).txt: make_$(1).py ../icepack/icepack
- ifeq ($(EIGTHK),_8k)
--	ICE8KPINS=1 python2 make_$(1).py
-+	ICE8KPINS=1 python make_$(1).py
- 	ICEDEV=hx8k-ct256 $$(MAKE) -C work_$(1)
--	python2 extract.py -8 work_$(1)/*.glb > $$@
-+	python extract.py -8 work_$(1)/*.glb > $$@
- else
--	python2 make_$(1).py
-+	python make_$(1).py
- 	$$(MAKE) -C work_$(1)
--	python2 extract.py work_$(1)/*.glb > $$@
-+	python extract.py work_$(1)/*.glb > $$@
- endif
- endef
- 
 diff --git a/icefuzz/convert_ram8k.py b/icefuzz/convert_ram8k.py
 index 551f9e3..ba4fdae 100644
 --- a/icefuzz/convert_ram8k.py
@@ -415,32 +384,3 @@ index 0e50860..4987259 100644
  	iverilog -D"VCDFILE=\"${pf}_tb.vcd\"" -DINTYPE=${INTYPE} -o ${pf}_tb \
  			-s testbench ../test_pio_tb.v ${pf}.v ${pf}_out.v $lattice_simlib 2> /dev/null
  	./${pf}_tb > ${pf}_tb.txt
-diff --git a/iceprog/Makefile b/iceprog/Makefile
-index 86c69f4..243fcd8 100644
---- a/iceprog/Makefile
-+++ b/iceprog/Makefile
-@@ -1,6 +1,6 @@
- # CC = clang
--LDLIBS = -lftdi -lm
--CFLAGS = -MD -O0 -ggdb -Wall -std=c99
-+LDLIBS = -L/usr/local/Cellar/libftdi/1.1/lib -lftdi1 -lm
-+CFLAGS = -MD -O0 -ggdb -Wall -std=c99 -I/usr/local/Cellar/libftdi/1.1/include
- DESTDIR = /usr/local
- 
- all: iceprog
-diff --git a/iceprog/iceprog.c b/iceprog/iceprog.c
-index 1288fe3..917f987 100644
---- a/iceprog/iceprog.c
-+++ b/iceprog/iceprog.c
-@@ -24,9 +24,10 @@
- 
- #define _GNU_SOURCE
- 
--#include <ftdi.h>
-+#include <libftdi1/ftdi.h>
- #include <stdio.h>
- #include <stdint.h>
-+#include <stdlib.h>
- #include <stdbool.h>
- #include <unistd.h>
- #include <string.h>

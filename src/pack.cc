@@ -225,7 +225,7 @@ Packer::carry_pass_through_lc(Instance *lc_inst, Port *cout)
   lc_inst->find_port("I3")->connect(t);
   lc_inst->find_port("O")->connect(n);
   lc_inst->set_param("LUT_INIT", BitVector(16, 0xff00)); // 1111111100000000
-  
+
   ++n_carry_pass_through;
 }
 
@@ -373,9 +373,6 @@ Packer::pack_carries_from(Instance *f)
     *global_sr = nullptr;
   for (Instance *c = f; c;)
     {
-      Port *in = c->find_port("CI");
-      Net *in_conn = in->connection();
-      
       Port *out = c->find_port("CO");
       Net *out_conn = out->connection();
       if (out_conn
@@ -390,6 +387,9 @@ Packer::pack_carries_from(Instance *f)
 	  chains.chains.push_back(chain);
 	  chain.clear();
 	}
+      
+      Port *in = c->find_port("CI");
+      Net *in_conn = in->connection();
       
       if (chain.size() % 8 == 0)
 	{
@@ -468,6 +468,8 @@ Packer::pack_carries_from(Instance *f)
 	      Port *p = chain.back()->find_port("COUT");
 	      assert(p && p->connection() == in_conn);
 	      carry_pass_through_lc(lc_inst, p);
+	      
+	      c->find_port("CI")->connect(p->connection());
 	    }
 	}
       

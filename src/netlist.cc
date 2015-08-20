@@ -273,6 +273,24 @@ Instance::write_blif(std::ostream &s,
     s << ".param " << p.first << " " << p.second << "\n";
 }
 
+void
+Instance::dump() const
+{
+  *logs << ".gate " << m_instance_of->name();
+  for (Port *p : m_ordered_ports)
+    {
+      *logs << " " << p->name() << "=";
+      if (p->connected())
+	*logs << p->connection()->name();
+    }
+  *logs << " # " << this << "\n";
+  
+  for (const auto &p : m_attrs)
+    *logs << ".attr " << p.first << " " << p.second << "\n";
+  for (const auto &p : m_params)
+    *logs << ".param " << p.first << " " << p.second << "\n";
+}
+
 static void
 write_verilog_name(std::ostream &s, const std::string &name)
 {

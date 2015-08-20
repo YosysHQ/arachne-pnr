@@ -301,6 +301,7 @@ public:
   
   void remove();
   
+  void dump() const;
   void write_blif(std::ostream &s,
 		  const std::map<Net *, std::string, IdLess> &net_name) const;
   void write_verilog(std::ostream &s,
