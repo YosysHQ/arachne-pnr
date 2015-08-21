@@ -16,7 +16,7 @@ DESTDIR = /usr/local
 ICEBOX = /usr/local/share/icebox
 
 .PHONY: all
-all: bin/arachne-pnr # share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
+all: bin/arachne-pnr share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
 
 bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
