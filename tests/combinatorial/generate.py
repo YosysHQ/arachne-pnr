@@ -93,7 +93,7 @@ for idx in range(25):
             print('rename uut_%05d gold' % idx)
             print('hierarchy; proc;;')
             print('miter -equiv -flatten -ignore_gold_x -make_outputs -make_outcmp gold gate miter')
-            print('sat -verify-no-timeout -timeout 60 -prove trigger 0 -show-inputs -show-outputs miter')
+            print('sat -verify-no-timeout -timeout 20 -prove trigger 0 -show-inputs -show-outputs miter')
     with file('temp/uut_%05d_pp.ys' % idx, 'w') as f:
         with redirect_stdout(f):
             print('rename uut_%05d gate' % idx)
@@ -102,4 +102,4 @@ for idx in range(25):
             print('hierarchy; proc;;')
             print('techmap -map +/adff2dff.v; opt;;')
             print('miter -equiv -flatten -ignore_gold_x -make_outputs -make_outcmp gold gate miter')
-            print('sat -verify-no-timeout -timeout 60 -prove trigger 0 -show-inputs -show-outputs miter')
+            print('sat -verify-no-timeout -timeout 20 -prove trigger 0 -show-inputs -show-outputs miter')

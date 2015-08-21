@@ -1026,6 +1026,11 @@ Design::create_standard_models()
   warmboot->add_port("BOOT", Direction::IN, Value::ZERO);
   warmboot->add_port("S1", Direction::IN, Value::ZERO);
   warmboot->add_port("S0", Direction::IN, Value::ZERO);
+  
+  Model *tbuf = new Model(this, "$_TBUF_");
+  tbuf->add_port("A", Direction::IN);
+  tbuf->add_port("E", Direction::IN);
+  tbuf->add_port("Y", Direction::OUT);
 }
 
 Model *
@@ -1082,4 +1087,5 @@ Models::Models(Design *d)
   ramnw = d->find_model("SB_RAM40_4KNW");
   ramnrnw = d->find_model("SB_RAM40_4KNRNW");
   warmboot = d->find_model("SB_WARMBOOT");
+  tbuf = d->find_model("$_TBUF_");
 }

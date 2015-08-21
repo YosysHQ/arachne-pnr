@@ -24,6 +24,7 @@ instantiate_io(Design *d)
 {
   Model *top = d->top();
   Model *io_model = d->find_model("SB_IO");
+  Model *tbuf_model = d->find_model("$_TBUF_");
   
   for (auto i : top->ports())
     {
@@ -36,8 +37,11 @@ instantiate_io(Design *d)
 	  && q->name() == "PACKAGE_PIN")
 	continue;
       
-      assert(!p->is_bidir());
-      
+      *logs << p->name() << "\n";
+      *logs << q << "\n";
+      if (q)
+	*logs << q->name() << "\n";
+	
 #ifndef NDEBUG
       bool matched = false;
 #endif
@@ -52,23 +56,61 @@ instantiate_io(Design *d)
 	}
       
       Net *t = top->add_net(p->name());
+      assert(t);
       p->connect(t);
       assert(!matched || t->name() == p->name());
       
       Instance *io_inst = top->add_instance(io_model);
       io_inst->find_port("PACKAGE_PIN")->connect(t);
-      if (p->direction() == Direction::IN)
+      switch(p->direction())
 	{
-	  if (t)
+	case Direction::IN:
+	  {
 	    io_inst->find_port("D_IN_0")->connect(n);
-	  io_inst->set_param("PIN_TYPE", BitVector(6, 1)); // 000001
-	}
-      else
-	{
-	  assert(p->direction() == Direction::OUT);
-	  if (t)
-	    io_inst->find_port("D_OUT_0")->connect(n);
-	  io_inst->set_param("PIN_TYPE", BitVector(6, 0x19)); // 011001
+	    io_inst->set_param("PIN_TYPE", BitVector(6, 1)); // 000001
+	  }
+	  break;
+	  
+	case Direction::OUT:
+	case Direction::INOUT:
+	  {
+	    if (q
+		&& isa<Instance>(q->node())
+		&& cast<Instance>(q->node())->instance_of() == tbuf_model
+		&& q->name() == "Y")
+	      {
+		Instance *tbuf = cast<Instance>(q->node());
+		
+		io_inst->find_port("D_OUT_0")->connect(tbuf->find_port("A")->connection());
+		io_inst->find_port("D_IN_0")->connect(tbuf->find_port("Y")->connection());
+		io_inst->find_port("OUTPUT_ENABLE")->connect(tbuf->find_port("E")->connection());
+		
+		if (p->direction() == Direction::OUT)
+		  io_inst->set_param("PIN_TYPE", BitVector(6, 0x19)); // 011001
+		else
+		  io_inst->set_param("PIN_TYPE", BitVector(6, 0x29)); // 101001
+		
+		tbuf->find_port("A")->disconnect();
+		tbuf->find_port("E")->disconnect();
+		tbuf->find_port("Y")->disconnect();
+		tbuf->remove();
+		delete tbuf;
+	      }
+	    else
+	      {
+		if (p->direction() == Direction::INOUT)
+		  fatal(fmt("bidirectional port `" << p->name()
+			    << "' must be driven by tri-state buffer"));
+		
+		io_inst->find_port("D_OUT_0")->connect(n);
+		io_inst->set_param("PIN_TYPE", BitVector(6, 0x19)); // 011001
+	      }
+	  }
+	  break;
+	  
+	default: abort();
 	}
     }
+  
+  d->prune();
 }
