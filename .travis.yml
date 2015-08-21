@@ -1,5 +1,5 @@
 sudo: false
-script: make ICEBOX=$HOME/extras/share/icebox test
+script: if [ "$TRAVIS_OS_NAME" = "osx" ]; then make ICEBOX=$HOME/extras/share/icebox simpletest; else make ICEBOX=$HOME/extras/share/icebox test; fi
 language: cpp
 addons:
   apt:

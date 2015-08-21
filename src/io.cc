@@ -85,10 +85,7 @@ instantiate_io(Design *d)
 		io_inst->find_port("D_IN_0")->connect(tbuf->find_port("Y")->connection());
 		io_inst->find_port("OUTPUT_ENABLE")->connect(tbuf->find_port("E")->connection());
 		
-		if (p->direction() == Direction::OUT)
-		  io_inst->set_param("PIN_TYPE", BitVector(6, 0x19)); // 011001
-		else
-		  io_inst->set_param("PIN_TYPE", BitVector(6, 0x29)); // 101001
+		io_inst->set_param("PIN_TYPE", BitVector(6, 0x29)); // 101001
 		
 		tbuf->find_port("A")->disconnect();
 		tbuf->find_port("E")->disconnect();
