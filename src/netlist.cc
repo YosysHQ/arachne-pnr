@@ -1017,7 +1017,7 @@ Design::create_standard_models()
 	bram->add_port("WE", Direction::IN, Value::ZERO);
 	
 	for (int i = 0; i <= 15; ++i)
-	  bram->set_param(fmt("INIT_" << (i < 10 ? '0' + i : 'A' + (i - 10))), "0");
+	  bram->set_param(fmt("INIT_" << hexdigit(i, 'A')), BitVector(256, 0));
 	bram->set_param("READ_MODE", BitVector(2, 0));
 	bram->set_param("WRITE_MODE", BitVector(2, 0));
       }

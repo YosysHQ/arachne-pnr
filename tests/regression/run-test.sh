@@ -8,6 +8,9 @@ for d in 1k 8k; do
     rm -rf $d
     mkdir $d
     
+    $arachne_pnr -d $d bram1.blif -o $d/bram1.txt
+    icepack $d/bram1.txt $d/bram1.bin
+    
     $arachne_pnr -d $d carry_pack_fail1.blif -o $d/carry_pack_fail1.txt
     icepack $d/carry_pack_fail1.txt $d/carry_pack_fail1.bin
 
