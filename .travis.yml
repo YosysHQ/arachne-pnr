@@ -23,6 +23,7 @@ addons:
     - xdot
     - pkg-config
     - python
+    - python3
     - g++-4.8
     - clang-3.6
 before_install:
