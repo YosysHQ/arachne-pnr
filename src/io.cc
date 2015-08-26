@@ -37,11 +37,6 @@ instantiate_io(Design *d)
 	  && q->name() == "PACKAGE_PIN")
 	continue;
       
-      *logs << p->name() << "\n";
-      *logs << q << "\n";
-      if (q)
-	*logs << q->name() << "\n";
-	
 #ifndef NDEBUG
       bool matched = false;
 #endif
