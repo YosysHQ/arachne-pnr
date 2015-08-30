@@ -1050,12 +1050,12 @@ Design::create_standard_models()
   pll_core->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
   pll_core->set_param("FDA_RELATIVE", BitVector(4, 0));
   pll_core->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
-  pll_core->set_param("PLLOUT_SELECT", "SHIFTREG_0deg");
+  pll_core->set_param("PLLOUT_SELECT", "GENCLK");
   pll_core->set_param("DIVR", BitVector(4, 0));
   pll_core->set_param("DIVF", BitVector(6, 0));
   pll_core->set_param("DIVQ", BitVector(3, 0));
   pll_core->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
   pll_core->set_param("ENABLE_ICEGATE", BitVector(1, 0));
   
   Model *pll_pad = new Model(this, "SB_PLL40_PAD");
@@ -1085,12 +1085,12 @@ Design::create_standard_models()
   pll_pad->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
   pll_pad->set_param("FDA_RELATIVE", BitVector(4, 0));
   pll_pad->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
-  pll_pad->set_param("PLLOUT_SELECT", "SHIFTREG_0deg");
+  pll_pad->set_param("PLLOUT_SELECT", "GENCLK");
   pll_pad->set_param("DIVR", BitVector(4, 0));
   pll_pad->set_param("DIVF", BitVector(6, 0));
   pll_pad->set_param("DIVQ", BitVector(3, 0));
   pll_pad->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
   pll_pad->set_param("ENABLE_ICEGATE", BitVector(1, 0));
 
   Model *pll_pad_2 = new Model(this, "SB_PLL40_PAD_2");
@@ -1122,12 +1122,12 @@ Design::create_standard_models()
   pll_pad_2->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
   pll_pad_2->set_param("FDA_RELATIVE", BitVector(4, 0));
   pll_pad_2->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
-  pll_pad_2->set_param("PLLOUT_SELECT_PORTB", "SHIFTREG_0deg");
+  pll_pad_2->set_param("PLLOUT_SELECT_PORTB", "GENCLK");
   pll_pad_2->set_param("DIVR", BitVector(4, 0));
   pll_pad_2->set_param("DIVF", BitVector(6, 0));
   pll_pad_2->set_param("DIVQ", BitVector(3, 0));
   pll_pad_2->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_pad_2->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_pad_2->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
   pll_pad_2->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
   pll_pad_2->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
 
@@ -1160,13 +1160,13 @@ Design::create_standard_models()
   pll_2f_core->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
   pll_2f_core->set_param("FDA_RELATIVE", BitVector(4, 0));
   pll_2f_core->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
-  pll_2f_core->set_param("PLLOUT_SELECT_PORTA", "SHIFTREG_0deg");
-  pll_2f_core->set_param("PLLOUT_SELECT_PORTB", "SHIFTREG_0deg");
+  pll_2f_core->set_param("PLLOUT_SELECT_PORTA", "GENCLK");
+  pll_2f_core->set_param("PLLOUT_SELECT_PORTB", "GENCLK");
   pll_2f_core->set_param("DIVR", BitVector(4, 0));
   pll_2f_core->set_param("DIVF", BitVector(6, 0));
   pll_2f_core->set_param("DIVQ", BitVector(3, 0));
   pll_2f_core->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_2f_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_2f_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
   pll_2f_core->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
   pll_2f_core->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
 
@@ -1199,13 +1199,13 @@ Design::create_standard_models()
   pll_2f_pad->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
   pll_2f_pad->set_param("FDA_RELATIVE", BitVector(4, 0));
   pll_2f_pad->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
-  pll_2f_pad->set_param("PLLOUT_SELECT_PORTA", "SHIFTREG_0deg");
-  pll_2f_pad->set_param("PLLOUT_SELECT_PORTB", "SHIFTREG_0deg");
+  pll_2f_pad->set_param("PLLOUT_SELECT_PORTA", "GENCLK");
+  pll_2f_pad->set_param("PLLOUT_SELECT_PORTB", "GENCLK");
   pll_2f_pad->set_param("DIVR", BitVector(4, 0));
   pll_2f_pad->set_param("DIVF", BitVector(6, 0));
   pll_2f_pad->set_param("DIVQ", BitVector(3, 0));
   pll_2f_pad->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_2f_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 0));  // FIXME how big?
+  pll_2f_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
   pll_2f_pad->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
   pll_2f_pad->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
 

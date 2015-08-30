@@ -54,6 +54,8 @@ public:
   const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc;
   Configuration &conf;
   
+  std::vector<std::vector<int>> related_tiles;
+  
   std::map<Instance *, int, IdLess> placement;
   
   Models models;
@@ -124,7 +126,7 @@ public:
   
   int wire_length() const;
   int compute_net_length(int w);
-  unsigned top_port_io_gate(const std::string &net_name);
+  unsigned top_port_gate(const std::string &net_name);
   
   void place_initial();
   void configure();
@@ -158,10 +160,12 @@ Placer::gate_cell_type(int g)
     return CellType::GB;
   else if (models.is_warmboot(inst))
     return CellType::WARMBOOT;
+  else if (models.is_ramX(inst))
+    return CellType::RAM;
   else
     {
-      assert(models.is_ramX(inst));
-      return CellType::RAM;
+      assert(models.is_pllX(inst));
+      return CellType::PLL;
     }
 }
 
@@ -313,6 +317,8 @@ Placer::save_set(int cell, int g)
   cell_gate[cell] = g;
   
   changed_tiles.insert(t);
+  for (int t2 : related_tiles[t])
+    changed_tiles.insert(t2);
 }
 
 void
@@ -460,9 +466,10 @@ Placer::valid(int t)
 	cell1 = chipdb->loc_cell(loc1);
       int g0 = cell0 ? cell_gate[cell0] : 0,
 	g1 = cell1 ? cell_gate[cell1] : 0;
-      if (g0)
+      Instance *inst0 = g0 ? gates[g0] : nullptr,
+	*inst1 = g1 ? gates[g1] : nullptr;
+      if (inst0)
 	{
-	  Instance *inst0 = gates[g0];
 	  if (inst0->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
 	    {
 	      if (b != 3)
@@ -471,17 +478,14 @@ Placer::valid(int t)
 		return false;
 	    }
 	}
-      if (g1)
+      if (inst1)
 	{
-	  Instance *inst0 = gates[g1];
-	  if (inst0->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
+	  if (inst1->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
 	    return false;
 	}
       
-      if (g0 && g1)
+      if (inst0 && inst1)
 	{
-	  Instance *inst0 = gates[g0],
-	    *inst1 = gates[g1];
 	  if (inst0->get_param("NEG_TRIGGER").get_bit(0)
 	      != inst1->get_param("NEG_TRIGGER").get_bit(0))
 	    return false;
@@ -490,13 +494,60 @@ Placer::valid(int t)
       Location loc2(t, 2);
       int cell2 = chipdb->loc_cell(loc2);
       int g2 = cell2 ? cell_gate[cell2] : 0;
-      if (g2)
+      Instance *inst2 = g2 ? gates[g2] : nullptr;
+      if (inst2)
 	{
-	  Instance *inst = gates[g2];
-	  int gc = gb_inst_gc.at(inst);
+	  assert(models.is_gb(inst2));
+	  int gc = gb_inst_gc.at(inst2);
 	  int global = chipdb->gbufin.at(std::make_pair(x, y));
 	  if (! (gc & (1 << global)))
 	    return false;
+	}
+      
+      Location loc3(t, 3);
+      int cell3 = chipdb->loc_cell(loc3);
+      int g3 = cell3 ? cell_gate[cell3] : 0;
+      Instance *inst3 = g3 ? gates[g3] : nullptr;
+      if (inst3)
+	{
+	  int ec = -1;
+	  for (int i = 0; i < (int)chipdb->extra_cell_tile.size(); ++i)
+	    {
+	      if (chipdb->extra_cell_tile[i] == t
+		  && chipdb->extra_cell_type[i] == "PLL")
+		{
+		  ec = i;
+		  break;
+		}
+	    }
+	  assert(ec >= 0);
+	  
+	  const auto &pA = chipdb->extra_cell_mfvs[ec].at("PLLOUT_A");
+	  int tA = pA.first;
+	  int iA = std::stoi(pA.second);
+	  
+	  int cA = chipdb->loc_cell(Location(tA, iA));
+	  int gA = cell_gate[cA];
+	  Instance *instA = gA ? gates[gA] : nullptr;
+	  
+	  if (instA && instA->find_port("D_IN_0")->connection())
+	    return false;
+	  
+	  if (inst3->instance_of()->name() == "SB_PLL40_2F_CORE"
+	      || inst3->instance_of()->name() == "SB_PLL40_PAD_2"
+	      || inst3->instance_of()->name() == "SB_PLL40_2F_PAD")
+	    {
+	      const auto &pB = chipdb->extra_cell_mfvs[ec].at("PLLOUT_B");
+	      int tB = pB.first;
+	      int iB = std::stoi(pB.second);
+	  
+	      int cB = chipdb->loc_cell(Location(tB, iB));
+	      int gB = cell_gate[cB];
+	      Instance *instB = gB ? gates[gB] : nullptr;
+	  
+	      if (instB && instB->find_port("D_IN_0")->connection())
+		return false;
+	    }
 	}
     }
   else
@@ -544,7 +595,7 @@ Placer::accept_or_restore()
 }
 
 unsigned
-Placer::top_port_io_gate(const std::string &net_name)
+Placer::top_port_gate(const std::string &net_name)
 {
   Port *p = top->find_port(net_name);
   assert(p);
@@ -552,7 +603,8 @@ Placer::top_port_io_gate(const std::string &net_name)
   Port *p2 = p->connection_other_port();
   
   Instance *inst = cast<Instance>(p2->node());
-  assert(models.is_io(inst));
+  assert(models.is_io(inst)
+	 || models.is_pllX(inst));
   
   return gate_idx.at(inst);
 }
@@ -657,6 +709,7 @@ Placer::Placer(random_generator &rg_,
     constraints(constraints_),
     gb_inst_gc(gb_inst_gc_),
     conf(conf_),
+    related_tiles(chipdb->n_tiles),
     models(d),
     top(d->top()),
     diameter(std::max(chipdb->width,
@@ -665,6 +718,28 @@ Placer::Placer(random_generator &rg_,
     changed_tiles(chipdb->n_tiles),
     cell_gate(chipdb->n_cells, 0)
 {
+  for (int i = 0; i < (int)chipdb->extra_cell_tile.size(); ++i)
+    {
+      if (chipdb->extra_cell_type[i] == "PLL")
+	{
+	  int t = chipdb->extra_cell_tile[i];
+	  
+	  std::vector<int> t_related;
+	  t_related.push_back(t);
+	  
+	  const auto &pA = chipdb->extra_cell_mfvs[i].at("PLLOUT_A");
+	  int tA = pA.first;
+	  t_related.push_back(tA);
+	  
+	  const auto &pB = chipdb->extra_cell_mfvs[i].at("PLLOUT_B");
+	  int tB = pB.first;
+	  t_related.push_back(tB);
+	  
+	  for (int t2 : t_related)
+	    related_tiles[t2] = t_related;
+	}
+    }
+  
   for (int i = 0; i < chipdb->width; ++i)
     {
       int t = chipdb->tile(i, 1);
@@ -809,7 +884,9 @@ Placer::place_initial()
   
   std::vector<int> cell_type_n_placed(n_cell_types, 0);
   
-  int io_idx = cell_type_idx(CellType::IO);
+  int io_idx = cell_type_idx(CellType::IO),
+    pll_idx = cell_type_idx(CellType::PLL);
+  
   const std::vector<int> &io_cells_vec = chipdb->cell_type_cells[io_idx];
   std::set<int> io_cells(io_cells_vec.begin(),
 			 io_cells_vec.end());
@@ -817,60 +894,80 @@ Placer::place_initial()
   std::vector<Net *> bank_latch(4, nullptr);
   for (const auto &p : constraints.net_pin_loc)
     {
-      int g = top_port_io_gate(p.first);
+      int g = top_port_gate(p.first);
       Instance *inst = gates[g];
       
       const Location &loc = p.second;
       int t = loc.tile();
       int b = chipdb->tile_bank(t);
       
-      Net *latch = inst->find_port("LATCH_INPUT_VALUE")->connection();
-      if (latch)
+      int c = 0;
+      if (models.is_io(inst))
 	{
-	  if (bank_latch[b])
+	  Net *latch = inst->find_port("LATCH_INPUT_VALUE")->connection();
+	  if (latch)
 	    {
-	      if (bank_latch[b] != latch)
-		fatal(fmt("pcf error: multiple LATCH_INPUT_VALUE drivers in bank " << b));
-	    }
-	  else
-	    bank_latch[b] = latch;
-	}
-      
-      if (inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT"
-	  && b != 3)
-	fatal(fmt("pcf error: LVDS port `" << p.first << "' not in bank 3\n"));
-      
-      Location loc_other(t,
-			 loc.pos() ? 0 : 1);
-      int cell_other = chipdb->loc_cell(loc_other);
-      if (cell_other)
-	{
-	  int g_other = cell_gate[cell_other];
-	  if (g_other)
-	    {
-	      Instance *inst_other = gates[g_other];
-	      if (inst->get_param("NEG_TRIGGER").get_bit(0)
-		  != inst_other->get_param("NEG_TRIGGER").get_bit(0))
+	      if (bank_latch[b])
 		{
-		  int x = chipdb->tile_x(t),
-		    y = chipdb->tile_y(t);
-		  fatal(fmt("pcf error: incompatible NEG_TRIGGER parameters in PIO at (" 
-			    << x << ", " << y << ")"));
+		  if (bank_latch[b] != latch)
+		    fatal(fmt("pcf error: multiple LATCH_INPUT_VALUE drivers in bank " << b));
+		}
+	      else
+		bank_latch[b] = latch;
+	    }
+	  
+	  if (inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT"
+	      && b != 3)
+	    fatal(fmt("pcf error: LVDS port `" << p.first << "' not in bank 3\n"));
+	  
+	  Location loc_other(t,
+			     loc.pos() ? 0 : 1);
+	  int cell_other = chipdb->loc_cell(loc_other);
+	  if (cell_other)
+	    {
+	      int g_other = cell_gate[cell_other];
+	      if (g_other)
+		{
+		  Instance *inst_other = gates[g_other];
+		  if (inst->get_param("NEG_TRIGGER").get_bit(0)
+		      != inst_other->get_param("NEG_TRIGGER").get_bit(0))
+		    {
+		      int x = chipdb->tile_x(t),
+			y = chipdb->tile_y(t);
+		      fatal(fmt("pcf error: incompatible NEG_TRIGGER parameters in PIO at (" 
+				<< x << ", " << y << ")"));
+		    }
 		}
 	    }
+	  
+	  c = chipdb->loc_cell(loc);
+	  
+	  assert(contains(io_cells, c));
+	  io_cells.erase(c);
+	  
+	  ++cell_type_n_placed[io_idx];
 	}
+      else
+	{
+	  assert(models.is_pllX(inst));
+	  
+	  Location pll_loc(loc.tile(), 3);
+	  
+	  c = chipdb->loc_cell(pll_loc);
+	  
+	  // FIXME: erase pll cells?
+	  
+	  ++cell_type_n_placed[pll_idx];
+	}
+      assert(c);
       
-      int c = chipdb->loc_cell(loc);
+      // FIXME: check PLL/io collision
       
       assert(cell_gate[c] == 0);
       cell_gate[c] = g;
       gate_cell[g] = c;
       
-      assert(contains(io_cells, c));
-      io_cells.erase(c);
-      
       locked[g] = true;
-      ++cell_type_n_placed[io_idx];
       
       assert(valid(t));
     }
@@ -1144,7 +1241,187 @@ Placer::configure()
       else
 	{
 	  assert(models.is_pllX(inst));
-	  // FIXME
+	  
+	  int ec = -1;
+	  for (int i = 0; i < (int)chipdb->extra_cell_tile.size(); ++i)
+	    {
+	      if (chipdb->extra_cell_tile[i] == t
+		  && chipdb->extra_cell_type[i] == "PLL")
+		{
+		  ec = i;
+		  break;
+		}
+	    }
+	  assert(ec >= 0);
+	  
+	  CBit delay_adjmode_fb_cb = chipdb->extra_cell_cbit(ec, "DELAY_ADJMODE_FB");
+	  
+	  std::string delay_adjmode_fb = inst->get_param("DELAY_ADJUSTMENT_MODE_FEEDBACK").as_string();
+	  if (delay_adjmode_fb == "FIXED")
+	    conf.set_cbit(delay_adjmode_fb_cb, false);
+	  else if (delay_adjmode_fb == "DYNAMIC")
+	    conf.set_cbit(delay_adjmode_fb_cb, true);
+	  else
+	    fatal(fmt("unknown DELAY_ADJUSTMENT_MODE_FEEDBACK value: " << delay_adjmode_fb));
+	  
+	  CBit delay_adjmode_rel_cb = chipdb->extra_cell_cbit(ec, "DELAY_ADJMODE_REL");
+	  
+	  std::string delay_adjmode_rel = inst->get_param("DELAY_ADJUSTMENT_MODE_RELATIVE").as_string();
+	  if (delay_adjmode_rel == "FIXED")
+	    conf.set_cbit(delay_adjmode_rel_cb, false);
+	  else if (delay_adjmode_rel == "DYNAMIC")
+	    conf.set_cbit(delay_adjmode_rel_cb, true);
+	  else
+	    fatal(fmt("unknown DELAY_ADJUSTMENT_MODE_RELATIVE value: " << delay_adjmode_rel));
+	  
+	  BitVector divf = inst->get_param("DIVF").as_bits();
+	  divf.resize(7);  // FIXME
+	  for (int i = 0; i < (int)divf.size(); ++i)
+	    {
+	      CBit divf_i_cb = chipdb->extra_cell_cbit(ec, fmt("DIVF_" << i));
+	      conf.set_cbit(divf_i_cb, divf[i]);
+	    }
+	  
+	  BitVector divq = inst->get_param("DIVQ").as_bits();
+	  divq.resize(3);
+	  for (int i = 0; i < (int)divq.size(); ++i)
+	    {
+	      CBit divq_i_cb = chipdb->extra_cell_cbit(ec, fmt("DIVQ_" << i));
+	      conf.set_cbit(divq_i_cb, divq[i]);
+	    }
+	  
+	  BitVector divr = inst->get_param("DIVR").as_bits();
+	  divr.resize(4);
+	  for (int i = 0; i < (int)divr.size(); ++i)
+	    {
+	      CBit divr_i_cb = chipdb->extra_cell_cbit(ec, fmt("DIVR_" << i));
+	      conf.set_cbit(divr_i_cb, divr[i]);
+	    }
+	  
+	  BitVector fda_feedback = inst->get_param("FDA_FEEDBACK").as_bits();
+	  fda_feedback.resize(4);
+	  for (int i = 0; i < (int)fda_feedback.size(); ++i)
+	    {
+	      CBit fda_feedback_i_cb = chipdb->extra_cell_cbit(ec, fmt("FDA_FEEDBACK_" << i));
+	      conf.set_cbit(fda_feedback_i_cb, fda_feedback[i]);
+	    }
+	  
+	  BitVector fda_relative = inst->get_param("FDA_RELATIVE").as_bits();
+	  fda_relative.resize(4);
+	  for (int i = 0; i < (int)fda_relative.size(); ++i)
+	    {
+	      CBit fda_relative_i_cb = chipdb->extra_cell_cbit(ec, fmt("FDA_RELATIVE_" << i));
+	      conf.set_cbit(fda_relative_i_cb, fda_relative[i]);
+	    }
+	  
+	  std::string feedback_path_str = inst->get_param("FEEDBACK_PATH").as_string();
+	  
+	  int feedback_path_value = 0;
+	  if (feedback_path_str == "DELAY")
+	    feedback_path_value = 0;
+	  else if (feedback_path_str == "SIMPLE")
+	    feedback_path_value = 1;
+	  else if (feedback_path_str == "PHASE_AND_DELAY")
+	    feedback_path_value = 2;
+	  else
+	    {
+	      assert(feedback_path_str == "EXTERNAL");
+	      feedback_path_value = 6;
+	    }
+	  
+	  BitVector feedback_path(3, feedback_path_value);
+	  for (int i = 0; i < (int)feedback_path.size(); ++i)
+	    {
+	      CBit feedback_path_i_cb = chipdb->extra_cell_cbit(ec, fmt("FEEDBACK_PATH_" << i));
+	      conf.set_cbit(feedback_path_i_cb, feedback_path[i]);
+	    }
+	  
+	  BitVector filter_range = inst->get_param("FILTER_RANGE").as_bits();
+	  filter_range.resize(3);
+	  for (int i = 0; i < (int)filter_range.size(); ++i)
+	    {
+	      CBit filter_range_i_cb = chipdb->extra_cell_cbit(ec, fmt("FILTER_RANGE_" << i));
+	      conf.set_cbit(filter_range_i_cb, filter_range[i]);
+	    }
+	  
+	  std::string pllout_select_porta_str;
+	  if (inst->instance_of()->name() == "SB_PLL40_PAD"
+	      || inst->instance_of()->name() == "SB_PLL40_CORE")
+	    pllout_select_porta_str = inst->get_param("PLLOUT_SELECT").as_string();
+	  else
+	    pllout_select_porta_str = inst->get_param("PLLOUT_SELECT_PORTA").as_string();
+	  
+	  int pllout_select_porta_value = 0;
+	  if (pllout_select_porta_str == "GENCLK")
+	    pllout_select_porta_value = 0;
+	  else if (pllout_select_porta_str == "GENCLK_HALF")
+	    pllout_select_porta_value = 1;
+	  else if (pllout_select_porta_str == "SHIFTREG_90deg")
+	    pllout_select_porta_value = 2;
+	  else
+	    {
+	      assert(pllout_select_porta_str == "SHIFTREG_0deg");
+	      pllout_select_porta_value = 3;
+	    }
+	  
+	  BitVector pllout_select_porta(2, pllout_select_porta_value);
+	  for (int i = 0; i < (int)pllout_select_porta.size(); ++i)
+	    {
+	      CBit pllout_select_porta_i_cb = chipdb->extra_cell_cbit(ec, fmt("PLLOUT_SELECT_A_" << i));
+	      conf.set_cbit(pllout_select_porta_i_cb, pllout_select_porta[i]);
+	    }
+	  
+	  int pllout_select_portb_value = 0;
+	  if (inst->instance_of()->name() == "SB_PLL40_2_PAD"
+	      || inst->instance_of()->name() == "SB_PLL40_2F_PAD"
+	      || inst->instance_of()->name() == "SB_PLL40_2F_CORE")
+	    {
+	      std::string pllout_select_portb_str = inst->get_param("PLLOUT_SELECT_PORTB").as_string();
+	      
+	      if (pllout_select_portb_str == "GENCLK")
+		pllout_select_portb_value = 0;
+	      else if (pllout_select_portb_str == "GENCLK_HALF")
+		pllout_select_portb_value = 1;
+	      else if (pllout_select_portb_str == "SHIFTREG_90deg")
+		pllout_select_portb_value = 2;
+	      else
+		{
+		  assert(pllout_select_portb_str == "SHIFTREG_0deg");
+		  pllout_select_portb_value = 3;
+		}
+	    }
+	  
+	  BitVector pllout_select_portb(2, pllout_select_portb_value);
+	  for (int i = 0; i < (int)pllout_select_portb.size(); ++i)
+	    {
+	      CBit pllout_select_portb_i_cb = chipdb->extra_cell_cbit(ec, fmt("PLLOUT_SELECT_A_" << i));
+	      conf.set_cbit(pllout_select_portb_i_cb, pllout_select_portb[i]);
+	    }
+	  
+	  int pll_type_value = 0;
+	  if (inst->instance_of()->name() == "SB_PLL40_PAD")
+	    pll_type_value = 2;
+	  else if (inst->instance_of()->name() == "SB_PLL40_2_PAD")
+	    pll_type_value = 4;
+	  else if (inst->instance_of()->name() == "SB_PLL40_2F_PAD")
+	    pll_type_value = 6;
+	  else if (inst->instance_of()->name() == "SB_PLL40_CORE")
+	    pll_type_value = 3;
+	  else 
+	    {
+	      assert(inst->instance_of()->name() == "SB_PLL40_2F_CORE");
+	      pll_type_value = 7;
+	    }
+	  BitVector pll_type(3, pll_type_value);
+	  for (int i = 0; i < (int)pll_type.size(); ++i)
+	    {
+	      CBit pll_type_i_cb = chipdb->extra_cell_cbit(ec, fmt("PLLTYPE_" << i));
+	      conf.set_cbit(pll_type_i_cb, pll_type[i]);
+	    }
+	  
+	  BitVector shiftreg_div_mode = inst->get_param("SHIFTREG_DIV_MODE").as_bits();
+	  CBit shiftreg_div_mode_cb = chipdb->extra_cell_cbit(ec, "SHIFTREG_DIV_MODE");
+	  conf.set_cbit(shiftreg_div_mode_cb, shiftreg_div_mode[0]);
 	}
       
       placement[inst] = cell;

@@ -88,7 +88,6 @@ class Router
   
   // per net
   int current_net;
-  UllmanSet current_net_target_tiles;
   UllmanSet unrouted;
   
   UllmanSet visited;
@@ -222,8 +221,16 @@ Router::port_cnet(Instance *inst, Port *p)
   else
     {
       assert(models.is_pllX(inst));
+      
       // FIXME
       std::string r = lookup_or_default(pll_gate_chip, p_name, p_name);
+      
+      // FIXME
+      if (r == "PLLOUTGLOBAL"
+	  || r == "PLLOUTGLOBALA"
+	  || r == "PLLOUTGLOBALB")
+	return -1;
+      
       for (int i = 0; i < (int)chipdb->extra_cell_tile.size(); ++i)
 	{
 	  if (t != chipdb->extra_cell_tile[i]
@@ -237,10 +244,12 @@ Router::port_cnet(Instance *inst, Port *p)
 	    tile_net_name = fmt("io_" << p2.second << "/D_IN_0");
 	  else
 	    tile_net_name = p2.second;
-	  
+
+#if 0
 	  *logs << p_name << " aka " << r
 		<< " -> (" << chipdb->tile_x(t) << " " << chipdb->tile_y(t) << ") "
 		<< tile_net_name << "\n";
+#endif
 	  
 	  goto L;
 	}
@@ -296,7 +305,6 @@ Router::Router(const ChipDB *cdb,
     n_shared(0),
     demand(chipdb->n_nets, 0),
     historical_demand(chipdb->n_nets, 0),
-    current_net_target_tiles(chipdb->n_tiles),
     unrouted(chipdb->n_nets),
     visited(chipdb->n_nets),
     frontier(chipdb->n_nets),
@@ -415,14 +423,14 @@ Router::Router(const ChipDB *cdb,
     for (const auto &p : chipdb->tile_nets[t])
       cnet_tiles[p.second].push_back(t);
   
-
   for (int i = 0; i < 8; ++i)
     extend(pll_gate_chip, 
 	   fmt("DYNAMICDELAY[" << i << "]"),
 	   fmt("DYNAMICDELAY_" << i));
+  extend(pll_gate_chip, "PLLOUTCORE", "PLLOUT_A");
   extend(pll_gate_chip, "PLLOUTCOREA", "PLLOUT_A");
   extend(pll_gate_chip, "PLLOUTCOREB", "PLLOUT_B");
-
+  
   for (int i = 0; i < chipdb->n_nets; ++i)
     {
       assert(!cnet_tiles[i].empty());
@@ -478,16 +486,6 @@ Router::visit(int cn)
     {
       if (visited.contains(cn2))
 	continue;
-      
-#if 0
-      if (cnet_local[cn2])
-	{
-	  assert(cnet_tiles[cn2].size() == 1);
-	  int t = cnet_tiles[cn2][0];
-	  if (!current_net_target_tiles.contains(t))
-	    continue;
-	}
-#endif
       
       int cn2_cost = 1;  // base
       if (passes == max_passes)
@@ -694,14 +692,6 @@ Router::route()
 	  current_net = n;
 	  
 	  const auto &targets = net_targets[n];
-	  
-	  current_net_target_tiles.clear();
-	  for (int cn : targets)
-	    {
-	      assert(cnet_tiles[cn].size() == 1);
-	      int t = cnet_tiles[cn][0];
-	      current_net_target_tiles.insert(t);
-	    }
 	  
 	  if (passes > 1)
 	    {

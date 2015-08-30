@@ -708,21 +708,21 @@ ChipDBParser::parse_cmd_extra_cell()
 {
   if (words.size() != 4)
     fatal("wrong number of arguments to .extra_cell");
-	      
+  
   const std::string &cell_type = words[3];
   int x = std::stoi(words[1]),
     y = std::stoi(words[2]);
   int t = chipdb->tile(x, y);
   chipdb->extra_cell_tile.push_back(t);
   chipdb->extra_cell_type.push_back(cell_type);
-	      
+  
   if (cell_type == "WARMBOOT")
     chipdb->add_cell(CellType::WARMBOOT, Location(t, 0));
   else if (cell_type == "PLL")
     chipdb->add_cell(CellType::PLL, Location(t, 3));
   else
     fatal(fmt("unknown extra cell type `" << cell_type << "'"));
-	      
+  
   std::map<std::string, std::pair<int, std::string>> mfvs;
   for (;;)
     {
@@ -1021,4 +1021,14 @@ cell_type_name(CellType ct)
     case CellType::PLL:  return "PLL";
     default:  abort();
     }
+}
+
+CBit
+ChipDB::extra_cell_cbit(int ec, const std::string &name) const
+{
+  const auto &p = extra_cell_mfvs[ec].at(name);
+  const auto &cbits = tile_nonrouting_cbits.at(tile_type[p.first]).at(std::string("PLL.") + p.second);
+  assert(cbits.size() == 1);
+  const CBit &cbit0 = cbits[0];
+  return cbit0.with_tile(p.first);
 }
