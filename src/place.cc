@@ -1275,7 +1275,7 @@ Placer::configure()
 	    fatal(fmt("unknown DELAY_ADJUSTMENT_MODE_RELATIVE value: " << delay_adjmode_rel));
 	  
 	  BitVector divf = inst->get_param("DIVF").as_bits();
-	  divf.resize(7);  // FIXME
+	  divf.resize(7);
 	  for (int i = 0; i < (int)divf.size(); ++i)
 	    {
 	      CBit divf_i_cb = chipdb->extra_cell_cbit(ec, fmt("DIVF_" << i));
