@@ -87,15 +87,16 @@ Promoter::port_gc(Port *conn, bool indirect)
 		   || conn->name() == "I3"))
 	return gc_clk;
     }
-  else if (models.is_io(inst))
+  else if (models.is_ioX(inst))
     {
       if (conn->name() == "INPUT_CLOCK"
 	  || conn->name() == "OUTPUT_CLOCK")
 	return gc_clk;
     }
+  else if (models.is_gb(inst))
+    ;
   else if (models.is_warmboot(inst))
-    {
-    }
+    ;
   else if (models.is_ramX(inst))
     {
       if (conn->name() == "WCLK"
@@ -111,11 +112,7 @@ Promoter::port_gc(Port *conn, bool indirect)
 	return gc_re;
     }
   else
-    {
-      assert(models.is_pllX(inst));
-      // FIXME any?
-      return 0;
-    }
+    assert(models.is_pllX(inst));
   
   return 0;
 }
@@ -124,7 +121,7 @@ std::map<Instance *, uint8_t, IdLess>
 Promoter::promote(bool do_promote)
 {
   Model *top = d->top();
-  // top->dump();
+  // d->dump();
   
   std::vector<Net *> nets;
   std::map<Net *, int, IdLess> net_idx;
@@ -149,6 +146,7 @@ Promoter::promote(bool do_promote)
   for (int i = 1; i < n_nets; ++i) // skip 0, nullptr
     {
       Net *n = nets[i];
+      
       if (contains(boundary_nets, n)
 	  || n->is_constant())
 	continue;

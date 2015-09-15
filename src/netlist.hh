@@ -32,6 +32,7 @@ class Node;
 class Instance;
 class Model;
 class Design;
+class Models;
 
 class Identified
 {
@@ -222,6 +223,8 @@ public:
   Net *connection() const { return m_connection; }
   
   Port *connection_other_port() const;
+  
+  bool is_package_pin(const Models &models) const;
 };
 
 class Node : public Identified
@@ -416,6 +419,7 @@ public:
   Model *lc,
     *io,
     *gb,
+    *gb_io,
     *ram,
     *ramnr,
     *ramnw,
@@ -423,7 +427,7 @@ public:
     *warmboot;
   
 public:
-  Models(Design *d);
+  Models(const Design *d);
   
   bool is_dff(const Instance *inst) const
   {
@@ -435,6 +439,13 @@ public:
   bool is_lc(const Instance *inst) const { return inst->instance_of() == lc; }
   bool is_io(const Instance *inst) const { return inst->instance_of() == io; }
   bool is_gb(const Instance *inst) const { return inst->instance_of() == gb; }
+  bool is_gb_io(const Instance *inst) const { return inst->instance_of() == gb_io; }
+  bool is_ioX(const Instance *inst) const
+  {
+    return inst->instance_of() == io
+      || inst->instance_of() == gb_io;
+  }
+  
   bool is_ram(const Instance *inst) const { return inst->instance_of() == ram; }
   bool is_ramnr(const Instance *inst) const { return inst->instance_of() == ramnr; }
   bool is_ramnw(const Instance *inst) const { return inst->instance_of() == ramnw; }

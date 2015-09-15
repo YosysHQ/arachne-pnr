@@ -162,6 +162,17 @@ Port::is_input() const
 	  : m_dir == Direction::OUT); // model
 }
 
+bool
+Port::is_package_pin(const Models &models) const
+{
+  Instance *inst = dyn_cast<Instance>(node());
+  if (!inst)
+    return false;
+  
+  return (name() == "PACKAGE_PIN" && models.is_ioX(inst))
+    || (name() == "PACKAGEPIN" && models.is_pllX(inst));
+}
+
 Node::~Node()
 {
   for (Port *p : m_ordered_ports)
@@ -465,19 +476,21 @@ Model::add_instance(Model *inst_of)
 std::set<Net *, IdLess>
 Model::boundary_nets(const Design *d) const
 {
-  Model *io_model = d->find_model("SB_IO");
+  Models models(d);
   std::set<Net *, IdLess> bnets;
   for (Port *p : m_ordered_ports)
     {
       Net *n = p->connection();
-      if (n)
+      if (!n)
+	continue;
+      
+      for (Port *q : n->connections())
 	{
-	  Port *q = p->connection_other_port();
-	  if (q
-	      && isa<Instance>(q->node())
-	      && cast<Instance>(q->node())->instance_of() == io_model
-	      && q->name() == "PACKAGE_PIN")
-	    extend(bnets, n);
+	  if (q != p && q->is_package_pin(models))
+	    {
+	      extend(bnets, n);
+	      break;
+	    }
 	}
     }
   return bnets;
@@ -610,25 +623,19 @@ Model::rename_net(Net *n, const std::string &new_name)
 void
 Model::check(const Design *d) const
 {
-  Model *io_model = d->find_model("SB_IO");
+  Models models(d);
+  
+  std::set<Net *, IdLess> bnets = boundary_nets(d);
   
   for (Port *p : m_ordered_ports)
     {
-      if (p->is_bidir())
-	{
-	  Net *n = p->connection();
-	  if (n)
-	    {
-	      Port *q = p->connection_other_port();
-	      assert (q
-		      && isa<Instance>(q->node())
-		      && cast<Instance>(q->node())->instance_of() == io_model
-		      && q->name() == "PACKAGE_PIN");
-	    }
-	}
+      Net *n = p->connection();
+      if (!n)
+	continue;
+      
+      assert(contains(bnets, n)
+	     || !p->is_bidir());
     }
-  
-  std::set<Net *, IdLess> bnets = boundary_nets(d);
   
   for (const auto &p : m_nets)
     {
@@ -920,6 +927,24 @@ Design::create_standard_models()
   gb->add_port("USER_SIGNAL_TO_GLOBAL_BUFFER", Direction::IN);
   gb->add_port("GLOBAL_BUFFER_OUTPUT", Direction::OUT);
   
+  Model *gb_io = new Model(this, "SB_GB_IO");
+  gb_io->add_port("PACKAGE_PIN", Direction::INOUT);
+  gb_io->add_port("GLOBAL_BUFFER_OUTPUT", Direction::OUT);
+  gb_io->add_port("LATCH_INPUT_VALUE", Direction::IN, Value::ZERO);
+  gb_io->add_port("CLOCK_ENABLE", Direction::IN, Value::ONE);
+  gb_io->add_port("INPUT_CLK", Direction::IN, Value::ZERO);
+  gb_io->add_port("OUTPUT_CLK", Direction::IN, Value::ZERO);
+  gb_io->add_port("OUTPUT_ENABLE", Direction::IN, Value::ZERO);
+  gb_io->add_port("D_OUT_0", Direction::IN, Value::ZERO);
+  gb_io->add_port("D_OUT_1", Direction::IN, Value::ZERO);
+  gb_io->add_port("D_IN_0", Direction::OUT, Value::ZERO);
+  gb_io->add_port("D_IN_1", Direction::OUT, Value::ZERO);
+  
+  gb_io->set_param("PIN_TYPE", BitVector(6, 0)); // 000000
+  gb_io->set_param("PULLUP", BitVector(1, 0));  // default NO pullup
+  gb_io->set_param("NEG_TRIGGER", BitVector(1, 0));
+  gb_io->set_param("IO_STANDARD", "SB_LVCMOS");
+  
   Model *lut = new Model(this, "SB_LUT4");
   lut->add_port("O", Direction::OUT);
   lut->add_port("I0", Direction::IN, Value::ZERO);
@@ -1022,20 +1047,19 @@ Design::create_standard_models()
 	bram->set_param("WRITE_MODE", BitVector(2, 0));
       }
   
-  // FIXME defaults
   Model *pll_core = new Model(this, "SB_PLL40_CORE");
   pll_core->add_port("REFERENCECLK", Direction::IN, Value::ZERO);
   pll_core->add_port("RESETB", Direction::IN, Value::ZERO);
   pll_core->add_port("BYPASS", Direction::IN, Value::ZERO);
   pll_core->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
-  pll_core->add_port("DYNAMICDELAY_0", Direction::IN, Value::ZERO);
-  pll_core->add_port("DYNAMICDELAY_1", Direction::IN, Value::ZERO);
-  pll_core->add_port("DYNAMICDELAY_2", Direction::IN, Value::ZERO);
-  pll_core->add_port("DYNAMICDELAY_3", Direction::IN, Value::ZERO);
-  pll_core->add_port("DYNAMICDELAY_4", Direction::IN, Value::ZERO);
-  pll_core->add_port("DYNAMICDELAY_5", Direction::IN, Value::ZERO);
-  pll_core->add_port("DYNAMICDELAY_6", Direction::IN, Value::ZERO);
-  pll_core->add_port("DYNAMICDELAY_7", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
   pll_core->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
   pll_core->add_port("SCLK", Direction::IN, Value::ZERO);
   pll_core->add_port("SDI", Direction::IN, Value::ZERO);
@@ -1055,7 +1079,7 @@ Design::create_standard_models()
   pll_core->set_param("DIVF", BitVector(7, 0));
   pll_core->set_param("DIVQ", BitVector(3, 0));
   pll_core->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
+  pll_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
   pll_core->set_param("ENABLE_ICEGATE", BitVector(1, 0));
   
   Model *pll_pad = new Model(this, "SB_PLL40_PAD");
@@ -1063,14 +1087,14 @@ Design::create_standard_models()
   pll_pad->add_port("RESETB", Direction::IN, Value::ZERO);
   pll_pad->add_port("BYPASS", Direction::IN, Value::ZERO);
   pll_pad->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
-  pll_pad->add_port("DYNAMICDELAY_0", Direction::IN, Value::ZERO);
-  pll_pad->add_port("DYNAMICDELAY_1", Direction::IN, Value::ZERO);
-  pll_pad->add_port("DYNAMICDELAY_2", Direction::IN, Value::ZERO);
-  pll_pad->add_port("DYNAMICDELAY_3", Direction::IN, Value::ZERO);
-  pll_pad->add_port("DYNAMICDELAY_4", Direction::IN, Value::ZERO);
-  pll_pad->add_port("DYNAMICDELAY_5", Direction::IN, Value::ZERO);
-  pll_pad->add_port("DYNAMICDELAY_6", Direction::IN, Value::ZERO);
-  pll_pad->add_port("DYNAMICDELAY_7", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
   pll_pad->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
   pll_pad->add_port("SCLK", Direction::IN, Value::ZERO);
   pll_pad->add_port("SDI", Direction::IN, Value::ZERO);
@@ -1090,46 +1114,47 @@ Design::create_standard_models()
   pll_pad->set_param("DIVF", BitVector(7, 0));
   pll_pad->set_param("DIVQ", BitVector(3, 0));
   pll_pad->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
+  pll_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
   pll_pad->set_param("ENABLE_ICEGATE", BitVector(1, 0));
 
-  Model *pll_pad_2 = new Model(this, "SB_PLL40_PAD_2");
-  pll_pad_2->add_port("PACKAGEPIN", Direction::IN);
-  pll_pad_2->add_port("RESETB", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("BYPASS", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("DYNAMICDELAY_0", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("DYNAMICDELAY_1", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("DYNAMICDELAY_2", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("DYNAMICDELAY_3", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("DYNAMICDELAY_4", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("DYNAMICDELAY_5", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("DYNAMICDELAY_6", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("DYNAMICDELAY_7", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("SCLK", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("SDI", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("SDO", Direction::IN, Value::ZERO);
-  pll_pad_2->add_port("LOCK", Direction::OUT);
-  pll_pad_2->add_port("PLLOUTGLOBALA", Direction::OUT);
-  pll_pad_2->add_port("PLLOUTCOREA", Direction::OUT);
-  pll_pad_2->add_port("PLLOUTGLOBALB", Direction::OUT);
-  pll_pad_2->add_port("PLLOUTCOREB", Direction::OUT);
+  Model *pll_2_pad = new Model(this, "SB_PLL40_2_PAD");
+  pll_2_pad->add_port("PACKAGEPIN", Direction::IN);
+  pll_2_pad->add_port("RESETB", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("BYPASS", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("SCLK", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("SDI", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("SDO", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("LOCK", Direction::OUT);
+  pll_2_pad->add_port("PLLOUTGLOBALA", Direction::OUT);
+  pll_2_pad->add_port("PLLOUTCOREA", Direction::OUT);
+  pll_2_pad->add_port("PLLOUTGLOBALB", Direction::OUT);
+  pll_2_pad->add_port("PLLOUTCOREB", Direction::OUT);
   
-  pll_pad_2->set_param("FEEDBACK_PATH", "SIMPLE");
-  pll_pad_2->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
-  pll_pad_2->set_param("FDA_FEEDBACK", BitVector(4, 0));
-  pll_pad_2->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
-  pll_pad_2->set_param("FDA_RELATIVE", BitVector(4, 0));
-  pll_pad_2->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
-  pll_pad_2->set_param("PLLOUT_SELECT_PORTB", "GENCLK");
-  pll_pad_2->set_param("DIVR", BitVector(4, 0));
-  pll_pad_2->set_param("DIVF", BitVector(7, 0));
-  pll_pad_2->set_param("DIVQ", BitVector(3, 0));
-  pll_pad_2->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_pad_2->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
-  pll_pad_2->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
-  pll_pad_2->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
+  pll_2_pad->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_2_pad->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_2_pad->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_2_pad->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_2_pad->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_2_pad->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_2_pad->set_param("PLLOUT_SELECT_PORTA", "GENCLK");
+  pll_2_pad->set_param("PLLOUT_SELECT_PORTB", "GENCLK");
+  pll_2_pad->set_param("DIVR", BitVector(4, 0));
+  pll_2_pad->set_param("DIVF", BitVector(7, 0));
+  pll_2_pad->set_param("DIVQ", BitVector(3, 0));
+  pll_2_pad->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_2_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
+  pll_2_pad->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
+  pll_2_pad->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
 
   Model *pll_2f_core = new Model(this, "SB_PLL40_2F_CORE");
   pll_2f_core->add_port("REFERENCECLK", Direction::IN, Value::ZERO);
@@ -1166,7 +1191,7 @@ Design::create_standard_models()
   pll_2f_core->set_param("DIVF", BitVector(7, 0));
   pll_2f_core->set_param("DIVQ", BitVector(3, 0));
   pll_2f_core->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_2f_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
+  pll_2f_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
   pll_2f_core->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
   pll_2f_core->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
 
@@ -1175,14 +1200,14 @@ Design::create_standard_models()
   pll_2f_pad->add_port("RESETB", Direction::IN, Value::ZERO);
   pll_2f_pad->add_port("BYPASS", Direction::IN, Value::ZERO);
   pll_2f_pad->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
-  pll_2f_pad->add_port("DYNAMICDELAY_0", Direction::IN, Value::ZERO);
-  pll_2f_pad->add_port("DYNAMICDELAY_1", Direction::IN, Value::ZERO);
-  pll_2f_pad->add_port("DYNAMICDELAY_2", Direction::IN, Value::ZERO);
-  pll_2f_pad->add_port("DYNAMICDELAY_3", Direction::IN, Value::ZERO);
-  pll_2f_pad->add_port("DYNAMICDELAY_4", Direction::IN, Value::ZERO);
-  pll_2f_pad->add_port("DYNAMICDELAY_5", Direction::IN, Value::ZERO);
-  pll_2f_pad->add_port("DYNAMICDELAY_6", Direction::IN, Value::ZERO);
-  pll_2f_pad->add_port("DYNAMICDELAY_7", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
   pll_2f_pad->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
   pll_2f_pad->add_port("SCLK", Direction::IN, Value::ZERO);
   pll_2f_pad->add_port("SDI", Direction::IN, Value::ZERO);
@@ -1205,7 +1230,7 @@ Design::create_standard_models()
   pll_2f_pad->set_param("DIVF", BitVector(7, 0));
   pll_2f_pad->set_param("DIVQ", BitVector(3, 0));
   pll_2f_pad->set_param("FILTER_RANGE", BitVector(3, 0));
-  pll_2f_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));  // FIXME how big?
+  pll_2f_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
   pll_2f_pad->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
   pll_2f_pad->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
 
@@ -1257,13 +1282,14 @@ Design::dump() const
   write_blif(*logs);
 }
 
-Models::Models(Design *d)
+Models::Models(const Design *d)
 {
   lut4 = d->find_model("SB_LUT4");
   carry = d->find_model("SB_CARRY");
   lc = d->find_model("ICESTORM_LC");
   io = d->find_model("SB_IO");
   gb = d->find_model("SB_GB");
+  gb_io = d->find_model("SB_GB_IO");
   ram = d->find_model("SB_RAM40_4K");
   ramnr = d->find_model("SB_RAM40_4KNR");
   ramnw = d->find_model("SB_RAM40_4KNW");

@@ -38,4 +38,14 @@ for d in $devices; do
     $arachne_pnr -d $d bram.blif -o $d/bram.txt
     shasum $d/bram.txt >> txt.sum
     icepack $d/bram.txt $d/bram.bin
+    
+    for i in sb_pll40_*.blif; do
+	$arachne_pnr -d $d $i -o $d/${i%.*}.txt
+	shasum $d/${i%.*}.txt >> txt.sum
+	icepack $d/${i%.*}.txt $d/${i%.*}.bin
+    done
+    
+    $arachne_pnr -d $d sb_gb_io.blif -o $d/sb_gb_io.txt
+    shasum $d/sb_gb_io.txt >> txt.sum
+    icepack $d/sb_gb_io.txt $d/sb_gb_io.bin
 done

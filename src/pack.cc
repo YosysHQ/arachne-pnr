@@ -33,7 +33,8 @@ class Packer
   CarryChains &chains;
   
   int n_dff_pass_through,
-    n_carry_pass_through;
+    n_carry_pass_through,
+    n_pll_pass_through;
   
   Net *const0;
   Net *const1;
@@ -48,7 +49,8 @@ class Packer
   
   Port *driver(Net *n);
   Instance *find_carry_lc(Instance *c);
-
+  
+  void fixup_pll_outputs();
   void pack_dffs();
   void pack_luts();
   void pack_carries_from(Instance *f);
@@ -69,6 +71,7 @@ Packer::Packer(const ChipDB *cdb, const Package &package_, Design *d_, CarryChai
     chains(chains_),
     n_dff_pass_through(0), 
     n_carry_pass_through(0),
+    n_pll_pass_through(0),
     const0(nullptr), 
     const1(nullptr)
 {
@@ -243,6 +246,70 @@ Packer::lc_from_carry(Instance *lc_inst,
   
   lc_inst->set_param("CARRY_ENABLE", BitVector(1, 1));
 }
+
+void
+Packer::fixup_pll_outputs()
+{
+  for (Instance *inst : top->instances())
+    {
+      if (!models.is_pllX(inst))
+	continue;
+      
+      Port *lockp = inst->find_port("LOCK");
+      Net *lockn = lockp->connection();
+      if (lockn)
+	{
+	  Port *lockq = lockp->connection_other_port();
+	  if (!lockq
+	      || !isa<Instance>(lockq->node())
+	      || !models.is_lc(cast<Instance>(lockq->node())))
+	    {
+	      Net *n = top->add_net();
+	      
+	      Instance *lock_inst = top->add_instance(models.lc);
+	      ++n_pll_pass_through;
+	      
+	      lock_inst->find_port("I0")->connect(n);
+	      lock_inst->find_port("I1")->connect(const0);
+	      lock_inst->find_port("I2")->connect(const0);
+	      lock_inst->find_port("I3")->connect(const0);
+	      lock_inst->find_port("O")->connect(lockn);
+	      
+	      lockp->connect(n);
+	      
+	      lockq = lockp->connection_other_port();
+	      assert(lockq);
+	    }
+	}
+
+      Port *sdop = inst->find_port("SDO");
+      Net *sdon = sdop->connection();
+      if (sdon)
+	{
+	  Port *sdoq = sdop->connection_other_port();
+	  if (!sdoq
+	      || !isa<Instance>(sdoq->node())
+	      || !models.is_lc(cast<Instance>(sdoq->node())))
+	    {
+	      Net *n = top->add_net();
+	      
+	      Instance *sdo_inst = top->add_instance(models.lc);
+	      ++n_pll_pass_through;
+	      
+	      sdo_inst->find_port("I0")->connect(n);
+	      sdo_inst->find_port("I1")->connect(const0);
+	      sdo_inst->find_port("I2")->connect(const0);
+	      sdo_inst->find_port("I3")->connect(const0);
+	      sdo_inst->find_port("O")->connect(sdon);
+	      
+	      sdop->connect(n);
+	      
+	      sdoq = sdop->connection_other_port();
+	      assert(sdoq);
+	    }
+	}
+    }
+}  
 
 void
 Packer::pack_dffs()
@@ -552,6 +619,7 @@ Packer::pack()
   pack_dffs();
   pack_luts();
   pack_carries();
+  fixup_pll_outputs();
   
   d->prune();
   // d->dump();
@@ -569,6 +637,7 @@ Packer::pack()
     n_lc_dff = 0,
     n_lc_carry_dff = 0,
     n_gb = 0,
+    n_gb_io = 0,
     n_bram = 0,
     n_pll = 0,
     n_warmboot = 0;
@@ -594,6 +663,8 @@ Packer::pack()
 	++n_io;
       else if (models.is_gb(inst))
 	++n_gb;
+      else if (models.is_gb_io(inst))
+	++n_gb_io;
       else if (models.is_ramX(inst))
 	  ++n_bram;
       else if (models.is_warmboot(inst))
@@ -612,13 +683,17 @@ Packer::pack()
 	++n_logic_tiles;
     }
   
-  int n_warmboot_cells = 0;
-  for (int i = 0; i < chipdb->n_cells; ++i)
+  int n_warmboot_cells = 0,
+    n_pll_cells = 0;
+  
+  for (int i = 1; i <= chipdb->n_cells; ++i)
     {
-      if (chipdb->cell_type[i+1] == CellType::WARMBOOT)
+      if (chipdb->cell_type[i] == CellType::WARMBOOT)
 	++n_warmboot_cells;
+      else if (chipdb->cell_type[i] == CellType::PLL)
+	++n_pll_cells;
     }
-
+  
   *logs << "\nAfter packing:\n"
 	<< "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
 	<< "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
@@ -627,9 +702,9 @@ Packer::pack()
 	<< "  CARRY, DFF " << n_lc_carry_dff << "\n"
 	<< "  DFF PASS   " << n_dff_pass_through << "\n"
 	<< "  CARRY PASS " << n_carry_pass_through << "\n"
+	<< "  PLL PASS " << n_pll_pass_through << "\n"
 	<< "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
-    // FIXME
-	<< "PLLs         " << n_pll << " / 1\n"
+	<< "PLLs         " << n_pll << " / " << n_pll_cells << "\n"
 	<< "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
 	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n\n";
 }

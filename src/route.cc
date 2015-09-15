@@ -225,11 +225,10 @@ Router::port_cnet(Instance *inst, Port *p)
       // FIXME
       std::string r = lookup_or_default(pll_gate_chip, p_name, p_name);
       
-      // FIXME
-      if (r == "PLLOUTGLOBAL"
-	  || r == "PLLOUTGLOBALA"
-	  || r == "PLLOUTGLOBALB")
-	return -1;
+      
+      assert(r != "PLLOUTGLOBAL"
+	     && r != "PLLOUTGLOBALA"
+	     && r != "PLLOUTGLOBALB");
       
       for (int i = 0; i < (int)chipdb->extra_cell_tile.size(); ++i)
 	{

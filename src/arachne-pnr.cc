@@ -110,6 +110,22 @@ struct null_ostream : public std::ostream
   null_ostream() : std::ostream(0) {}
 };
 
+void
+move_connection(Instance *from_inst, const char *from_port_name,
+		Instance *to_inst, const char *to_port_name)
+{
+  Port *from_port = from_inst->find_port(from_port_name);
+  to_inst->find_port(to_port_name)
+    ->connect(from_port->connection());
+  from_port->disconnect();
+}
+
+void
+move_connection(Instance *from_inst, Instance *to_inst, const char *port_name)
+{
+  move_connection(from_inst, port_name, to_inst, port_name);
+}
+
 int
 main(int argc, const char **argv)
 {
@@ -396,7 +412,6 @@ main(int argc, const char **argv)
 #ifndef NDEBUG
   d->check();
 #endif
-  // d->dump();
   
   {
     Models models(d);

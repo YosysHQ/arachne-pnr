@@ -19,21 +19,63 @@
 
 #include <cassert>
 
+static void
+pll_redirect_global(Model *top,
+		    Instance *inst,
+		    const char *globalname,
+		    const char *name)
+{
+  Port *outglobal = inst->find_port(globalname);
+  if (!outglobal)
+    return;
+  
+  Net *globaln = outglobal->connection();
+  outglobal->disconnect();
+  if (globaln)
+    {
+      Port *out = inst->find_port(name);
+      Net *n = out->connection();
+      if (n)
+	{
+	  for (auto i = globaln->connections().begin();
+	       i != globaln->connections().end();)
+	    {
+	      Port *p = *i;
+	      ++i;
+	      
+	      p->connect(n);
+	    }
+	  
+	  top->remove_net(globaln);
+	  delete globaln;
+	}
+      else
+	out->connect(globaln);
+    }
+}
+
 void
 instantiate_io(Design *d)
 {
   Model *top = d->top();
-  Model *io_model = d->find_model("SB_IO");
+  Models models(d);
+
+  for (Instance *inst : top->instances())
+    {
+      if (!models.is_pllX(inst))
+	continue;
+      
+      pll_redirect_global(top, inst, "PLLOUTGLOBAL", "PLLOUTCORE");
+      pll_redirect_global(top, inst, "PLLOUTGLOBALA", "PLLOUTCOREA");
+      pll_redirect_global(top, inst, "PLLOUTGLOBALB", "PLLOUTCOREB");
+    }
   
   for (auto i : top->ports())
     {
       Port *p = i.second;
       
       Port *q = p->connection_other_port();
-      if (q
-	  && isa<Instance>(q->node())
-	  && cast<Instance>(q->node())->instance_of() == io_model
-	  && q->name() == "PACKAGE_PIN")
+      if (q && q->is_package_pin(models))
 	continue;
       
       assert(!p->is_bidir());
@@ -55,7 +97,7 @@ instantiate_io(Design *d)
       p->connect(t);
       assert(!matched || t->name() == p->name());
       
-      Instance *io_inst = top->add_instance(io_model);
+      Instance *io_inst = top->add_instance(models.io);
       io_inst->find_port("PACKAGE_PIN")->connect(t);
       if (p->direction() == Direction::IN)
 	{

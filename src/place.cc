@@ -534,7 +534,7 @@ Placer::valid(int t)
 	    return false;
 	  
 	  if (inst3->instance_of()->name() == "SB_PLL40_2F_CORE"
-	      || inst3->instance_of()->name() == "SB_PLL40_PAD_2"
+	      || inst3->instance_of()->name() == "SB_PLL40_2_PAD"
 	      || inst3->instance_of()->name() == "SB_PLL40_2F_PAD")
 	    {
 	      const auto &pB = chipdb->extra_cell_mfvs[ec].at("PLLOUT_B");
@@ -835,61 +835,16 @@ Placer::place_initial()
   
   chained.resize(n_gates);
   
-  // place chains
-  std::vector<int> logic_column_free(logic_columns.size(), 1);
-  for (unsigned i = 0; i < chains.chains.size(); ++i)
-    {
-      const auto &v = chains.chains[i];
-      
-      int gate0 = gate_idx.at(v[0]);
-      assert(gate_chain[gate0] == -1);
-      gate_chain[gate0] = i;
-      
-      int nt = (v.size() + 7) / 8;
-      for (unsigned k = 0; k < logic_columns.size(); ++k)
-	{
-	  if (logic_column_free[k] + nt - 1 <= chipdb->height - 2)
-	    {
-	      int x = logic_columns[k];
-	      int y = logic_column_free[k];
-	      
-	      for (unsigned j = 0; j < v.size(); ++j)
-		{
-		  Instance *inst = v[j];
-		  int g = gate_idx.at(inst);
-		  Location loc(chipdb->tile(x, y + j / 8),
-			       j % 8);
-		  int cell = chipdb->loc_cell(loc);
-		  
-		  assert(cell_gate[cell] == 0);
-		  cell_gate[cell] = g;
-		  gate_cell[g] = cell;
-		  chained[g] = true;
-		}
-	      
-	      chain_x.push_back(x);
-	      chain_start.push_back(y);
-	      
-	      logic_column_free[k] += nt;
-	      goto placed_chain;
-	    }
-	}
-      fatal(fmt("failed to place: placed " 
-		<< i
-		<< " of " << chains.chains.size()
-		<< " carry chains"));
-      
-    placed_chain:;
-    }
-  
+  // user constraints
   std::vector<int> cell_type_n_placed(n_cell_types, 0);
   
   int io_idx = cell_type_idx(CellType::IO),
     pll_idx = cell_type_idx(CellType::PLL);
   
-  const std::vector<int> &io_cells_vec = chipdb->cell_type_cells[io_idx];
-  std::set<int> io_cells(io_cells_vec.begin(),
-			 io_cells_vec.end());
+  std::set<int> io_cells(chipdb->cell_type_cells[io_idx].begin(),
+			 chipdb->cell_type_cells[io_idx].end());
+  std::set<int> pll_cells(chipdb->cell_type_cells[pll_idx].begin(),
+			  chipdb->cell_type_cells[pll_idx].end());
   
   std::vector<Net *> bank_latch(4, nullptr);
   for (const auto &p : constraints.net_pin_loc)
@@ -898,6 +853,7 @@ Placer::place_initial()
       Instance *inst = gates[g];
       
       const Location &loc = p.second;
+      
       int t = loc.tile();
       int b = chipdb->tile_bank(t);
       
@@ -954,8 +910,15 @@ Placer::place_initial()
 	  Location pll_loc(loc.tile(), 3);
 	  
 	  c = chipdb->loc_cell(pll_loc);
+	  if (!c)
+	    fatal(fmt("bad constraint on `"
+		      << p.first << "': no pll at pin "
+		      << package.loc_pin.at(loc)));
 	  
 	  // FIXME: erase pll cells?
+	  
+	  assert(contains(pll_cells, c));
+	  pll_cells.erase(c);
 	  
 	  ++cell_type_n_placed[pll_idx];
 	}
@@ -972,10 +935,12 @@ Placer::place_initial()
       assert(valid(t));
     }
   
+  // place PLL cells, locked
   cell_type_free_cells = chipdb->cell_type_cells;
   cell_type_free_cells[io_idx] = std::vector<int>(io_cells.begin(),
 						  io_cells.end());
-  
+  cell_type_free_cells[pll_idx] = std::vector<int>(pll_cells.begin(),
+						   pll_cells.end());
   std::vector<std::vector<int>> cell_type_empty_cells = cell_type_free_cells;
   for (int i = 0; i < n_cell_types; ++i)
     for (int j = 0; j < (int)cell_type_empty_cells[i].size(); ++j)
@@ -988,6 +953,176 @@ Placer::place_initial()
   std::vector<int> cell_type_n_gates(n_cell_types, 0);
   for (int i = 1; i <= n_gates; ++i)
     ++cell_type_n_gates[cell_type_idx(gate_cell_type(i))];
+  
+  for (int i = 1; i <= n_gates; ++i)
+    {
+      if (locked[i])
+	continue;
+      
+      Instance *inst = gates[i];
+      if (!models.is_pllX(inst))
+	continue;
+      
+      auto &v = cell_type_empty_cells[pll_idx];
+      for (int j = 0; j < (int)v.size(); ++j)
+	{
+	  int c = v[j];
+	  
+	  assert(cell_gate[c] == 0);
+	  cell_gate[c] = i;
+	  gate_cell[i] = c;
+	  locked[i] = true;
+	  
+	  if (!valid(chipdb->cell_location[c].tile()))
+	    {
+	      cell_gate[c] = 0;
+	      locked[i] = false;
+	    }
+	  else
+	    {
+	      ++cell_type_n_placed[pll_idx];
+	      pop(v, j);
+	      goto placed_pll;
+	    }
+	}
+      fatal(fmt("failed to place: placed "
+		<< cell_type_n_placed[pll_idx]
+		<< " PLLs of " << cell_type_n_gates[pll_idx]
+		<< " / " << chipdb->cell_type_cells[pll_idx].size()));
+      
+    placed_pll:;
+    }
+  
+  for (int i = 1; i <= n_gates; ++i)
+    {
+      Instance *inst = gates[i];
+      if (!models.is_pllX(inst))
+	continue;
+      
+      int c = gate_cell[i];
+      Location loc = chipdb->cell_location[c];
+      int t = loc.tile();
+      assert(c != 0);
+      
+      int ec = -1;
+      for (int j = 0; j < (int)chipdb->extra_cell_tile.size(); ++j)
+	{
+	  if (chipdb->extra_cell_tile[j] == t
+	      && chipdb->extra_cell_type[j] == "PLL")
+	    {
+	      ec = j;
+	      break;
+	    }
+	}
+      assert(ec >= 0);
+      
+      Port *lockp = inst->find_port("LOCK");
+      Net *lockn = lockp->connection();
+      if (lockn)
+	{
+	  Port *lockq = lockp->connection_other_port();
+	  assert(lockq);
+	  
+	  Instance *lock_inst = cast<Instance>(lockq->node());
+	  assert(models.is_lc(lock_inst));
+	  int lockg = gate_idx.at(lock_inst);
+	  
+	  int lockt = chipdb->extra_cell_mfvs[ec].at("LOCK").first;
+	  Location lock_loc(lockt, 0);
+	  int lockc = chipdb->loc_cell(lock_loc);
+	  
+	  cell_gate[lockc] = lockg;
+	  gate_cell[lockg] = lockc;
+	  locked[lockg] = true;
+	}
+      
+      Port *sdop = inst->find_port("SDO");
+      Net *sdon = sdop->connection();
+      if (sdon)
+	{
+	  Port *sdoq = sdop->connection_other_port();
+	  assert(sdoq);
+	  
+	  Instance *sdo_inst = cast<Instance>(sdoq->node());
+	  assert(models.is_lc(sdo_inst));
+	  int sdog = gate_idx.at(sdo_inst);
+	  
+	  int sdot = chipdb->extra_cell_mfvs[ec].at("SDO").first;
+	  Location sdo_loc(sdot, 0);
+	  int sdoc = chipdb->loc_cell(sdo_loc);
+	  
+	  cell_gate[sdoc] = sdog;
+	  gate_cell[sdog] = sdoc;
+	  locked[sdog] = true;
+	}
+    }
+  
+  // place chains
+  std::vector<int> logic_column_free(logic_columns.size(), 1);
+  std::vector<int> logic_column_last(logic_columns.size(),
+				     chipdb->height - 2);
+  
+  // FIXME apply only if present
+  // PLL LOCK, SDO
+  for (unsigned i = 0; i < logic_column_free.size(); ++i)
+    {
+      if (chipdb->device == "1k"
+	  && (logic_columns[i] == 1
+	      || logic_columns[i] == 12))
+	logic_column_free[i] = 2;
+      else if (chipdb->device == "8k"
+	       && (logic_columns[i] == 1
+		   || logic_columns[i] == 32))
+	{
+	  logic_column_free[i] = 2;
+	  logic_column_last[i] = 31;
+	}
+    }
+  
+  for (unsigned i = 0; i < chains.chains.size(); ++i)
+    {
+      const auto &v = chains.chains[i];
+      
+      int gate0 = gate_idx.at(v[0]);
+      assert(gate_chain[gate0] == -1);
+      gate_chain[gate0] = i;
+      
+      int nt = (v.size() + 7) / 8;
+      for (unsigned k = 0; k < logic_columns.size(); ++k)
+	{
+	  if (logic_column_free[k] + nt - 1 <= logic_column_last[k])
+	    {
+	      int x = logic_columns[k];
+	      int y = logic_column_free[k];
+	      
+	      for (unsigned j = 0; j < v.size(); ++j)
+		{
+		  Instance *inst = v[j];
+		  int g = gate_idx.at(inst);
+		  Location loc(chipdb->tile(x, y + j / 8),
+			       j % 8);
+		  int cell = chipdb->loc_cell(loc);
+		  
+		  assert(cell_gate[cell] == 0);
+		  cell_gate[cell] = g;
+		  gate_cell[g] = cell;
+		  chained[g] = true;
+		}
+	      
+	      chain_x.push_back(x);
+	      chain_start.push_back(y);
+	      
+	      logic_column_free[k] += nt;
+	      goto placed_chain;
+	    }
+	}
+      fatal(fmt("failed to place: placed " 
+		<< i
+		<< " of " << chains.chains.size()
+		<< " carry chains"));
+      
+    placed_chain:;
+    }
   
   std::set<std::pair<uint8_t, int>> io_q;
   
@@ -1012,7 +1147,7 @@ Placer::place_initial()
 	  for (int j = 0; j < (int)v.size(); ++j)
 	    {
 	      int c = v[j];
-	  
+	      
 	      assert(cell_gate[c] == 0);
 	      cell_gate[c] = i;
 	      gate_cell[i] = c;
@@ -1394,7 +1529,7 @@ Placer::configure()
 	  BitVector pllout_select_portb(2, pllout_select_portb_value);
 	  for (int i = 0; i < (int)pllout_select_portb.size(); ++i)
 	    {
-	      CBit pllout_select_portb_i_cb = chipdb->extra_cell_cbit(ec, fmt("PLLOUT_SELECT_A_" << i));
+	      CBit pllout_select_portb_i_cb = chipdb->extra_cell_cbit(ec, fmt("PLLOUT_SELECT_B_" << i));
 	      conf.set_cbit(pllout_select_portb_i_cb, pllout_select_portb[i]);
 	    }
 	  
