@@ -23,4 +23,7 @@ for d in 1k 8k; do
     $arachne_pnr -d $d -w $d/carry_route_fail1.pcf carry_route_fail1.blif -o $d/carry_route_fail1.txt
     icebox_vlog -n test -p $d/carry_route_fail1.pcf $d/carry_route_fail1.txt > $d/carry_route_fail1.chip.v
     yosys -q -l $d/carry_route_fail1.log -p "read_verilog carry_route_fail1.v; rename test gold; read_verilog $d/carry_route_fail1.chip.v; rename test gate; hierarchy; proc;; miter -equiv -flatten -ignore_gold_x -make_outputs -make_outcmp gold gate miter; sat -verify-no-timeout -timeout 60 -prove trigger 0 -show-inputs -show-outputs miter"
+    
+    $arachne_pnr -d $d j1a_gb_fail.blif -o $d/j1a_gb_fail.txt
+    icepack $d/j1a_gb_fail.txt $d/j1a_gb_fail.bin
 done

@@ -93,14 +93,16 @@ Promoter::port_gc(Port *conn, bool indirect)
 	  || conn->name() == "OUTPUT_CLOCK")
 	return gc_clk;
     }
-  else if (models.is_warmboot(inst))
-    {
-    }
+  else if (models.is_gb(inst)
+	   || models.is_warmboot(inst))
+    ;
   else
     {
       assert(models.is_ramX(inst));
       if (conn->name() == "WCLK"
-	  || conn->name() == "RCLK")
+	  || conn->name() == "WCLKN"
+	  || conn->name() == "RCLK"
+	  || conn->name() == "RCLKN")
 	return gc_clk;
       else if (conn->name() == "WCLKE")
 	return gc_wclke;

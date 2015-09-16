@@ -370,6 +370,9 @@ Router::Router(const ChipDB *cdb,
 	 "RCLK",
 	 std::make_pair("ram/RCLK", false));
   extend(ram_gate_chip,
+	 "RCLKN",
+	 std::make_pair("ram/RCLK", false));
+  extend(ram_gate_chip,
 	 "RE",
 	 std::make_pair("ram/RE", false));
 
@@ -378,6 +381,9 @@ Router::Router(const ChipDB *cdb,
 	 std::make_pair("ram/WCLKE", true));
   extend(ram_gate_chip,
 	 "WCLK",
+	 std::make_pair("ram/WCLK", true));
+  extend(ram_gate_chip,
+	 "WCLKN",
 	 std::make_pair("ram/WCLK", true));
   extend(ram_gate_chip,
 	 "WE",

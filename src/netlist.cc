@@ -1009,11 +1009,18 @@ Design::create_standard_models()
 	  bram->add_port(fmt("WDATA[" << i << "]"), Direction::IN, Value::ZERO);
 	
 	bram->add_port("RCLKE", Direction::IN, Value::ONE);
-	bram->add_port("RCLK", Direction::IN, Value::ZERO);
+	
+	if (nr)
+	  bram->add_port("RCLKN", Direction::IN, Value::ZERO);
+	else
+	  bram->add_port("RCLK", Direction::IN, Value::ZERO);
 	bram->add_port("RE", Direction::IN, Value::ZERO);
 	
 	bram->add_port("WCLKE", Direction::IN, Value::ONE);
-	bram->add_port("WCLK", Direction::IN, Value::ZERO);
+	if (nw)
+	  bram->add_port("WCLKN", Direction::IN, Value::ZERO);
+	else
+	  bram->add_port("WCLK", Direction::IN, Value::ZERO);
 	bram->add_port("WE", Direction::IN, Value::ZERO);
 	
 	for (int i = 0; i <= 15; ++i)
