@@ -198,15 +198,9 @@ Router::port_cnet(Instance *inst, Port *p)
     }
   else if (models.is_warmboot(inst))
     {
-      auto xcell = std::find(chipdb->extra_cell_tile.begin(),
-			    chipdb->extra_cell_tile.end(), t);
-      assert(xcell != chipdb->extra_cell_tile.end());
-      const auto &mfvs =
-	chipdb->extra_cell_mfvs[xcell - chipdb->extra_cell_tile.begin()];
-      auto mfv = mfvs.find(p_name);
-      assert(mfv != mfvs.end());
-      t = mfv->second.first;
-      tile_net_name = mfv->second.second;
+      const auto &p2 = chipdb->cell_mfvs.at(cell).at(p_name);
+      t = p2.first;
+      tile_net_name = p2.second;
     }
   else
     {

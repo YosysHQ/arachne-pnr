@@ -1093,10 +1093,8 @@ Placer::configure()
 	}
       else if (models.is_gb(inst))
 	;
-      else
+      else if (models.is_ramX(inst))
 	{
-	  assert(models.is_ramX(inst));
-	  
 	  BitVector wm = inst->get_param("WRITE_MODE").as_bits(),
 	    rm = inst->get_param("READ_MODE").as_bits();
 	  wm.resize(2);
@@ -1141,6 +1139,179 @@ Placer::configure()
 			       ramb_negclk.row,
 			       ramb_negclk.col),
 			  true);
+	}
+      else
+	{
+	  assert(models.is_pllX(inst));
+	  
+	  CBit delay_adjmode_fb_cb = chipdb->extra_cell_cbit(cell, "DELAY_ADJMODE_FB");
+	  
+	  std::string delay_adjmode_fb = inst->get_param("DELAY_ADJUSTMENT_MODE_FEEDBACK").as_string();
+	  if (delay_adjmode_fb == "FIXED")
+	    conf.set_cbit(delay_adjmode_fb_cb, false);
+	  else if (delay_adjmode_fb == "DYNAMIC")
+	    conf.set_cbit(delay_adjmode_fb_cb, true);
+	  else
+	    fatal(fmt("unknown DELAY_ADJUSTMENT_MODE_FEEDBACK value: " << delay_adjmode_fb));
+	  
+	  CBit delay_adjmode_rel_cb = chipdb->extra_cell_cbit(cell, "DELAY_ADJMODE_REL");
+	  
+	  std::string delay_adjmode_rel = inst->get_param("DELAY_ADJUSTMENT_MODE_RELATIVE").as_string();
+	  if (delay_adjmode_rel == "FIXED")
+	    conf.set_cbit(delay_adjmode_rel_cb, false);
+	  else if (delay_adjmode_rel == "DYNAMIC")
+	    conf.set_cbit(delay_adjmode_rel_cb, true);
+	  else
+	    fatal(fmt("unknown DELAY_ADJUSTMENT_MODE_RELATIVE value: " << delay_adjmode_rel));
+	  
+	  BitVector divf = inst->get_param("DIVF").as_bits();
+	  divf.resize(7);
+	  for (int i = 0; i < (int)divf.size(); ++i)
+	    {
+	      CBit divf_i_cb = chipdb->extra_cell_cbit(cell, fmt("DIVF_" << i));
+	      conf.set_cbit(divf_i_cb, divf[i]);
+	    }
+	  
+	  BitVector divq = inst->get_param("DIVQ").as_bits();
+	  divq.resize(3);
+	  for (int i = 0; i < (int)divq.size(); ++i)
+	    {
+	      CBit divq_i_cb = chipdb->extra_cell_cbit(cell, fmt("DIVQ_" << i));
+	      conf.set_cbit(divq_i_cb, divq[i]);
+	    }
+	  
+	  BitVector divr = inst->get_param("DIVR").as_bits();
+	  divr.resize(4);
+	  for (int i = 0; i < (int)divr.size(); ++i)
+	    {
+	      CBit divr_i_cb = chipdb->extra_cell_cbit(cell, fmt("DIVR_" << i));
+	      conf.set_cbit(divr_i_cb, divr[i]);
+	    }
+	  
+	  BitVector fda_feedback = inst->get_param("FDA_FEEDBACK").as_bits();
+	  fda_feedback.resize(4);
+	  for (int i = 0; i < (int)fda_feedback.size(); ++i)
+	    {
+	      CBit fda_feedback_i_cb = chipdb->extra_cell_cbit(cell, fmt("FDA_FEEDBACK_" << i));
+	      conf.set_cbit(fda_feedback_i_cb, fda_feedback[i]);
+	    }
+	  
+	  BitVector fda_relative = inst->get_param("FDA_RELATIVE").as_bits();
+	  fda_relative.resize(4);
+	  for (int i = 0; i < (int)fda_relative.size(); ++i)
+	    {
+	      CBit fda_relative_i_cb = chipdb->extra_cell_cbit(cell, fmt("FDA_RELATIVE_" << i));
+	      conf.set_cbit(fda_relative_i_cb, fda_relative[i]);
+	    }
+	  
+	  std::string feedback_path_str = inst->get_param("FEEDBACK_PATH").as_string();
+	  
+	  int feedback_path_value = 0;
+	  if (feedback_path_str == "DELAY")
+	    feedback_path_value = 0;
+	  else if (feedback_path_str == "SIMPLE")
+	    feedback_path_value = 1;
+	  else if (feedback_path_str == "PHASE_AND_DELAY")
+	    feedback_path_value = 2;
+	  else
+	    {
+	      assert(feedback_path_str == "EXTERNAL");
+	      feedback_path_value = 6;
+	    }
+	  
+	  BitVector feedback_path(3, feedback_path_value);
+	  for (int i = 0; i < (int)feedback_path.size(); ++i)
+	    {
+	      CBit feedback_path_i_cb = chipdb->extra_cell_cbit(cell, fmt("FEEDBACK_PATH_" << i));
+	      conf.set_cbit(feedback_path_i_cb, feedback_path[i]);
+	    }
+	  
+	  BitVector filter_range = inst->get_param("FILTER_RANGE").as_bits();
+	  filter_range.resize(3);
+	  for (int i = 0; i < (int)filter_range.size(); ++i)
+	    {
+	      CBit filter_range_i_cb = chipdb->extra_cell_cbit(cell, fmt("FILTER_RANGE_" << i));
+	      conf.set_cbit(filter_range_i_cb, filter_range[i]);
+	    }
+	  
+	  std::string pllout_select_porta_str;
+	  if (inst->instance_of()->name() == "SB_PLL40_PAD"
+	      || inst->instance_of()->name() == "SB_PLL40_CORE")
+	    pllout_select_porta_str = inst->get_param("PLLOUT_SELECT").as_string();
+	  else
+	    pllout_select_porta_str = inst->get_param("PLLOUT_SELECT_PORTA").as_string();
+	  
+	  int pllout_select_porta_value = 0;
+	  if (pllout_select_porta_str == "GENCLK")
+	    pllout_select_porta_value = 0;
+	  else if (pllout_select_porta_str == "GENCLK_HALF")
+	    pllout_select_porta_value = 1;
+	  else if (pllout_select_porta_str == "SHIFTREG_90deg")
+	    pllout_select_porta_value = 2;
+	  else
+	    {
+	      assert(pllout_select_porta_str == "SHIFTREG_0deg");
+	      pllout_select_porta_value = 3;
+	    }
+	  
+	  BitVector pllout_select_porta(2, pllout_select_porta_value);
+	  for (int i = 0; i < (int)pllout_select_porta.size(); ++i)
+	    {
+	      CBit pllout_select_porta_i_cb = chipdb->extra_cell_cbit(cell, fmt("PLLOUT_SELECT_A_" << i));
+	      conf.set_cbit(pllout_select_porta_i_cb, pllout_select_porta[i]);
+	    }
+	  
+	  int pllout_select_portb_value = 0;
+	  if (inst->instance_of()->name() == "SB_PLL40_2_PAD"
+	      || inst->instance_of()->name() == "SB_PLL40_2F_PAD"
+	      || inst->instance_of()->name() == "SB_PLL40_2F_CORE")
+	    {
+	      std::string pllout_select_portb_str = inst->get_param("PLLOUT_SELECT_PORTB").as_string();
+	      
+	      if (pllout_select_portb_str == "GENCLK")
+		pllout_select_portb_value = 0;
+	      else if (pllout_select_portb_str == "GENCLK_HALF")
+		pllout_select_portb_value = 1;
+	      else if (pllout_select_portb_str == "SHIFTREG_90deg")
+		pllout_select_portb_value = 2;
+	      else
+		{
+		  assert(pllout_select_portb_str == "SHIFTREG_0deg");
+		  pllout_select_portb_value = 3;
+		}
+	    }
+	  
+	  BitVector pllout_select_portb(2, pllout_select_portb_value);
+	  for (int i = 0; i < (int)pllout_select_portb.size(); ++i)
+	    {
+	      CBit pllout_select_portb_i_cb = chipdb->extra_cell_cbit(cell, fmt("PLLOUT_SELECT_B_" << i));
+	      conf.set_cbit(pllout_select_portb_i_cb, pllout_select_portb[i]);
+	    }
+	  
+	  int pll_type_value = 0;
+	  if (inst->instance_of()->name() == "SB_PLL40_PAD")
+	    pll_type_value = 2;
+	  else if (inst->instance_of()->name() == "SB_PLL40_2_PAD")
+	    pll_type_value = 4;
+	  else if (inst->instance_of()->name() == "SB_PLL40_2F_PAD")
+	    pll_type_value = 6;
+	  else if (inst->instance_of()->name() == "SB_PLL40_CORE")
+	    pll_type_value = 3;
+	  else 
+	    {
+	      assert(inst->instance_of()->name() == "SB_PLL40_2F_CORE");
+	      pll_type_value = 7;
+	    }
+	  BitVector pll_type(3, pll_type_value);
+	  for (int i = 0; i < (int)pll_type.size(); ++i)
+	    {
+	      CBit pll_type_i_cb = chipdb->extra_cell_cbit(cell, fmt("PLLTYPE_" << i));
+	      conf.set_cbit(pll_type_i_cb, pll_type[i]);
+	    }
+	  
+	  BitVector shiftreg_div_mode = inst->get_param("SHIFTREG_DIV_MODE").as_bits();
+	  CBit shiftreg_div_mode_cb = chipdb->extra_cell_cbit(cell, "SHIFTREG_DIV_MODE");
+	  conf.set_cbit(shiftreg_div_mode_cb, shiftreg_div_mode[0]);
 	}
       
       placement[inst] = cell;

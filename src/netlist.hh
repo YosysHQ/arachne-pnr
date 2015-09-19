@@ -416,6 +416,7 @@ public:
   Model *lc,
     *io,
     *gb,
+    *gb_io,
     *ram,
     *ramnr,
     *ramnw,
@@ -424,7 +425,7 @@ public:
     *tbuf;
   
 public:
-  Models(Design *d);
+  Models(const Design *d);
   
   bool is_dff(Instance *inst) const
   {
@@ -436,6 +437,18 @@ public:
   bool is_lc(Instance *inst) const { return inst->instance_of() == lc; }
   bool is_io(Instance *inst) const { return inst->instance_of() == io; }
   bool is_gb(Instance *inst) const { return inst->instance_of() == gb; }
+  bool is_gb_io(const Instance *inst) const { return inst->instance_of() == gb_io; }
+  bool is_ioX(const Instance *inst) const
+  {
+    return inst->instance_of() == io
+      || inst->instance_of() == gb_io;
+  }
+  bool is_gbX(const Instance *inst) const
+  {
+    return inst->instance_of() == gb
+      || inst->instance_of() == gb_io;
+  }
+  
   bool is_ram(Instance *inst) const { return inst->instance_of() == ram; }
   bool is_ramnr(Instance *inst) const { return inst->instance_of() == ramnr; }
   bool is_ramnw(Instance *inst) const { return inst->instance_of() == ramnw; }
@@ -449,6 +462,10 @@ public:
 	    || inst->instance_of() == ramnr
 	    || inst->instance_of() == ramnw
 	    || inst->instance_of() == ramnrnw);
+  }
+  bool is_pllX(const Instance *inst) const
+  {
+    return is_prefix("SB_PLL40_", inst->instance_of()->name());
   }
 };
 

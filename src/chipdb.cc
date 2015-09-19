@@ -134,13 +134,14 @@ ChipDB::ChipDB()
 {
 }
 
-void
+int
 ChipDB::add_cell(CellType type, const Location &loc)
 {
   int cell = ++n_cells;
   cell_type.push_back(type);
   cell_location.push_back(loc);
   cell_type_cells[cell_type_idx(type)].push_back(cell);
+  return cell;
 }
 
 int
@@ -713,16 +714,15 @@ ChipDBParser::parse_cmd_extra_cell()
   int x = std::stoi(words[1]),
     y = std::stoi(words[2]);
   int t = chipdb->tile(x, y);
-  chipdb->extra_cell_tile.push_back(t);
-  chipdb->extra_cell_type.push_back(cell_type);
-	      
+  
+  int c = 0;
   if (cell_type == "WARMBOOT")
-    chipdb->add_cell(CellType::WARMBOOT, Location(t, 0));
+    c = chipdb->add_cell(CellType::WARMBOOT, Location(t, 0));
   else if (cell_type == "PLL")
-    chipdb->add_cell(CellType::PLL, Location(t, 3));
+    c = chipdb->add_cell(CellType::PLL, Location(t, 3));
   else
     fatal(fmt("unknown extra cell type `" << cell_type << "'"));
-	      
+  
   std::map<std::string, std::pair<int, std::string>> mfvs;
   for (;;)
     {
@@ -730,7 +730,7 @@ ChipDBParser::parse_cmd_extra_cell()
       if (eof()
 	  || line[0] == '.')
 	{
-	  chipdb->extra_cell_mfvs.push_back(mfvs);
+	  extend(chipdb->cell_mfvs, c, mfvs);
 	  return;
 	}
       
@@ -923,12 +923,10 @@ ChipDB::bwrite(obstream &obs) const
       << net_names
       << tile_nets_idx // tile_nets
       << tile_nonrouting_cbits
-      << extra_cell_tile
-      << extra_cell_type
-      << extra_cell_mfvs
       << n_cells
       << cell_type
       << cell_location
+      << cell_mfvs
       << cell_type_cells
     // bank_cells
       << switches
@@ -960,12 +958,10 @@ ChipDB::bread(ibstream &ibs)
       >> net_names
       >> tile_nets_idx // tile_nets
       >> tile_nonrouting_cbits
-      >> extra_cell_tile
-      >> extra_cell_type
-      >> extra_cell_mfvs
       >> n_cells
       >> cell_type
       >> cell_location
+      >> cell_mfvs
       >> cell_type_cells
     // bank_cells
       >> switches
@@ -1021,4 +1017,14 @@ cell_type_name(CellType ct)
     case CellType::PLL:  return "PLL";
     default:  abort();
     }
+}
+
+CBit
+ChipDB::extra_cell_cbit(int c, const std::string &name) const
+{
+  const auto &p = cell_mfvs.at(c).at(name);
+  const auto &cbits = tile_nonrouting_cbits.at(tile_type[p.first]).at(std::string("PLL.") + p.second);
+  assert(cbits.size() == 1);
+  const CBit &cbit0 = cbits[0];
+  return cbit0.with_tile(p.first);
 }

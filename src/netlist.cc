@@ -920,6 +920,24 @@ Design::create_standard_models()
   gb->add_port("USER_SIGNAL_TO_GLOBAL_BUFFER", Direction::IN);
   gb->add_port("GLOBAL_BUFFER_OUTPUT", Direction::OUT);
   
+  Model *gb_io = new Model(this, "SB_GB_IO");
+  gb_io->add_port("PACKAGE_PIN", Direction::INOUT);
+  gb_io->add_port("GLOBAL_BUFFER_OUTPUT", Direction::OUT);
+  gb_io->add_port("LATCH_INPUT_VALUE", Direction::IN, Value::ZERO);
+  gb_io->add_port("CLOCK_ENABLE", Direction::IN, Value::ONE);
+  gb_io->add_port("INPUT_CLK", Direction::IN, Value::ZERO);
+  gb_io->add_port("OUTPUT_CLK", Direction::IN, Value::ZERO);
+  gb_io->add_port("OUTPUT_ENABLE", Direction::IN, Value::ZERO);
+  gb_io->add_port("D_OUT_0", Direction::IN, Value::ZERO);
+  gb_io->add_port("D_OUT_1", Direction::IN, Value::ZERO);
+  gb_io->add_port("D_IN_0", Direction::OUT, Value::ZERO);
+  gb_io->add_port("D_IN_1", Direction::OUT, Value::ZERO);
+  
+  gb_io->set_param("PIN_TYPE", BitVector(6, 0)); // 000000
+  gb_io->set_param("PULLUP", BitVector(1, 0));  // default NO pullup
+  gb_io->set_param("NEG_TRIGGER", BitVector(1, 0));
+  gb_io->set_param("IO_STANDARD", "SB_LVCMOS");
+  
   Model *lut = new Model(this, "SB_LUT4");
   lut->add_port("O", Direction::OUT);
   lut->add_port("I0", Direction::IN, Value::ZERO);
@@ -1029,6 +1047,193 @@ Design::create_standard_models()
 	bram->set_param("WRITE_MODE", BitVector(2, 0));
       }
 
+  Model *pll_core = new Model(this, "SB_PLL40_CORE");
+  pll_core->add_port("REFERENCECLK", Direction::IN, Value::ZERO);
+  pll_core->add_port("RESETB", Direction::IN, Value::ZERO);
+  pll_core->add_port("BYPASS", Direction::IN, Value::ZERO);
+  pll_core->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_core->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
+  pll_core->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
+  pll_core->add_port("SCLK", Direction::IN, Value::ZERO);
+  pll_core->add_port("SDI", Direction::IN, Value::ZERO);
+  pll_core->add_port("SDO", Direction::IN, Value::ZERO);
+  pll_core->add_port("LOCK", Direction::OUT);
+  pll_core->add_port("PLLOUTGLOBAL", Direction::OUT);
+  pll_core->add_port("PLLOUTCORE", Direction::OUT);
+  
+  pll_core->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_core->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_core->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_core->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_core->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_core->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_core->set_param("PLLOUT_SELECT", "GENCLK");
+  pll_core->set_param("DIVR", BitVector(4, 0));
+  pll_core->set_param("DIVF", BitVector(7, 0));
+  pll_core->set_param("DIVQ", BitVector(3, 0));
+  pll_core->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
+  pll_core->set_param("ENABLE_ICEGATE", BitVector(1, 0));
+  
+  Model *pll_pad = new Model(this, "SB_PLL40_PAD");
+  pll_pad->add_port("PACKAGEPIN", Direction::IN);
+  pll_pad->add_port("RESETB", Direction::IN, Value::ZERO);
+  pll_pad->add_port("BYPASS", Direction::IN, Value::ZERO);
+  pll_pad->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
+  pll_pad->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
+  pll_pad->add_port("SCLK", Direction::IN, Value::ZERO);
+  pll_pad->add_port("SDI", Direction::IN, Value::ZERO);
+  pll_pad->add_port("SDO", Direction::IN, Value::ZERO);
+  pll_pad->add_port("LOCK", Direction::OUT);
+  pll_pad->add_port("PLLOUTGLOBAL", Direction::OUT);
+  pll_pad->add_port("PLLOUTCORE", Direction::OUT);
+  
+  pll_pad->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_pad->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_pad->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_pad->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_pad->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_pad->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_pad->set_param("PLLOUT_SELECT", "GENCLK");
+  pll_pad->set_param("DIVR", BitVector(4, 0));
+  pll_pad->set_param("DIVF", BitVector(7, 0));
+  pll_pad->set_param("DIVQ", BitVector(3, 0));
+  pll_pad->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
+  pll_pad->set_param("ENABLE_ICEGATE", BitVector(1, 0));
+
+  Model *pll_2_pad = new Model(this, "SB_PLL40_2_PAD");
+  pll_2_pad->add_port("PACKAGEPIN", Direction::IN);
+  pll_2_pad->add_port("RESETB", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("BYPASS", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("SCLK", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("SDI", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("SDO", Direction::IN, Value::ZERO);
+  pll_2_pad->add_port("LOCK", Direction::OUT);
+  pll_2_pad->add_port("PLLOUTGLOBALA", Direction::OUT);
+  pll_2_pad->add_port("PLLOUTCOREA", Direction::OUT);
+  pll_2_pad->add_port("PLLOUTGLOBALB", Direction::OUT);
+  pll_2_pad->add_port("PLLOUTCOREB", Direction::OUT);
+  
+  pll_2_pad->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_2_pad->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_2_pad->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_2_pad->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_2_pad->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_2_pad->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_2_pad->set_param("PLLOUT_SELECT_PORTA", "GENCLK");
+  pll_2_pad->set_param("PLLOUT_SELECT_PORTB", "GENCLK");
+  pll_2_pad->set_param("DIVR", BitVector(4, 0));
+  pll_2_pad->set_param("DIVF", BitVector(7, 0));
+  pll_2_pad->set_param("DIVQ", BitVector(3, 0));
+  pll_2_pad->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_2_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
+  pll_2_pad->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
+  pll_2_pad->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
+
+  Model *pll_2f_core = new Model(this, "SB_PLL40_2F_CORE");
+  pll_2f_core->add_port("REFERENCECLK", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("RESETB", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("BYPASS", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("SCLK", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("SDI", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("SDO", Direction::IN, Value::ZERO);
+  pll_2f_core->add_port("LOCK", Direction::OUT);
+  pll_2f_core->add_port("PLLOUTGLOBALA", Direction::OUT);
+  pll_2f_core->add_port("PLLOUTCOREA", Direction::OUT);
+  pll_2f_core->add_port("PLLOUTGLOBALB", Direction::OUT);
+  pll_2f_core->add_port("PLLOUTCOREB", Direction::OUT);
+  
+  pll_2f_core->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_2f_core->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_2f_core->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_2f_core->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_2f_core->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_2f_core->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_2f_core->set_param("PLLOUT_SELECT_PORTA", "GENCLK");
+  pll_2f_core->set_param("PLLOUT_SELECT_PORTB", "GENCLK");
+  pll_2f_core->set_param("DIVR", BitVector(4, 0));
+  pll_2f_core->set_param("DIVF", BitVector(7, 0));
+  pll_2f_core->set_param("DIVQ", BitVector(3, 0));
+  pll_2f_core->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_2f_core->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
+  pll_2f_core->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
+  pll_2f_core->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
+
+  Model *pll_2f_pad = new Model(this, "SB_PLL40_2F_PAD");
+  pll_2f_pad->add_port("PACKAGEPIN", Direction::IN);
+  pll_2f_pad->add_port("RESETB", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("BYPASS", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("EXTFEEDBACK", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[0]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[1]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[2]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[3]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[4]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[5]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[6]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("DYNAMICDELAY[7]", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("SCLK", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("SDI", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("SDO", Direction::IN, Value::ZERO);
+  pll_2f_pad->add_port("LOCK", Direction::OUT);
+  pll_2f_pad->add_port("PLLOUTGLOBALA", Direction::OUT);
+  pll_2f_pad->add_port("PLLOUTCOREA", Direction::OUT);
+  pll_2f_pad->add_port("PLLOUTGLOBALB", Direction::OUT);
+  pll_2f_pad->add_port("PLLOUTCOREB", Direction::OUT);
+  
+  pll_2f_pad->set_param("FEEDBACK_PATH", "SIMPLE");
+  pll_2f_pad->set_param("DELAY_ADJUSTMENT_MODE_FEEDBACK", "FIXED");
+  pll_2f_pad->set_param("FDA_FEEDBACK", BitVector(4, 0));
+  pll_2f_pad->set_param("DELAY_ADJUSTMENT_MODE_RELATIVE", "FIXED");
+  pll_2f_pad->set_param("FDA_RELATIVE", BitVector(4, 0));
+  pll_2f_pad->set_param("SHIFTREG_DIV_MODE", BitVector(1, 0));
+  pll_2f_pad->set_param("PLLOUT_SELECT_PORTA", "GENCLK");
+  pll_2f_pad->set_param("PLLOUT_SELECT_PORTB", "GENCLK");
+  pll_2f_pad->set_param("DIVR", BitVector(4, 0));
+  pll_2f_pad->set_param("DIVF", BitVector(7, 0));
+  pll_2f_pad->set_param("DIVQ", BitVector(3, 0));
+  pll_2f_pad->set_param("FILTER_RANGE", BitVector(3, 0));
+  pll_2f_pad->set_param("EXTERNAL_DIVIDE_FACTOR", BitVector(32, 1));
+  pll_2f_pad->set_param("ENABLE_ICEGATE_PORTA", BitVector(1, 0));
+  pll_2f_pad->set_param("ENABLE_ICEGATE_PORTB", BitVector(1, 0));
+
   Model *warmboot = new Model(this, "SB_WARMBOOT");
   warmboot->add_port("BOOT", Direction::IN, Value::ZERO);
   warmboot->add_port("S1", Direction::IN, Value::ZERO);
@@ -1082,13 +1287,14 @@ Design::dump() const
   write_blif(*logs);
 }
 
-Models::Models(Design *d)
+Models::Models(const Design *d)
 {
   lut4 = d->find_model("SB_LUT4");
   carry = d->find_model("SB_CARRY");
   lc = d->find_model("ICESTORM_LC");
   io = d->find_model("SB_IO");
   gb = d->find_model("SB_GB");
+  gb_io = d->find_model("SB_GB_IO");
   ram = d->find_model("SB_RAM40_4K");
   ramnr = d->find_model("SB_RAM40_4KNR");
   ramnw = d->find_model("SB_RAM40_4KNW");

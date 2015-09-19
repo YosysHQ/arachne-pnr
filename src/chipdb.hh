@@ -49,6 +49,8 @@ public:
     : tile(tile_), row(r), col(c)
   {}
   
+  CBit with_tile(int new_t) const { return CBit(new_t, row, col); }
+  
   bool operator==(const CBit &rhs) const;
   bool operator!=(const CBit &rhs) const { return !operator==(rhs); }
   
@@ -246,14 +248,13 @@ public:
 	  std::map<std::string, std::vector<CBit>>>
     tile_nonrouting_cbits;
   
-  std::vector<int> extra_cell_tile;
-  std::vector<std::string> extra_cell_type;
-  std::vector<std::map<std::string, std::pair<int, std::string>>>
-    extra_cell_mfvs;
+  CBit extra_cell_cbit(int ec, const std::string &name) const;
   
   int n_cells;
   BasedVector<CellType, 1> cell_type;
   BasedVector<Location, 1> cell_location;
+  std::map<int, std::map<std::string, std::pair<int, std::string>>>
+    cell_mfvs;
 
   std::vector<std::vector<int>> tile_pos_cell;
   int loc_cell(const Location &loc) const 
@@ -273,7 +274,7 @@ public:
   
   std::map<TileType, std::pair<int, int>> tile_cbits_block_size;
   
-  void add_cell(CellType type, const Location &loc);
+  int add_cell(CellType type, const Location &loc);
   bool is_global_net(int i) const { return i < n_global_nets; }
   int find_switch(int in, int out) const;
   
