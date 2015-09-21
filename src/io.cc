@@ -22,6 +22,8 @@
 void
 instantiate_io(Design *d)
 {
+  Models models(d);
+
   Model *top = d->top();
   Model *io_model = d->find_model("SB_IO");
   Model *tbuf_model = d->find_model("$_TBUF_");
@@ -33,8 +35,10 @@ instantiate_io(Design *d)
       Port *q = p->connection_other_port();
       if (q
 	  && isa<Instance>(q->node())
-	  && cast<Instance>(q->node())->instance_of() == io_model
-	  && q->name() == "PACKAGE_PIN")
+	  && ((models.is_ioX(cast<Instance>(q->node()))
+	       && q->name() == "PACKAGE_PIN")
+	      || (models.is_pllX(cast<Instance>(q->node()))
+		  && q->name() == "PACKAGEPIN")))
 	continue;
       
 #ifndef NDEBUG

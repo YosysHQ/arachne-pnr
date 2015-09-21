@@ -43,6 +43,12 @@ Configuration::set_cbits(const std::vector<CBit> &value_cbits,
 }
 
 void
+Configuration::set_extra_cbit(const std::tuple<int, int, int> &t)
+{
+  extend(extra_cbits, t);
+}
+
+void
 Configuration::write_txt(std::ostream &s,
 			 const ChipDB *chipdb,
 			 Design *d,
@@ -80,6 +86,13 @@ Configuration::write_txt(std::ostream &s,
 	    }
 	  s << "\n";
 	}
+    }
+  
+  for (const auto &t : extra_cbits)
+    {
+      s << ".extra_bit " << std::get<0>(t)
+	<< " " << std::get<1>(t)
+	<< " " << std::get<2>(t) << "\n";
     }
   
   Models models(d);

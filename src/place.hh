@@ -27,9 +27,11 @@ class Package;
 class Constraints;
 class CarryChains;
 class IdLess;
+class DesignState;
 
-extern std::map<Instance *, int, IdLess>
+void
 place(random_generator &rg,
+      DesignState &ds,
       const ChipDB *chipdb, 
       const Package &package,
       Design *d,

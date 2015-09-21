@@ -299,13 +299,9 @@ template<typename T> void
 pop(std::vector<T> &v, int i)
 {
   assert(i < (int)v.size());
-  if (i == (int)v.size())
-    v.pop_back();
-  else
-    {
-      std::swap(v[i], v.back());
-      v.pop_back();
-    }
+  if (i != (int)v.size() - 1)
+    std::swap(v[i], v.back());
+  v.pop_back();
 }
 
 #endif

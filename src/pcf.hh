@@ -20,6 +20,7 @@
 #include <string>
 
 class Design;
+class DesignState;
 
 class Constraints
 {
@@ -37,5 +38,7 @@ void read_pcf(const std::string &filename,
 	      const Package &package,
 	      Design *d,
 	      Constraints &constraints);
+
+void place_constraints(DesignState &ds);
 
 #endif

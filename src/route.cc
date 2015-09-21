@@ -63,6 +63,7 @@ class Router
   std::vector<std::vector<int>> cnet_outs;
   
   std::map<std::string, std::pair<std::string, bool>> ram_gate_chip;
+  std::map<std::string, std::string> pll_gate_chip;
   
   std::vector<Net *> cnet_net;
   std::vector<std::vector<int>> cnet_tiles;
@@ -87,7 +88,6 @@ class Router
   
   // per net
   int current_net;
-  UllmanSet current_net_target_tiles;
   UllmanSet unrouted;
   
   UllmanSet visited;
@@ -160,7 +160,7 @@ Router::port_cnet(Instance *inst, Port *p)
 	  tile_net_name = fmt("lutff_" << loc.pos() << "/out");
 	}
     }
-  else if (models.is_io(inst))
+  else if (models.is_ioX(inst))
     {
       if (p_name == "LATCH_INPUT_VALUE")
 	tile_net_name = fmt("io_global/latch");
@@ -178,14 +178,17 @@ Router::port_cnet(Instance *inst, Port *p)
 	tile_net_name = fmt("io_" << loc.pos() << "/D_OUT_1");
       else if (p_name == "D_IN_0")
 	tile_net_name = fmt("io_" << loc.pos() << "/D_IN_0");
+      else if (p_name == "D_IN_1")
+	tile_net_name = fmt("io_" << loc.pos() << "/D_IN_1");
       else
 	{
-	  assert(p_name == "D_IN_1");
-	  tile_net_name = fmt("io_" << loc.pos() << "/D_IN_1");
+	  assert(models.is_gb_io(inst));
+	  goto Lgb;
 	}
     }
   else if (models.is_gb(inst))
     {
+    Lgb:
       if (p_name == "USER_SIGNAL_TO_GLOBAL_BUFFER")
 	tile_net_name = fmt("fabout");
       else
@@ -202,10 +205,8 @@ Router::port_cnet(Instance *inst, Port *p)
       t = p2.first;
       tile_net_name = p2.second;
     }
-  else
+  else if (models.is_ramX(inst))
     {
-      assert(models.is_ramX(inst));
-      
       auto r = ram_gate_chip.at(p_name);
       tile_net_name = r.first;
       
@@ -213,6 +214,44 @@ Router::port_cnet(Instance *inst, Port *p)
       if (!contains(chipdb->tile_nets[t], tile_net_name))
 	t = chipdb->tile(chipdb->tile_x(loc.tile()),
 			 chipdb->tile_y(loc.tile()) - 1);
+    }
+  else
+    {
+      assert(models.is_pllX(inst));
+      
+      // FIXME
+      std::string r = lookup_or_default(pll_gate_chip, p_name, p_name);
+      if (r == "PLLOUTGLOBAL"
+	  || r == "PLLOUTGLOBALA")
+	{
+	  const auto &p2 = chipdb->cell_mfvs.at(cell).at("PLLOUT_A");
+	  Location g_loc(p2.first, std::stoi(p2.second));
+	  int g = chipdb->loc_pin_glb_num.at(g_loc);
+	  tile_net_name = fmt("glb_netwk_" << g);
+	}
+      else if (r == "PLLOUTGLOBALB")
+	{
+	  const auto &p2 = chipdb->cell_mfvs.at(cell).at("PLLOUT_B");
+	  Location g_loc(p2.first, std::stoi(p2.second));
+	  int g = chipdb->loc_pin_glb_num.at(g_loc);
+	  tile_net_name = fmt("glb_netwk_" << g);
+	}
+      else
+	{
+	  const auto &p2 = chipdb->cell_mfvs.at(cell).at(r);
+	  t = p2.first;
+	  if (r == "PLLOUT_A"
+	      || r == "PLLOUT_B")
+	    tile_net_name = fmt("io_" << p2.second << "/D_IN_0");
+	  else
+	    tile_net_name = p2.second;
+	}
+      
+#if 0
+      *logs << p_name << " aka " << r
+	    << " -> (" << chipdb->tile_x(t) << " " << chipdb->tile_y(t) << ") "
+	    << tile_net_name << "\n";
+#endif
     }
   
   int n = chipdb->tile_nets[t].at(tile_net_name);
@@ -262,7 +301,6 @@ Router::Router(const ChipDB *cdb,
     n_shared(0),
     demand(chipdb->n_nets, 0),
     historical_demand(chipdb->n_nets, 0),
-    current_net_target_tiles(chipdb->n_tiles),
     unrouted(chipdb->n_nets),
     visited(chipdb->n_nets),
     frontier(chipdb->n_nets),
@@ -383,6 +421,14 @@ Router::Router(const ChipDB *cdb,
 	 "WE",
 	 std::make_pair("ram/WE", true));
   
+  for (int i = 0; i < 8; ++i)
+    extend(pll_gate_chip, 
+	   fmt("DYNAMICDELAY[" << i << "]"),
+	   fmt("DYNAMICDELAY_" << i));
+  extend(pll_gate_chip, "PLLOUTCORE", "PLLOUT_A");
+  extend(pll_gate_chip, "PLLOUTCOREA", "PLLOUT_A");
+  extend(pll_gate_chip, "PLLOUTCOREB", "PLLOUT_B");
+  
   for (int t = 0; t < chipdb->n_tiles; ++t)
     for (const auto &p : chipdb->tile_nets[t])
       cnet_tiles[p.second].push_back(t);
@@ -442,16 +488,6 @@ Router::visit(int cn)
     {
       if (visited.contains(cn2))
 	continue;
-      
-#if 0
-      if (cnet_local[cn2])
-	{
-	  assert(cnet_tiles[cn2].size() == 1);
-	  int t = cnet_tiles[cn2][0];
-	  if (!current_net_target_tiles.contains(t))
-	    continue;
-	}
-#endif
       
       int cn2_cost = 1;  // base
       if (passes == max_passes)
@@ -659,14 +695,6 @@ Router::route()
 	  current_net = n;
 	  
 	  const auto &targets = net_targets[n];
-	  
-	  current_net_target_tiles.clear();
-	  for (int cn : targets)
-	    {
-	      assert(cnet_tiles[cn].size() == 1);
-	      int t = cnet_tiles[cn][0];
-	      current_net_target_tiles.insert(t);
-	    }
 	  
 	  if (passes > 1)
 	    {

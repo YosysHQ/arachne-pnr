@@ -37,4 +37,15 @@ for d in $devices; do
     $arachne_pnr -d $d bram.blif -o $d/bram.txt
     shasum $d/bram.txt >> txt.sum
     icepack $d/bram.txt $d/bram.bin
+    
+    $arachne_pnr -d $d -p sb_gb_io.$d.pcf sb_gb_io.blif -o $d/sb_gb_io.txt
+    shasum $d/sb_gb_io.txt >> txt.sum
+    icepack $d/sb_gb_io.txt $d/sb_gb_io.bin
+    
+    for pll in sb_pll40_pad sb_pll40_2_pad sb_pll40_2f_pad; do
+	$arachne_pnr -d $d -p sb_pll40.$d.pcf $pll.blif -o $d/$pll.txt
+	shasum $d/$pll.txt >> txt.sum
+	icepack $d/$pll.txt $d/$pll.bin
+    done
 done
+

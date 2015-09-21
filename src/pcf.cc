@@ -18,14 +18,12 @@
 #include "netlist.hh"
 #include "pcf.hh"
 #include "line_parser.hh"
+#include "designstate.hh"
+#include "casting.hh"
 
 #include <cstring>
 #include <istream>
 #include <fstream>
-
-class Design;
-class Model;
-class Constraints;
 
 class PCFParser : public LineParser
 {
@@ -137,4 +135,143 @@ read_pcf(const std::string &filename,
 	      << strerror(errno)));
   PCFParser parser(filename, fs, package, d, constraints);
   return parser.parse();
+}
+
+class ConstraintsPlacer
+{
+  DesignState &ds;
+  const ChipDB *chipdb;
+  const Models &models;
+  Model *top;
+  const Constraints &constraints;
+  
+  BasedVector<Instance *, 1> cell_gate;
+  
+  Instance *top_port_io_gate(const std::string &net_name);
+  
+public:
+  ConstraintsPlacer(DesignState &ds_);
+  
+  void place();
+};
+
+Instance *
+ConstraintsPlacer::top_port_io_gate(const std::string &net_name)
+{
+  Port *p = top->find_port(net_name);
+  assert(p);
+  
+  Port *p2 = p->connection_other_port();
+  
+  Instance *inst = cast<Instance>(p2->node());
+  assert(models.is_ioX(inst)
+	 || models.is_pllX(inst));
+  
+  return inst;
+}
+
+ConstraintsPlacer::ConstraintsPlacer(DesignState &ds_)
+  : ds(ds_),
+    chipdb(ds.chipdb),
+    models(ds.models),
+    top(ds.top),
+    constraints(ds.constraints),
+    cell_gate(chipdb->n_cells, nullptr)
+{
+  assert(ds.placement.empty());
+}
+
+void
+ConstraintsPlacer::place()
+{
+  std::vector<Net *> bank_latch(4, nullptr);
+  for (const auto &p : constraints.net_pin_loc)
+    {
+      Instance *inst = top_port_io_gate(p.first);
+      
+      // FIXME handle pll, gb_io
+      
+      const Location &loc = p.second;
+      int t = loc.tile();
+      int b = chipdb->tile_bank(t);
+      
+      int c = 0;
+      if (models.is_ioX(inst))
+	{
+	  Net *latch = inst->find_port("LATCH_INPUT_VALUE")->connection();
+	  if (latch)
+	    {
+	      if (bank_latch[b])
+		{
+		  if (bank_latch[b] != latch)
+		    fatal(fmt("pcf error: multiple LATCH_INPUT_VALUE drivers in bank " << b));
+		}
+	      else
+		bank_latch[b] = latch;
+	    }
+      
+	  if (inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT"
+	      && b != 3)
+	    fatal(fmt("pcf error: LVDS port `" << p.first << "' not in bank 3\n"));
+      
+	  Location loc_other(t,
+			     loc.pos() ? 0 : 1);
+	  int cell_other = chipdb->loc_cell(loc_other);
+	  if (cell_other)
+	    {
+	      Instance *inst_other = cell_gate[cell_other];
+	      if (inst_other)
+		{
+		  if (inst->get_param("NEG_TRIGGER").get_bit(0)
+		      != inst_other->get_param("NEG_TRIGGER").get_bit(0))
+		    {
+		      int x = chipdb->tile_x(t),
+			y = chipdb->tile_y(t);
+		      fatal(fmt("pcf error: incompatible NEG_TRIGGER parameters in PIO at (" 
+				<< x << ", " << y << ")"));
+		    }
+		}
+	    }
+      
+	  c = chipdb->loc_cell(loc);
+	}
+      else
+	{
+	  assert(models.is_pllX(inst));
+	  
+	  Location pll_loc(loc.tile(), 3);
+	  
+	  c = chipdb->loc_cell(pll_loc);
+	  if (!c)
+	    fatal(fmt("bad constraint on `"
+		      << p.first << "': no pll at pin "
+		      << ds.package.loc_pin.at(loc)));
+	}
+      
+      cell_gate[c] = inst;
+      extend(ds.placement, inst, c);
+    }
+  
+  for (Instance *inst : top->instances())
+    {
+      if (contains(ds.placement, inst))
+	continue;
+      
+      if (models.is_gb_io(inst))
+	fatal("physical constraint required for GB_IO");
+      else if (models.is_pllX(inst))
+	{
+	  if (inst->find_port("PACKAGEPIN"))
+	    fatal("physical constraint required for PLL");
+	  else
+	    fatal("non-PAD PLLs currently unsupported.\n");
+	}
+    }
+}
+
+void
+place_constraints(DesignState &ds)
+{
+  ConstraintsPlacer placer(ds);
+  placer.place();
 }

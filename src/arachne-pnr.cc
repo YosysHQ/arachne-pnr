@@ -26,6 +26,7 @@
 #include "global.hh"
 #include "carry.hh"
 #include "constant.hh"
+#include "designstate.hh"
 
 #include <iostream>
 #include <fstream>
@@ -399,10 +400,8 @@ main(int argc, const char **argv)
   // d->dump();
   
   {
-    Models models(d);
-    Configuration conf;
+    DesignState ds(chipdb, package, d);
     
-    std::map<Instance *, int, IdLess> placement;
     if (route_only)
       {
 	Model *top = d->top();
@@ -411,16 +410,15 @@ main(int argc, const char **argv)
 	    const std::string &loc_attr = inst->get_attr("loc").as_string();
 	    int cell;
 	    sscanf(loc_attr.c_str(), "%d", &cell);
-	    extend(placement, inst, cell);
+	    extend(ds.placement, inst, cell);
 	  }
       }
     else
       {
-	Constraints constraints;
 	if (pcf_file)
 	  {
 	    *logs << "read_pcf " << pcf_file << "...\n";
-	    read_pcf(pcf_file, package, d, constraints);
+	    read_pcf(pcf_file, package, d, ds.constraints);
 	  }
 	
 	*logs << "instantiate_io...\n";
@@ -430,10 +428,8 @@ main(int argc, const char **argv)
 #endif
 	// d->dump();
     
-	CarryChains chains;
-    
 	*logs << "pack...\n";
-	pack(chipdb, package, d, chains);
+	pack(chipdb, package, d, ds.chains);
 #ifndef NDEBUG
 	d->check();
 #endif
@@ -460,14 +456,19 @@ main(int argc, const char **argv)
 	    d->write_verilog(fs);
 	  }
 	
+	*logs << "place_constraints...\n";
+	place_constraints(ds);
+#ifndef NDEBUG
+	d->check();
+#endif
+	
 	*logs << "promote_globals...\n";
-	std::map<Instance *, uint8_t, IdLess> gb_inst_gc
-	  = promote_globals(chipdb, d, do_promote_globals);
+	promote_globals(ds, do_promote_globals);
 #ifndef NDEBUG
 	d->check();
 #endif
 	// d->dump();
-    
+	
 	*logs << "realize_constants...\n";
 	realize_constants(chipdb, d);
 #ifndef NDEBUG
@@ -476,9 +477,9 @@ main(int argc, const char **argv)
 	
 	*logs << "place...\n";
 	// d->dump();
-	placement = place(rg, chipdb, package, d,
-			  chains, constraints, gb_inst_gc,
-			  conf);
+	place(rg, ds, chipdb, package, d,
+	      ds.chains, ds.constraints, ds.gb_inst_gc,
+	      ds.conf);
 #ifndef NDEBUG
 	d->check();
 #endif
@@ -492,9 +493,9 @@ main(int argc, const char **argv)
 	    if (fs.fail())
 	      fatal(fmt("write_pcf: failed to open `" << expanded << "': "
 			<< strerror(errno)));
-	    for (const auto &p : placement)
+	    for (const auto &p : ds.placement)
 	      {
-		if (models.is_io(p.first))
+		if (ds.models.is_io(p.first))
 		  {
 		    const Location &loc = chipdb->cell_location[p.second];
 		    std::string pin = package.loc_pin.at(loc);
@@ -511,7 +512,7 @@ main(int argc, const char **argv)
 	
 	if (place_blif)
 	  {
-	    for (const auto &p : placement)
+	    for (const auto &p : ds.placement)
 	      {
 		// p.first->set_attr("loc", fmt(p.second));
 		const Location &loc = chipdb->cell_location[p.second];
@@ -534,7 +535,7 @@ main(int argc, const char **argv)
       }
     
     *logs << "route...\n";
-    std::vector<Net *> cnet_net = route(chipdb, d, conf, placement);
+    std::vector<Net *> cnet_net = route(chipdb, d, ds.conf, ds.placement);
 #ifndef NDEBUG
     d->check();
 #endif
@@ -547,17 +548,17 @@ main(int argc, const char **argv)
 	if (fs.fail())
 	  fatal(fmt("write_txt: failed to open `" << expanded << "': "
 		    << strerror(errno)));
-	conf.write_txt(fs, chipdb, d, placement, cnet_net);
+	ds.conf.write_txt(fs, chipdb, d, ds.placement, cnet_net);
       }
     else
       {
 	*logs << "write_txt <stdout>...\n";
-	conf.write_txt(std::cout, chipdb, d, placement, cnet_net);
+	ds.conf.write_txt(std::cout, chipdb, d, ds.placement, cnet_net);
       }
   }
   
   if (d)
-  delete d;
+    delete d;
   
   if (chipdb)
     delete chipdb;

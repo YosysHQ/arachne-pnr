@@ -29,6 +29,7 @@ class Configuration
 {
 public:
   std::map<CBit, bool> cbits;
+  std::set<std::tuple<int, int, int>> extra_cbits;
   
 public:
   Configuration();
@@ -36,6 +37,7 @@ public:
   void set_cbit(const CBit &cbit, bool value);
   void set_cbits(const std::vector<CBit> &value_cbits,
 		 unsigned value);
+  void set_extra_cbit(const std::tuple<int, int, int> &t);
   
   void write_txt(std::ostream &s,
 		 const ChipDB *chipdb,

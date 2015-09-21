@@ -569,7 +569,9 @@ Packer::pack()
     n_lc_dff = 0,
     n_lc_carry_dff = 0,
     n_gb = 0,
+    n_gb_io = 0,
     n_bram = 0,
+    n_pll = 0,
     n_warmboot = 0;
   for (Instance *inst : top->instances())
     {
@@ -595,6 +597,13 @@ Packer::pack()
 	++n_gb;
       else if (models.is_warmboot(inst))
 	++n_warmboot;
+      else if (models.is_gb_io(inst))
+	{
+	  ++n_io;
+	  ++n_gb_io;
+	}
+      else if (models.is_pllX(inst))
+	++n_pll;
       else
 	{ 
 	  assert(models.is_ramX(inst));
@@ -618,6 +627,7 @@ Packer::pack()
 
   *logs << "\nAfter packing:\n"
 	<< "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
+	<< "  GB_IOs     " << n_gb_io << " / " << chipdb->n_global_nets << "\n"
 	<< "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
 	<< "  DFF        " << n_lc_dff << "\n"
 	<< "  CARRY      " << n_lc_carry << "\n"
@@ -626,7 +636,8 @@ Packer::pack()
 	<< "  CARRY PASS " << n_carry_pass_through << "\n"
 	<< "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
 	<< "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
-	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n\n";
+	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
+	<< "PLLs         " << n_pll << " / " << 999 << "\n\n";  // FIXME
 }
 
 void

@@ -465,7 +465,7 @@ Model::add_instance(Model *inst_of)
 std::set<Net *, IdLess>
 Model::boundary_nets(const Design *d) const
 {
-  Model *io_model = d->find_model("SB_IO");
+  Models models(d);
   std::set<Net *, IdLess> bnets;
   for (Port *p : m_ordered_ports)
     {
@@ -475,8 +475,10 @@ Model::boundary_nets(const Design *d) const
 	  Port *q = p->connection_other_port();
 	  if (q
 	      && isa<Instance>(q->node())
-	      && cast<Instance>(q->node())->instance_of() == io_model
-	      && q->name() == "PACKAGE_PIN")
+	      && ((models.is_ioX(cast<Instance>(q->node()))
+		   && q->name() == "PACKAGE_PIN")
+		  || (models.is_pllX(cast<Instance>(q->node()))
+		      && q->name() == "PACKAGEPIN")))
 	    extend(bnets, n);
 	}
     }
@@ -610,7 +612,7 @@ Model::rename_net(Net *n, const std::string &new_name)
 void
 Model::check(const Design *d) const
 {
-  Model *io_model = d->find_model("SB_IO");
+  Models models(d);
   
   for (Port *p : m_ordered_ports)
     {
@@ -622,8 +624,10 @@ Model::check(const Design *d) const
 	      Port *q = p->connection_other_port();
 	      assert (q
 		      && isa<Instance>(q->node())
-		      && cast<Instance>(q->node())->instance_of() == io_model
-		      && q->name() == "PACKAGE_PIN");
+		      && ((models.is_ioX(cast<Instance>(q->node()))
+			   && q->name() == "PACKAGE_PIN")
+			  || (models.is_pllX(cast<Instance>(q->node()))
+			      && q->name() == "PACKAGEPIN")));
 	    }
 	}
     }
