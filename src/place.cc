@@ -69,6 +69,8 @@ public:
   int n_gates;
   BasedVector<Instance *, 1> gates;
   std::map<Instance *, int, IdLess> gate_idx;
+  
+  BasedBitVector<1> locked;
   BasedBitVector<1> chained;
   
   BasedVector<int, 1> gate_clk, gate_sr, gate_cen, gate_latch;
@@ -78,9 +80,6 @@ public:
   
   BitVector net_global;
   
-  std::vector<std::vector<int>> cell_type_free_cells;
-  
-  std::vector<int> free_io_cells;
   std::vector<int> free_gates;
   
   BasedVector<int, 1> gate_chain;
@@ -103,6 +102,7 @@ public:
   int n_move;
   int n_accept;
   
+  bool move_failed;
   UllmanSet changed_tiles;
   std::vector<std::pair<int, int>> restore_cell;
   std::vector<std::tuple<int, int, int>> restore_chain;
@@ -131,6 +131,9 @@ public:
   unsigned top_port_io_gate(const std::string &net_name);
   
   void place_initial();
+  void configure_io(const Location &loc,
+		    bool enable_input,
+		    bool pullup);
   void configure();
   
 #ifndef NDEBUG
@@ -198,7 +201,7 @@ Placer::gate_random_cell(int g)
   else
     {
       int ct_idx = cell_type_idx(ct);
-      return random_element(cell_type_free_cells[ct_idx], rg);
+      return random_element(chipdb->cell_type_cells[ct_idx], rg);
     }
 }
 
@@ -233,11 +236,16 @@ void
 Placer::move_gate(int g, int new_cell)
 {
   assert(g);
+  if (locked[g])
+    move_failed = true;
+  
   int cell = gate_cell[g]; // copy
   if (new_cell == cell)
     return;
   
   int new_g = cell_gate[new_cell];
+  if (new_g && locked[new_g])
+    move_failed = true;
   
   save_set(new_cell, g);
   save_set(cell, new_g);
@@ -351,6 +359,7 @@ Placer::save_recompute_wire_length()
 void
 Placer::restore()
 {
+  move_failed = false;
   for (const auto &p : restore_cell)
     {
       cell_gate[p.first] = p.second;
@@ -556,7 +565,9 @@ void
 Placer::accept_or_restore()
 {
   int delta;
-  
+
+  if (move_failed)
+    goto L;
   for (int i = 0; i < (int)changed_tiles.size(); ++i)
     {
       int t = changed_tiles.ith(i);
@@ -713,6 +724,7 @@ Placer::Placer(random_generator &rg_,
     diameter(std::max(chipdb->width,
 		      chipdb->height)),
     temp(10000.0),
+    move_failed(false),
     changed_tiles(chipdb->n_tiles),
     cell_gate(chipdb->n_cells, 0)
 {
@@ -829,8 +841,7 @@ Placer::Placer(random_generator &rg_,
 void
 Placer::place_initial()
 {
-  BasedBitVector<1> locked(n_gates);
-  
+  locked.resize(n_gates);
   chained.resize(n_gates);
   
   // place chains
@@ -908,7 +919,11 @@ Placer::place_initial()
       int g = gate_idx.at(inst);
       int c = p.second;
       
-      *logs << inst->instance_of()->name() << " @ " << c << "\n";
+#if 0
+      *logs << inst->instance_of()->name() << " @ " 
+	    << chipdb->tile_x(chipdb->cell_location[c].tile()) << " "
+	    << chipdb->tile_y(chipdb->cell_location[c].tile()) << "\n";
+#endif
       
       assert(cell_gate[c] == 0);
       cell_gate[c] = g;
@@ -923,18 +938,16 @@ Placer::place_initial()
       assert(valid(chipdb->cell_location[c].tile()));
     }
   
-  cell_type_free_cells = chipdb->cell_type_cells;
+  std::vector<std::vector<int>> cell_type_empty_cells = chipdb->cell_type_cells;
   for (int i = 0; i < n_cell_types; ++i)
-    for (int j = 0; j < (int)cell_type_free_cells[i].size();)
+    for (int j = 0; j < (int)cell_type_empty_cells[i].size();)
       {
-	int c = cell_type_free_cells[i][j];
+	int c = cell_type_empty_cells[i][j];
 	if (cell_gate[c] != 0)
-	  pop(cell_type_free_cells[i], j);
+	  pop(cell_type_empty_cells[i], j);
 	else
 	  ++j;
       }
-  
-  std::vector<std::vector<int>> cell_type_empty_cells = cell_type_free_cells;
   
   std::vector<int> cell_type_n_gates(n_cell_types, 0);
   for (int i = 1; i <= n_gates; ++i)
@@ -944,7 +957,7 @@ Placer::place_initial()
   
   for (int i = 1; i <= n_gates; ++i)
     {
-      if (locked[i]
+      if (locked[i] 
 	  || chained[i])
 	continue;
       
@@ -963,7 +976,7 @@ Placer::place_initial()
 	  for (int j = 0; j < (int)v.size(); ++j)
 	    {
 	      int c = v[j];
-	  
+	      
 	      assert(cell_gate[c] == 0);
 	      cell_gate[c] = i;
 	      gate_cell[i] = c;
@@ -1042,12 +1055,65 @@ Placer::place_initial()
 }
 
 void
+Placer::configure_io(const Location &loc,
+		     bool enable_input,
+		     bool pullup)
+{
+  const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
+  const CBit &ie_0 = func_cbits.at("IoCtrl.IE_0")[0],
+    &ie_1 = func_cbits.at("IoCtrl.IE_1")[0],
+    &ren_0 = func_cbits.at("IoCtrl.REN_0")[0],
+    &ren_1 = func_cbits.at("IoCtrl.REN_1")[0];
+  
+  if (loc.pos() == 0)
+    {
+      conf.set_cbit(CBit(loc.tile(),
+			 ren_0.row,
+			 ren_0.col),
+		    !pullup);  // active low
+    }
+  else
+    {
+      assert(loc.pos() == 1);
+      conf.set_cbit(CBit(loc.tile(),
+			 ren_1.row,
+			 ren_1.col),
+		    !pullup);  // active low
+    }
+  if (loc.pos() == 0)
+    {
+      conf.set_cbit(CBit(loc.tile(),
+			 ie_0.row,
+			 ie_0.col),
+		    // active low 1k, active high 8k
+		    (chipdb->device == "1k"
+		     ? !enable_input
+		     : enable_input));
+    }
+  else
+    {
+      assert(loc.pos() == 1);
+      conf.set_cbit(CBit(loc.tile(),
+			 ie_1.row,
+			 ie_1.col),
+		    // active low 1k, active high 8k
+		    (chipdb->device == "1k"
+		     ? !enable_input
+		     : enable_input));
+    }
+}
+
+void
 Placer::configure()
 {
   for (int g = 1; g <= n_gates; g ++)
     {
       Instance *inst = gates[g];
       int cell = gate_cell[g];
+      
+      if (g == 5)
+	*logs << "cell = " << cell << "\n";
+      
       const Location &loc = chipdb->cell_location[cell];
       
       if (models.is_warmboot(inst)) {
@@ -1121,6 +1187,8 @@ Placer::configure()
 	}
       else if (models.is_ioX(inst))
 	{
+	  // FIXME possible io/pll conflict.
+	  
 	  const BitVector &pin_type = inst->get_param("PIN_TYPE").as_bits();
 	  for (int i = 0; i < 6; ++i)
 	    {
@@ -1143,6 +1211,9 @@ Placer::configure()
 	      && inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected())
 	    {
 	      int glb = chipdb->loc_pin_glb_num.at(loc);
+	      
+	      *logs << "(gb_io) glb = " << glb << "\n";
+	      
 	      const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << glb));
 	      conf.set_extra_cbit(ecb);
 	    }
@@ -1200,6 +1271,31 @@ Placer::configure()
       else
 	{
 	  assert(models.is_pllX(inst));
+	  
+	  bool found = false;
+	  Location io_loc;
+	  for (const auto &p2 : chipdb->loc_pin_glb_num)
+	    {
+	      if (p2.first.tile() == t)
+		{
+		  assert(!found);
+		  io_loc = p2.first;
+		  found = true;
+		}
+	    }
+	  assert(found);
+	  
+	  const CBit &cbit_pt0 = func_cbits.at(fmt("IOB_" << io_loc.pos() << ".PINTYPE_0"))[0],
+	    &cbit_pt1 = func_cbits.at(fmt("IOB_" << io_loc.pos() << ".PINTYPE_1"))[0];
+	  
+	  conf.set_cbit(CBit(t, 
+			     cbit_pt0.row, 
+			     cbit_pt0.col),
+			true);
+	  conf.set_cbit(CBit(t, 
+			     cbit_pt1.row, 
+			     cbit_pt1.col),
+			false);
 	  
 	  CBit delay_adjmode_fb_cb = chipdb->extra_cell_cbit(cell, "DELAY_ADJMODE_FB");
 	  
@@ -1402,11 +1498,20 @@ Placer::configure()
   // set IoCtrl configuration bits
   {
     const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
-    const CBit &ie_0 = func_cbits.at("IoCtrl.IE_0")[0],
-      &ie_1 = func_cbits.at("IoCtrl.IE_1")[0],
-      &ren_0 = func_cbits.at("IoCtrl.REN_0")[0],
-      &ren_1 = func_cbits.at("IoCtrl.REN_1")[0],
-      &lvds = func_cbits.at("IoCtrl.LVDS")[0];
+    const CBit &lvds = func_cbits.at("IoCtrl.LVDS")[0];
+    
+    std::map<Location, int> loc_pll;
+    int pll_idx = cell_type_idx(CellType::PLL);
+    for (int cell : chipdb->cell_type_cells[pll_idx])
+      {
+	const auto &p2a = chipdb->cell_mfvs.at(cell).at("PLLOUT_A");
+	Location a_loc(p2a.first, std::stoi(p2a.second));
+	extend(loc_pll, a_loc, cell);
+	
+	const auto &p2b = chipdb->cell_mfvs.at(cell).at("PLLOUT_B");
+	Location b_loc(p2b.first, std::stoi(p2b.second));
+	extend(loc_pll, b_loc, cell);
+      }
     
     for (const auto &p : package.pin_loc)
       {
@@ -1415,59 +1520,36 @@ Placer::configure()
 	bool pullup = true;  // default pullup
 	
 	const Location &loc = p.second;
-	const Location &ieren_loc = chipdb->ieren.at(loc);
-	int cell = chipdb->loc_cell(loc);
-	int g = cell_gate[cell];
-	if (g)
+	int pll_cell = lookup_or_default(loc_pll, loc, 0);
+	if (pll_cell)
 	  {
-	    Instance *inst = gates[g];
-	    
-	    if (inst->find_port("D_IN_0")->connected()
-		|| inst->find_port("D_IN_1")->connected())
-	      enable_input = true;
-	    pullup = inst->get_param("PULLUP").get_bit(0);
-	    conf.set_cbit(CBit(loc.tile(),
-			       lvds.row,
-			       lvds.col),
-			  inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT");
+	    // FIXME only enable if inputs present
+	    enable_input = true;
+	    pullup = false;
+	  }
+	else
+	  {
+	    int cell = chipdb->loc_cell(loc);
+	    int g = cell_gate[cell];
+	    if (g)
+	      {
+		Instance *inst = gates[g];
+		
+		if (inst->find_port("D_IN_0")->connected()
+		    || inst->find_port("D_IN_1")->connected()
+		    || (models.is_gb_io(inst)
+			&& inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected()))
+		  enable_input = true;
+		pullup = inst->get_param("PULLUP").get_bit(0);
+		conf.set_cbit(CBit(loc.tile(),
+				   lvds.row,
+				   lvds.col),
+			      inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT");
+	      }
 	  }
 	
-	if (ieren_loc.pos() == 0)
-	  {
-	    conf.set_cbit(CBit(ieren_loc.tile(),
-			       ren_0.row,
-			       ren_0.col),
-			  !pullup);  // active low
-	  }
-	else
-	  {
-	    assert(ieren_loc.pos() == 1);
-	    conf.set_cbit(CBit(ieren_loc.tile(),
-			       ren_1.row,
-			       ren_1.col),
-			  !pullup);  // active low
-	  }
-	if (ieren_loc.pos() == 0)
-	  {
-	    conf.set_cbit(CBit(ieren_loc.tile(),
-			       ie_0.row,
-			       ie_0.col),
-			  // active low 1k, active high 8k
-			  (chipdb->device == "1k"
-			   ? !enable_input
-			   : enable_input));
-	  }
-	else
-	  {
-	    assert(ieren_loc.pos() == 1);
-	    conf.set_cbit(CBit(ieren_loc.tile(),
-			       ie_1.row,
-			       ie_1.col),
-			  // active low 1k, active high 8k
-			  (chipdb->device == "1k"
-			   ? !enable_input
-			   : enable_input));
-	  }
+	const Location &ieren_loc = chipdb->ieren.at(loc);
+	configure_io(ieren_loc, enable_input, pullup);
       }
     
     std::set<Location> ieren_image;
@@ -1486,42 +1568,7 @@ Placer::configure()
 	    if (contains(ieren_image, loc))
 	      continue;
 	    
-	    if (loc.pos() == 0)
-	      {
-		conf.set_cbit(CBit(loc.tile(),
-				   ren_0.row,
-				   ren_0.col),
-			      !pullup);  // active low
-	      }
-	    else
-	      {
-		assert(loc.pos() == 1);
-		conf.set_cbit(CBit(loc.tile(),
-				   ren_1.row,
-				   ren_1.col),
-			      !pullup);  // active low
-	      }
-	    if (loc.pos() == 0)
-	      {
-		conf.set_cbit(CBit(loc.tile(),
-				   ie_0.row,
-				   ie_0.col),
-			      // active low 1k, active high 8k
-			      (chipdb->device == "1k"
-			       ? !enable_input
-			       : enable_input));
-	      }
-	    else
-	      {
-		assert(loc.pos() == 1);
-		conf.set_cbit(CBit(loc.tile(),
-				   ie_1.row,
-				   ie_1.col),
-			      // active low 1k, active high 8k
-			      (chipdb->device == "1k"
-			       ? !enable_input
-			       : enable_input));
-	      }
+	    configure_io(loc, enable_input, pullup);
 	  }
       }
   }
@@ -1570,20 +1617,23 @@ Placer::place()
 	      int new_cell = gate_random_cell(g);	      
 	      
 	      int new_g = cell_gate[new_cell];
-	      if (new_g && chained[new_g])
+	      if (new_g 
+		  && chained[new_g])
 		continue;
 	      
+	      assert(!move_failed);
 	      move_gate(g, new_cell);
 	      accept_or_restore();
 	      
 	      // check();
 	    }
-      
+	  
 	  for (int c = 0; c < (int)chains.chains.size(); ++c)
 	    {
 	      std::pair<Location, bool> new_loc = chain_random_loc(c);
 	      if (new_loc.second)
 		{
+		  assert(!move_failed);
 		  move_chain(c, new_loc.first);
 		  accept_or_restore();
 		}

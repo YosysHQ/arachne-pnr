@@ -27,7 +27,7 @@ class IdLess;
 
 class Configuration
 {
-public:
+private:
   std::map<CBit, bool> cbits;
   std::set<std::tuple<int, int, int>> extra_cbits;
   

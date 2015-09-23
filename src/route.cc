@@ -182,13 +182,14 @@ Router::port_cnet(Instance *inst, Port *p)
 	tile_net_name = fmt("io_" << loc.pos() << "/D_IN_1");
       else
 	{
-	  assert(models.is_gb_io(inst));
-	  goto Lgb;
+	  assert(models.is_gb_io(inst)
+		 && p_name == "GLOBAL_BUFFER_OUTPUT");
+	  int g = chipdb->loc_pin_glb_num.at(loc);
+	  tile_net_name = fmt("glb_netwk_" << g);
 	}
     }
   else if (models.is_gb(inst))
     {
-    Lgb:
       if (p_name == "USER_SIGNAL_TO_GLOBAL_BUFFER")
 	tile_net_name = fmt("fabout");
       else

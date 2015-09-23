@@ -209,11 +209,11 @@ ConstraintsPlacer::place()
 	      else
 		bank_latch[b] = latch;
 	    }
-      
+	  
 	  if (inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT"
 	      && b != 3)
 	    fatal(fmt("pcf error: LVDS port `" << p.first << "' not in bank 3\n"));
-      
+	  
 	  Location loc_other(t,
 			     loc.pos() ? 0 : 1);
 	  int cell_other = chipdb->loc_cell(loc_other);
@@ -244,8 +244,9 @@ ConstraintsPlacer::place()
 	  c = chipdb->loc_cell(pll_loc);
 	  if (!c)
 	    fatal(fmt("bad constraint on `"
-		      << p.first << "': no pll at pin "
+		      << p.first << "': no PLL at pin "
 		      << ds.package.loc_pin.at(loc)));
+	  // FIXME check for conflicting IO
 	}
       
       cell_gate[c] = inst;
@@ -261,10 +262,32 @@ ConstraintsPlacer::place()
 	fatal("physical constraint required for GB_IO");
       else if (models.is_pllX(inst))
 	{
-	  if (inst->find_port("PACKAGEPIN"))
-	    fatal("physical constraint required for PLL");
-	  else
-	    fatal("non-PAD PLLs currently unsupported.\n");
+	  if (inst->has_attr("location"))
+	    {
+	      const auto &a = inst->get_attr("location");
+	      int x, y;
+	      // FIXME check retval
+	      sscanf(a.as_string().c_str(), "%d %d", &x, &y);
+	      
+	      Location pll_loc(chipdb->tile(x, y), 3);
+	      int c = chipdb->loc_cell(pll_loc);
+	      if (!c)
+		fatal(fmt("bad location attribute: no PLL at `"
+			  << x << " " << y << "'"));
+	      
+	      // FIXME check for conflicting IO
+	      
+	      cell_gate[c] = inst;
+	      extend(ds.placement, inst, c);
+	    }
+	  else 
+	    {
+	      // FIXME place randomly
+	      if (inst->find_port("PACKAGEPIN"))
+		fatal("physical constraint required for PAD PLL");
+	      else
+		fatal("location attribute required for PAD PLL");
+	    }
 	}
     }
 }
