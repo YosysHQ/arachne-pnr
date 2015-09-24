@@ -42,8 +42,8 @@ for d in $devices; do
     shasum $d/sb_gb_io.txt >> txt.sum
     icepack $d/sb_gb_io.txt $d/sb_gb_io.bin
     
-    for pll in sb_pll40_pad sb_pll40_2_pad sb_pll40_2f_pad; do
-	$arachne_pnr -d $d -p sb_pll40.$d.pcf $pll.blif -o $d/$pll.txt
+    for pll in sb_pll40_pad sb_pll40_core sb_pll40_2_pad sb_pll40_2f_pad sb_pll40_2f_core; do
+	$arachne_pnr -d $d $pll.blif -o $d/$pll.txt
 	shasum $d/$pll.txt >> txt.sum
 	icepack $d/$pll.txt $d/$pll.bin
     done

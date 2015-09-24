@@ -22,4 +22,7 @@ public:
   
 public:
   DesignState(const ChipDB *chipdb_, const Package &package_, Design *d_);
+  
+  bool is_dual_pll(Instance *inst) const;
+  std::vector<int> pll_out_io_cells(Instance *inst, int cell) const;
 };

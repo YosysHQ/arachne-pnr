@@ -409,8 +409,8 @@ main(int argc, const char **argv)
 	  {
 	    const std::string &loc_attr = inst->get_attr("loc").as_string();
 	    int cell;
-	    // FIXME check retval
-	    sscanf(loc_attr.c_str(), "%d", &cell);
+	    if (sscanf(loc_attr.c_str(), "%d", &cell) != 1)
+	      fatal("parse error in loc attribute");
 	    extend(ds.placement, inst, cell);
 	  }
       }

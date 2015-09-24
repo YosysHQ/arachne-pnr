@@ -850,7 +850,6 @@ Placer::place_initial()
 				     chipdb->height - 2);
   
   // FIXME apply only if present
-  // PLL LOCK, SDO
   for (unsigned i = 0; i < logic_column_free.size(); ++i)
     {
       if (chipdb->device == "1k"
@@ -1187,8 +1186,6 @@ Placer::configure()
 	}
       else if (models.is_ioX(inst))
 	{
-	  // FIXME possible io/pll conflict.
-	  
 	  const BitVector &pin_type = inst->get_param("PIN_TYPE").as_bits();
 	  for (int i = 0; i < 6; ++i)
 	    {
@@ -1212,14 +1209,11 @@ Placer::configure()
 	    {
 	      int glb = chipdb->loc_pin_glb_num.at(loc);
 	      
-	      *logs << "(gb_io) glb = " << glb << "\n";
-	      
 	      const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << glb));
 	      conf.set_extra_cbit(ecb);
 	    }
 	}
       else if (models.is_gb(inst))
-	// FIXME connected to input pin
 	;
       else if (models.is_ramX(inst))
 	{

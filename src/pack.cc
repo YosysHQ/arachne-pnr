@@ -624,9 +624,10 @@ Packer::pack()
       if (chipdb->cell_type[i+1] == CellType::WARMBOOT)
 	++n_warmboot_cells;
     }
-
+  
   *logs << "\nAfter packing:\n"
 	<< "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
+	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
 	<< "  GB_IOs     " << n_gb_io << " / " << chipdb->n_global_nets << "\n"
 	<< "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
 	<< "  DFF        " << n_lc_dff << "\n"
@@ -636,8 +637,8 @@ Packer::pack()
 	<< "  CARRY PASS " << n_carry_pass_through << "\n"
 	<< "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
 	<< "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
-	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
-	<< "PLLs         " << n_pll << " / " << 999 << "\n\n";  // FIXME
+	<< "PLLs         " << n_pll << " / " 
+	<< chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n\n";
 }
 
 void

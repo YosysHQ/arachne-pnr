@@ -189,10 +189,9 @@ ConstraintsPlacer::place()
     {
       Instance *inst = top_port_io_gate(p.first);
       
-      // FIXME handle pll, gb_io
-      
       const Location &loc = p.second;
       int t = loc.tile();
+      assert(chipdb->tile_type[t] == TileType::IO);
       int b = chipdb->tile_bank(t);
       
       int c = 0;
@@ -232,7 +231,7 @@ ConstraintsPlacer::place()
 		    }
 		}
 	    }
-      
+	  
 	  c = chipdb->loc_cell(loc);
 	}
       else
@@ -242,52 +241,93 @@ ConstraintsPlacer::place()
 	  Location pll_loc(loc.tile(), 3);
 	  
 	  c = chipdb->loc_cell(pll_loc);
-	  if (!c)
+	  if (!c
+	      || chipdb->cell_type[c] != CellType::PLL)
 	    fatal(fmt("bad constraint on `"
 		      << p.first << "': no PLL at pin "
 		      << ds.package.loc_pin.at(loc)));
-	  // FIXME check for conflicting IO
 	}
       
       cell_gate[c] = inst;
       extend(ds.placement, inst, c);
     }
   
+  for (int c : chipdb->cell_type_cells[cell_type_idx(CellType::PLL)])
+    {
+      Instance *pll = cell_gate[c];
+      if (!pll)
+	continue;
+      assert(models.is_pllX(pll));
+      for (int io_cell : ds.pll_out_io_cells(pll, c))
+	{
+	  Instance *io = cell_gate[io_cell];
+	  if (!io)
+	    continue;
+	  
+	  const BitVector &pin_type = pll->get_param("PIN_TYPE").as_bits();
+	  if (io->find_port("D_IN_0")->connected()
+	      || io->find_port("D_IN_1")->connected()
+	      || !pin_type[0]
+	      || pin_type[1])
+	    {
+	      const Location &pll_loc = chipdb->cell_location[c];
+	      const std::string &io_pin = ds.package.loc_pin.at(chipdb->cell_location[io_cell]);
+	      fatal(fmt("PLL at `" << chipdb->tile_x(pll_loc.tile())
+			<< " " << chipdb->tile_y(pll_loc.tile())
+			<< "' conflicts with pin " << io_pin << " input path"));
+	    }
+	}
+    }
+  
+  int n_pll = 0,
+    n_pll_placed = 0;
   for (Instance *inst : top->instances())
     {
       if (contains(ds.placement, inst))
 	continue;
       
+      // FIXME relax
       if (models.is_gb_io(inst))
 	fatal("physical constraint required for GB_IO");
       else if (models.is_pllX(inst))
 	{
-	  if (inst->has_attr("location"))
+	  ++n_pll;
+	  
+	  bool good = false;
+	  for (int c : chipdb->cell_type_cells[cell_type_idx(CellType::PLL)])
 	    {
-	      const auto &a = inst->get_attr("location");
-	      int x, y;
-	      // FIXME check retval
-	      sscanf(a.as_string().c_str(), "%d %d", &x, &y);
+	      if (cell_gate[c])
+		continue;
 	      
-	      Location pll_loc(chipdb->tile(x, y), 3);
-	      int c = chipdb->loc_cell(pll_loc);
-	      if (!c)
-		fatal(fmt("bad location attribute: no PLL at `"
-			  << x << " " << y << "'"));
-	      
-	      // FIXME check for conflicting IO
-	      
-	      cell_gate[c] = inst;
-	      extend(ds.placement, inst, c);
+	      good = true;
+	      for (int io_cell : ds.pll_out_io_cells(inst, c))
+		{
+		  Instance *io = cell_gate[io_cell];
+		  if (io)
+		    {
+		      const BitVector &pin_type = inst->get_param("PIN_TYPE").as_bits();
+		      if (io->find_port("D_IN_0")->connected()
+			  || io->find_port("D_IN_1")->connected()
+			  || !pin_type[0]
+			  || pin_type[1])
+			{
+			  good = false;
+			  break;
+			}
+		    }
+		}
+	      if (good)
+		{
+		  cell_gate[c] = inst;
+		  extend(ds.placement, inst, c);
+		  ++n_pll_placed;
+		  break;
+		}
 	    }
-	  else 
-	    {
-	      // FIXME place randomly
-	      if (inst->find_port("PACKAGEPIN"))
-		fatal("physical constraint required for PAD PLL");
-	      else
-		fatal("location attribute required for PAD PLL");
-	    }
+	  if (!good)
+	    fatal(fmt("failed to place: placed " << n_pll_placed
+		      << " PLLs of " << n_pll
+		      << " / " << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size()));
 	}
     }
 }
