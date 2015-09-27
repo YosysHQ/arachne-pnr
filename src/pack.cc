@@ -18,6 +18,7 @@
 #include "netlist.hh"
 #include "chipdb.hh"
 #include "carry.hh"
+#include "designstate.hh"
 
 #include <cstring>
 
@@ -26,10 +27,8 @@ class Packer
   const ChipDB *chipdb;
   const Package &package;
   Design *d;
-  
-  Models models;
+  Models &models;
   Model *top;
-  
   CarryChains &chains;
   
   int n_dff_pass_through,
@@ -55,18 +54,18 @@ class Packer
   void pack_carries();
   
 public:
-  Packer(const ChipDB *cdb, const Package &package_, Design *d_, CarryChains &chains_);
+  Packer(DesignState &ds);
   
   void pack();
 };
 
-Packer::Packer(const ChipDB *cdb, const Package &package_, Design *d_, CarryChains &chains_)
-  : chipdb(cdb), 
-    package(package_),
-    d(d_), 
-    models(d),
-    top(d->top()),
-    chains(chains_),
+Packer::Packer(DesignState &ds)
+  : chipdb(ds.chipdb), 
+    package(ds.package),
+    d(ds.d), 
+    models(ds.models),
+    top(ds.top),
+    chains(ds.chains),
     n_dff_pass_through(0), 
     n_carry_pass_through(0),
     const0(nullptr), 
@@ -642,8 +641,8 @@ Packer::pack()
 }
 
 void
-pack(const ChipDB *chipdb, const Package &package, Design *d, CarryChains &chains)
+pack(DesignState &ds)
 {
-  Packer packer(chipdb, package, d, chains);
+  Packer packer(ds);
   packer.pack();
 }

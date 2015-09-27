@@ -26,9 +26,6 @@ class Instance;
 class ChipDB;
 class Configuration;
 
-extern std::vector<Net *> route(const ChipDB *chipdb,
-				Design *d,
-				Configuration &conf,
-				const std::map<Instance *, int, IdLess> &placement);
+extern void route(DesignState &ds);
 
 #endif

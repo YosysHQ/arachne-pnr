@@ -404,8 +404,7 @@ main(int argc, const char **argv)
     
     if (route_only)
       {
-	Model *top = d->top();
-	for (Instance *inst : top->instances())
+	for (Instance *inst : ds.top->instances())
 	  {
 	    const std::string &loc_attr = inst->get_attr("loc").as_string();
 	    int cell;
@@ -419,7 +418,7 @@ main(int argc, const char **argv)
 	if (pcf_file)
 	  {
 	    *logs << "read_pcf " << pcf_file << "...\n";
-	    read_pcf(pcf_file, package, d, ds.constraints);
+	    read_pcf(pcf_file, ds);
 	  }
 	
 	*logs << "instantiate_io...\n";
@@ -428,9 +427,9 @@ main(int argc, const char **argv)
 	d->check();
 #endif
 	// d->dump();
-    
+	
 	*logs << "pack...\n";
-	pack(chipdb, package, d, ds.chains);
+	pack(ds);
 #ifndef NDEBUG
 	d->check();
 #endif
@@ -478,14 +477,12 @@ main(int argc, const char **argv)
 	
 	*logs << "place...\n";
 	// d->dump();
-	place(rg, ds, chipdb, package, d,
-	      ds.chains, ds.constraints, ds.gb_inst_gc,
-	      ds.conf);
+	place(rg, ds);
 #ifndef NDEBUG
 	d->check();
 #endif
 	// d->dump();
-    
+	
 	if (post_place_pcf)
 	  {
 	    *logs << "write_pcf " << post_place_pcf << "...\n";
@@ -504,7 +501,7 @@ main(int argc, const char **argv)
 				      ->find_port("PACKAGE_PIN")
 				      ->connection_other_port());
 		    assert(isa<Model>(top_port->node())
-			   && cast<Model>(top_port->node()) == d->top());
+			   && cast<Model>(top_port->node()) == ds.top);
 		    
 		    fs << "set_io " << top_port->name() << " " << pin << "\n";
 		  }
@@ -536,7 +533,7 @@ main(int argc, const char **argv)
       }
     
     *logs << "route...\n";
-    std::vector<Net *> cnet_net = route(chipdb, d, ds.conf, ds.placement);
+    route(ds);
 #ifndef NDEBUG
     d->check();
 #endif
@@ -549,12 +546,12 @@ main(int argc, const char **argv)
 	if (fs.fail())
 	  fatal(fmt("write_txt: failed to open `" << expanded << "': "
 		    << strerror(errno)));
-	ds.conf.write_txt(fs, chipdb, d, ds.placement, cnet_net);
+	ds.conf.write_txt(fs, chipdb, d, ds.placement, ds.cnet_net);
       }
     else
       {
 	*logs << "write_txt <stdout>...\n";
-	ds.conf.write_txt(std::cout, chipdb, d, ds.placement, cnet_net);
+	ds.conf.write_txt(std::cout, chipdb, d, ds.placement, ds.cnet_net);
       }
   }
   

@@ -22,6 +22,7 @@
 #include "bitvector.hh"
 #include "ullmanset.hh"
 #include "priorityq.hh"
+#include "designstate.hh"
 
 #include <cassert>
 #include <ostream>
@@ -53,10 +54,10 @@ class Router
 {
   const ChipDB *chipdb;
   Design *d;
-  Configuration &conf;
+  Models &models;
   const std::map<Instance *, int, IdLess> &placement;
-  
-  Models models;
+  std::vector<Net *> &cnet_net;
+  Configuration &conf;
   
   BitVector cnet_global,
     cnet_local;
@@ -65,7 +66,6 @@ class Router
   std::map<std::string, std::pair<std::string, bool>> ram_gate_chip;
   std::map<std::string, std::string> pll_gate_chip;
   
-  std::vector<Net *> cnet_net;
   std::vector<std::vector<int>> cnet_tiles;
   // cnet_bbox
   std::vector<int> cnet_xmin,
@@ -112,12 +112,9 @@ class Router
 #endif
   
 public:
-  Router(const ChipDB *cdb,
-	 Design *d_,
-	 Configuration &c,
-	 const std::map<Instance *, int, IdLess> &p);
+  Router(DesignState &ds);
   
-  std::vector<Net *> route();
+  void route();
 };
 
 int
@@ -280,19 +277,16 @@ Router::check()
 }
 #endif
 
-Router::Router(const ChipDB *cdb, 
-	       Design *d_, 
-	       Configuration &c,
-	       const std::map<Instance *, int, IdLess> &placement_)
-  : chipdb(cdb),
-    d(d_),
-    conf(c),
-    placement(placement_),
-    models(d),
+Router::Router(DesignState &ds)
+  : chipdb(ds.chipdb),
+    d(ds.d),
+    models(ds.models),
+    placement(ds.placement),
+    cnet_net(ds.cnet_net),
+    conf(ds.conf),
     cnet_global(chipdb->n_nets),
     cnet_local(chipdb->n_nets),
     cnet_outs(chipdb->n_nets),
-    cnet_net(chipdb->n_nets, nullptr),
     cnet_tiles(chipdb->n_nets),
     cnet_xmin(chipdb->n_nets),
     cnet_xmax(chipdb->n_nets),
@@ -308,6 +302,8 @@ Router::Router(const ChipDB *cdb,
     backptr(chipdb->n_nets),
     cost(chipdb->n_nets)
 {
+  cnet_net = std::vector<Net *>(chipdb->n_nets, nullptr);
+  
   for (int t = 0; t < chipdb->n_tiles; ++t)
     {
       for (const auto &p : chipdb->tile_nets[t])
@@ -583,7 +579,7 @@ Router::traceback(int net, int target)
     }
 }
 
-std::vector<Net *>
+void
 Router::route()
 {
   // d->dump();
@@ -796,9 +792,45 @@ Router::route()
   if (n_shared)
     fatal("failed to route");
   
+  int n_span4 = 0,
+    n_span12 = 0;
+  BitVector is_span4(chipdb->n_nets),
+    is_span12(chipdb->n_nets);
+  for (int i = 0; i < chipdb->n_tiles; ++i)
+    {
+      for (const auto &p : chipdb->tile_nets[i])
+	{
+	  const std::string &name = p.first;
+	  int cn = p.second;
+	  
+	  if (is_span4[cn] || is_span12[cn])
+	    continue;
+	  
+	  if (is_prefix("span4_", name)
+	      || is_prefix("sp4_", name))      
+	    {
+	      is_span4[cn] = true;
+	      ++n_span4;
+	    }
+	  else if (is_prefix("span12_", name)
+		   || is_prefix("sp12_", name))
+	    {
+	      is_span12[cn] = true;
+	      ++n_span12;
+	    }
+	}
+    }
+  
+  int n_span4_used = 0,
+    n_span12_used = 0;
   for (const auto &v : net_route)
     for (const auto &p : v)
       {
+	if (is_span4[p.second])
+	  ++n_span4_used;
+	else if (is_span12[p.second])
+	  ++n_span12_used;
+	
 	int s = chipdb->find_switch(p.first, p.second);
 	const Switch &sw = chipdb->switches[s];
 	
@@ -831,24 +863,22 @@ Router::route()
 		       sw.in_val.at(p.first));
       }
   
-  return std::move(cnet_net);
+  *logs << "\n"
+	<< "After routing:\n"
+	<< "span_4     " << n_span4_used << " / " << n_span4 << "\n"
+	<< "span_12    " << n_span12_used << " / " << n_span12 << "\n\n";
 }
 
-std::vector<Net *>
-route(const ChipDB *chipdb, 
-      Design *d, 
-      Configuration &conf,
-      const std::map<Instance *, int, IdLess> &placement)
+void
+route(DesignState &ds)
 {
-  Router router(chipdb, d, conf, placement);
+  Router router(ds);
   
   clock_t start = clock();
-  std::vector<Net *> cnet_net = router.route();
+  router.route();
   clock_t end = clock();
   
   *logs << "  route time "
 	<< std::fixed << std::setprecision(2)
 	<< (double)(end - start) / (double)CLOCKS_PER_SEC << "s\n";
-  
-  return std::move(cnet_net);
 }

@@ -45,21 +45,18 @@ public:
   DesignState &ds;
   const ChipDB *chipdb;
   const Package &package;
+  Design *d;
+  Models &models;
+  Model *top;
+  const CarryChains &chains;
+  const Constraints &constraints;
+  const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc;
+  std::map<Instance *, int, IdLess> &placement;
+  Configuration &conf;
   
   std::vector<int> logic_columns;
   std::vector<int> logic_tiles,
     ramt_tiles;
-  
-  Design *d;
-  CarryChains &chains;
-  const Constraints &constraints;
-  const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc;
-  Configuration &conf;
-  
-  std::map<Instance *, int, IdLess> &placement;
-  
-  Models models;
-  Model *top;
   
   std::vector<std::vector<int>> related_tiles;
   
@@ -141,15 +138,7 @@ public:
 #endif
   
 public:
-  Placer(random_generator &rg_,
-	 DesignState &ds_,
-	 const ChipDB *chipdb,
-	 const Package &package_,
-	 Design *d,
-	 CarryChains &chains_,
-	 const Constraints &constraints_,
-	 const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc_,
-	 Configuration &conf_);
+  Placer(random_generator &rg_, DesignState &ds_);
   
   void place();
 };
@@ -699,27 +688,19 @@ Placer::wire_length() const
   return length;
 }
 
-Placer::Placer(random_generator &rg_,
-	       DesignState &ds_,
-	       const ChipDB *cdb,
-	       const Package &package_,
-	       Design *d_,
-	       CarryChains &chains_,
-	       const Constraints &constraints_,
-	       const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc_,
-	       Configuration &conf_)
+Placer::Placer(random_generator &rg_, DesignState &ds_)
   : rg(rg_),
     ds(ds_),
-    chipdb(cdb),
-    package(package_),
-    d(d_),
-    chains(chains_),
-    constraints(constraints_),
-    gb_inst_gc(gb_inst_gc_),
-    conf(conf_),
+    chipdb(ds.chipdb),
+    package(ds.package),
+    d(ds.d),
+    models(ds.models),
+    top(ds.top),
+    chains(ds.chains),
+    constraints(ds.constraints),
+    gb_inst_gc(ds.gb_inst_gc),
     placement(ds.placement),
-    models(d),
-    top(d->top()),
+    conf(ds.conf),
     related_tiles(chipdb->n_tiles),
     diameter(std::max(chipdb->width,
 		      chipdb->height)),
@@ -917,12 +898,6 @@ Placer::place_initial()
       Instance *inst = p.first;
       int g = gate_idx.at(inst);
       int c = p.second;
-      
-#if 0
-      *logs << inst->instance_of()->name() << " @ " 
-	    << chipdb->tile_x(chipdb->cell_location[c].tile()) << " "
-	    << chipdb->tile_y(chipdb->cell_location[c].tile()) << "\n";
-#endif
       
       assert(cell_gate[c] == 0);
       cell_gate[c] = g;
@@ -1808,17 +1783,9 @@ Placer::place()
 }
 
 void
-place(random_generator &rg,
-      DesignState &ds,
-      const ChipDB *chipdb,
-      const Package &package,
-      Design *d,
-      CarryChains &chains,
-      const Constraints &constraints,
-      const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc,
-      Configuration &conf)
+place(random_generator &rg, DesignState &ds)
 {
-  Placer placer(rg, ds, chipdb, package, d, chains, constraints, gb_inst_gc, conf);
+  Placer placer(rg, ds);
   
   clock_t start = clock();
   placer.place();

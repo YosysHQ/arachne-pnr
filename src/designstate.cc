@@ -5,8 +5,8 @@ DesignState::DesignState(const ChipDB *chipdb_, const Package &package_, Design 
   : chipdb(chipdb_),
     package(package_),
     d(d_),
-    top(d_->top()),
-    models(d_)
+    models(d_),
+    top(d_->top())
 {
 }
 

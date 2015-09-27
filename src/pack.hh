@@ -16,8 +16,8 @@
 #ifndef PNR_PACK_HH
 #define PNR_PACK_HH
 
-class CarryChains;
+class DesignState;
 
-extern void pack(const ChipDB *chipdb, const Package &package, Design *d, CarryChains &chains);
+extern void pack(DesignState &ds);
 
 #endif

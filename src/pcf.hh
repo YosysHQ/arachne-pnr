@@ -34,10 +34,7 @@ public:
   {}
 };
 
-void read_pcf(const std::string &filename,
-	      const Package &package,
-	      Design *d,
-	      Constraints &constraints);
+void read_pcf(const std::string &filename, DesignState &ds);
 
 void place_constraints(DesignState &ds);
 

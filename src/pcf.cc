@@ -28,17 +28,15 @@
 class PCFParser : public LineParser
 {
   const Package &package;
-  Design *d;
   Model *top;
   Constraints &constraints;
   
 public:
-  PCFParser(const std::string &f, std::istream &s_, const Package &p, Design *d_, Constraints &c)
+  PCFParser(const std::string &f, std::istream &s_, DesignState &ds)
     : LineParser(f, s_),
-      package(p),
-      d(d_),
-      top(d->top()),
-      constraints(c)
+      package(ds.package),
+      top(ds.top),
+      constraints(ds.constraints)
   {}
   
   void parse();
@@ -123,17 +121,14 @@ PCFParser::parse()
 }
 
 void
-read_pcf(const std::string &filename,
-	 const Package &package,
-	 Design *d,
-	 Constraints &constraints)
+read_pcf(const std::string &filename, DesignState &ds)
 {
   std::string expanded = expand_filename(filename);
   std::ifstream fs(expanded);
   if (fs.fail())
     fatal(fmt("read_pcf: failed to open `" << expanded << "': "
 	      << strerror(errno)));
-  PCFParser parser(filename, fs, package, d, constraints);
+  PCFParser parser(filename, fs, ds);
   return parser.parse();
 }
 

@@ -29,15 +29,6 @@ class CarryChains;
 class IdLess;
 class DesignState;
 
-void
-place(random_generator &rg,
-      DesignState &ds,
-      const ChipDB *chipdb, 
-      const Package &package,
-      Design *d,
-      CarryChains &chains,
-      const Constraints &constraints,
-      const std::map<Instance *, uint8_t, IdLess> &gb_inst_gc,
-      Configuration &conf);
+extern void place(random_generator &rg, DesignState &ds);
 
 #endif
