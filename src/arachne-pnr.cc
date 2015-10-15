@@ -27,6 +27,7 @@
 #include "carry.hh"
 #include "constant.hh"
 #include "designstate.hh"
+#include "util.hh"
 
 #include <iostream>
 #include <fstream>
@@ -103,7 +104,10 @@ usage()
     << "        Write pin assignments to <pcf-file> after placement.\n"
     << "\n"
     << "    -o <output-file>, --output-file <output-file>\n"
-    << "        Write output to <output-file>.\n";
+    << "        Write output to <output-file>.\n"
+    << "\n"
+    << "    -v, --version\n"
+    << "        Print version and exit.\n";
 }
 
 struct null_ostream : public std::ostream
@@ -247,6 +251,12 @@ main(int argc, const char **argv)
 	      
 	      ++i;
 	      output_file = argv[i];
+	    }
+	  else if (!strcmp(argv[i], "-v")
+		   || !strcmp(argv[i], "--version"))
+	    {
+	      std::cout << version_str << "\n";
+	      exit(EXIT_SUCCESS);
 	    }
 	  else
 	    fatal(fmt("unknown option `" << argv[i] << "'"));
@@ -443,6 +453,7 @@ main(int argc, const char **argv)
 	    if (fs.fail())
 	      fatal(fmt("write_blif: failed to open `" << expanded << "': "
 			<< strerror(errno)));
+	    fs << "# " << version_str << "\n";
 	    d->write_blif(fs);
 	  }
 	if (pack_verilog)
@@ -453,6 +464,7 @@ main(int argc, const char **argv)
 	    if (fs.fail())
 	      fatal(fmt("write_verilog: failed to open `" << expanded << "': "
 			<< strerror(errno)));
+	    fs << "/* " << version_str << " */\n";
 	    d->write_verilog(fs);
 	  }
 	
@@ -491,6 +503,7 @@ main(int argc, const char **argv)
 	    if (fs.fail())
 	      fatal(fmt("write_pcf: failed to open `" << expanded << "': "
 			<< strerror(errno)));
+	    fs << "# " << version_str << "\n";
 	    for (const auto &p : ds.placement)
 	      {
 		if (ds.models.is_io(p.first))
@@ -528,6 +541,7 @@ main(int argc, const char **argv)
 	    if (fs.fail())
 	      fatal(fmt("write_blif: failed to open `" << expanded << "': "
 			<< strerror(errno)));
+	    fs << "# " << version_str << "\n";
 	    d->write_blif(fs);
 	  }
       }

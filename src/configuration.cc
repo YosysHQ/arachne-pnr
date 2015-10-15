@@ -55,6 +55,8 @@ Configuration::write_txt(std::ostream &s,
 			 const std::map<Instance *, int, IdLess> &placement,
 			 const std::vector<Net *> &cnet_net)
 {
+  s << ".comment " << version_str << "\n";
+  
   s << ".device " << chipdb->device << "\n";
   for (int t = 0; t < chipdb->n_tiles; ++t)
     {
