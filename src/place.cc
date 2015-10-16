@@ -469,6 +469,9 @@ Placer::valid(int t)
 	g1 = cell1 ? cell_gate[cell1] : 0;
       if (g0)
 	{
+	  if (!contains(package.loc_pin, loc0))
+	    return false;
+	  
 	  Instance *inst0 = gates[g0];
 	  if (inst0->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
 	    {
@@ -480,6 +483,9 @@ Placer::valid(int t)
 	}
       if (g1)
 	{
+	  if (!contains(package.loc_pin, loc1))
+	    return false;
+	  
 	  Instance *inst0 = gates[g1];
 	  if (inst0->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
 	    return false;
@@ -1161,6 +1167,8 @@ Placer::configure()
 	}
       else if (models.is_ioX(inst))
 	{
+	  assert(contains(package.loc_pin, loc));
+	  
 	  const BitVector &pin_type = inst->get_param("PIN_TYPE").as_bits();
 	  for (int i = 0; i < 6; ++i)
 	    {

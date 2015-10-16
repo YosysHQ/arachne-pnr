@@ -369,8 +369,6 @@ ChipDBParser::parse_cmd_pins()
       Location loc(t, pos);
       extend(package.pin_loc, pin, loc);
       extend(package.loc_pin, loc, pin);
-      
-      chipdb->add_cell(CellType::IO, loc);
     }
 }
 
@@ -421,6 +419,8 @@ ChipDBParser::parse_cmd_tile()
   if (cmd == ".io_tile")
     {
       chipdb->tile_type[t] = TileType::IO;
+      for (int p = 0; p < 2; ++p)
+	chipdb->add_cell(CellType::IO, Location(t, p));
     }
   else if (cmd == ".logic_tile")
     {
