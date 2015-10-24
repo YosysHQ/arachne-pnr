@@ -1,0 +1,6 @@
+.model hello
+.outputs op1
+.names a op1
+1 1
+.names b op1
+1 1
