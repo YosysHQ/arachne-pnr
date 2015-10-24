@@ -90,8 +90,9 @@ BlifParser::parse()
             {
               if (words.size() != 2)
                 fatal("invalid .model directive");
-              
-              assert(top == nullptr);
+              if (top)
+                fatal("definition of multiple models is not supported");
+
               top = new Model(d, words[1]);
               d->set_top(top);
             }
