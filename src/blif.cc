@@ -273,6 +273,10 @@ BlifParser::parse()
     }
   
  M:
+
+  if (!top)
+    fatal("no top model has been defined");
+
   // unify
   std::map<Net *, Net *, IdLess> replacement;
   for (const auto &p : unify)
