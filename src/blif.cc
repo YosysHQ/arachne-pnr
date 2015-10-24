@@ -321,6 +321,10 @@ BlifParser::parse()
         fatal(".names cycle\n");
       
       n2->replace(r);
+
+      if (contains(replacement, n2))
+        fatal("conflicting .names outputs");
+
       extend(replacement, n2, r);
     }
   for (const auto &p : replacement)
