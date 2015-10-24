@@ -97,6 +97,9 @@ BlifParser::parse()
             }
           else if (cmd == ".inputs")
             {
+              if (!top)
+                fatal(".inputs directive outside of model definition");
+
               for (unsigned i = 1; i < words.size(); i ++)
                 {
                   Port *port = top->find_port(words[i]);
@@ -113,6 +116,9 @@ BlifParser::parse()
             }
           else if (cmd == ".outputs")
             {
+              if (!top)
+                fatal(".outputs directive outside of model definition");
+
               for (unsigned i = 1; i < words.size(); i ++)
                 {
                   Port *port = top->find_port(words[i]);
@@ -129,6 +135,9 @@ BlifParser::parse()
             }
           else if (cmd == ".names")
             {
+              if (!top)
+                fatal(".names directive outside of model definition");
+
               LexicalPosition names_lp = lp;
               
               Net *names_net = nullptr;
@@ -194,6 +203,9 @@ BlifParser::parse()
             }
           else if (cmd == ".gate")
             {
+              if (!top)
+                fatal(".gate directive outside of model definition");
+
               if (words.size() < 2)
                 fatal("invalid .gate directive, missing name");
               
@@ -264,7 +276,12 @@ BlifParser::parse()
                 }
             }
           else if (cmd == ".end")
-            goto M;
+            {
+              if (!top)
+                fatal(".end directive outside of model definition");
+
+              goto M;
+            }
           else
             fatal("unknown directive");
         }
