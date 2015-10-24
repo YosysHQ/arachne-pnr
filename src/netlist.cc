@@ -384,6 +384,11 @@ Model::Model(Design *d, const std::string &n)
   : Node(Node::Kind::model),
     m_name(n)
 {
+  if (contains(d->m_models, n)) {
+    std::ostringstream s;
+    s << "model name \"" << n << "\" conflicts with another defined model";
+    fatal(s.str());
+  }
   extend(d->m_models, n, this);
 }
 
