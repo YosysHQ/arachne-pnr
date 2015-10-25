@@ -73,6 +73,9 @@ testvg:
 	@echo 'All tests passed.'
 	@echo
 
+fuzz-pcf: all
+	afl-fuzz -t 2500 -m 500 -i fuzz/pcf/testcases -o fuzz/pcf/findings bin/arachne-pnr -p @@ fuzz/pcf/rot.blif
+
 -include src/*.d
 
 .PHONY: install
