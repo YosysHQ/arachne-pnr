@@ -92,7 +92,8 @@ Arachne-pnr would not have been possible without Clifford Wolf and
 Mathias Lasser's IceStorm project to reverse-engineer the iCE40 FPGAs
 and build supporting tools.  Also, it would not be useful without
 Clifford Wolf's Yosys project to synthesize and technology map
-designs.  Thanks to contributors Larry Doolittle and Clifford Wolf.
+designs.  Thanks to contributors Larry Doolittle, jhol, laanwj,
+Clifford Wolf (cliffordwolf) and zeldin.
 
 ## References
 
