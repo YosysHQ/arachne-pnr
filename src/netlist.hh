@@ -303,10 +303,10 @@ public:
   
   void dump() const;
   void write_blif(std::ostream &s,
-		  const std::map<Net *, std::string, IdLess> &net_name) const;
+                  const std::map<Net *, std::string, IdLess> &net_name) const;
   void write_verilog(std::ostream &s,
-		     const std::map<Net *, std::string, IdLess> &net_name,
-		     const std::string &inst_name) const;
+                     const std::map<Net *, std::string, IdLess> &net_name,
+                     const std::string &inst_name) const;
 };
 
 class Model : public Node
@@ -373,7 +373,7 @@ public:
   void prune();
 
   std::pair<std::map<Net *, std::string, IdLess>,
-	    std::set<Net *, IdLess>>
+            std::set<Net *, IdLess>>
     shared_names() const;
   void write_verilog(std::ostream &s) const;
   void write_blif(std::ostream &s) const;
@@ -459,9 +459,9 @@ public:
   bool is_ramX(Instance *inst) const
   { 
     return (inst->instance_of() == ram
-	    || inst->instance_of() == ramnr
-	    || inst->instance_of() == ramnw
-	    || inst->instance_of() == ramnrnw);
+            || inst->instance_of() == ramnr
+            || inst->instance_of() == ramnw
+            || inst->instance_of() == ramnrnw);
   }
   bool is_pllX(const Instance *inst) const
   {

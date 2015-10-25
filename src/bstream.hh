@@ -27,7 +27,7 @@ public:
     os.write(p, n);
     if (os.bad())
       fatal(fmt("std::ostream::write: "
-		<< strerror(errno)));
+                << strerror(errno)));
   }
 };
 
@@ -64,12 +64,12 @@ bwrite_signed_integral_type(obstream &obs, T x)
       x >>= 7;
       
       if ((x == 0
-	   && !(b & 0x40))
-	  || (x == -1
-	      && (b & 0x40) == 0x40))
-	more = false;
+           && !(b & 0x40))
+          || (x == -1
+              && (b & 0x40) == 0x40))
+        more = false;
       else
-	b |= 0x80;
+        b |= 0x80;
       assert(n < sizeof(T) + 1);
       buf[n] = b;
       n ++;
@@ -91,10 +91,10 @@ bwrite_unsigned_integral_type(obstream &obs, T x)
       x >>= 7;
       
       if ((x == 0
-	   && ! (b & 0x40)))
-	more = false;
+           && ! (b & 0x40)))
+        more = false;
       else
-	b |= 0x80;
+        b |= 0x80;
       
       assert(n < sizeof(T) + 1);
       buf[n] = b;
@@ -178,8 +178,8 @@ template<typename F, typename S, typename T> inline obstream &
 operator<<(obstream &obs, const std::tuple<F, S, T> &t)
 {
   return obs << std::get<0>(t)
-	     << std::get<1>(t)
-	     << std::get<2>(t);
+             << std::get<1>(t)
+             << std::get<2>(t);
 }
 
 class ibstream
@@ -197,7 +197,7 @@ public:
     is.read(p, n);
     size_t rn = is.gcount();
     if (is.bad()
-	|| rn != n)
+        || rn != n)
       fatal(fmt("std::istream::read: " << strerror(errno)));
   }
 };
@@ -236,12 +236,12 @@ bread_signed_integral_type(ibstream &ibs, T &x)
       x |= (int)(b & 0x7f) << shift;
       shift += 7;
       if (! (b & 0x80))
-	{
-	  if (shift < T_bits
-	      && (b & 0x40))
-	    x = (x << (T_bits - shift)) >> (T_bits - shift);
-	  break;
-	}
+        {
+          if (shift < T_bits
+              && (b & 0x40))
+            x = (x << (T_bits - shift)) >> (T_bits - shift);
+          break;
+        }
     }
   return ibs;
 }
@@ -258,7 +258,7 @@ bread_unsigned_integral_type(ibstream &ibs, T &x)
       x |= ((unsigned)(b & 0x7f) << shift);
       shift += 7;
       if (! (b & 0x80))
-	break;
+        break;
     }
   return ibs;
 }
@@ -355,8 +355,8 @@ template<typename F, typename S, typename T> inline ibstream &
 operator>>(ibstream &ibs, std::tuple<F, S, T> &t)
 {
   return ibs >> std::get<0>(t)
-	     >> std::get<1>(t)
-	     >> std::get<2>(t);
+             >> std::get<1>(t)
+             >> std::get<2>(t);
 }
 
 

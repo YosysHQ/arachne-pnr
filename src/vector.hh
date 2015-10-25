@@ -7,7 +7,7 @@
 #include <vector>
 
 template<typename T,
-	 typename std::vector<T>::size_type B>
+         typename std::vector<T>::size_type B>
 class BasedVector
 {
   using underlying_t = std::vector<T>;

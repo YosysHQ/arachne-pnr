@@ -58,9 +58,9 @@ operator<<(std::ostream &s, const CBitVal &cv)
   for (const auto &p : cv.cbit_val)
     {
       if (p.second)
-	s << "1";
+        s << "1";
       else
-	s << "0";
+        s << "0";
     }
   for (const auto &p : cv.cbit_val)
     s << " " << p.first;
@@ -172,13 +172,13 @@ ChipDB::dump(std::ostream &s) const
     {
       s << ".pins " << p.first << "\n";
       for (const auto &p2 : p.second.pin_loc)
-	{
-	  int t = p2.second.tile();
-	  s << p2.first
-	    << " " << tile_x(t)
-	    << " " << tile_y(t)
-	    << " " << p2.second.pos() << "\n";
-	}
+        {
+          int t = p2.second.tile();
+          s << p2.first
+            << " " << tile_x(t)
+            << " " << tile_y(t)
+            << " " << p2.second.pos() << "\n";
+        }
       s << "\n";
     }
   
@@ -191,33 +191,33 @@ ChipDB::dump(std::ostream &s) const
   for (int i = 0; i < width; i ++)
     for (int j = 0; j < height; j ++)
       {
-	int t = tile(i, j);
-	switch(tile_type[t])
-	  {
-	  case TileType::EMPTY:
-	    break;
-	  case TileType::IO:
-	    s << ".io_tile " << i << " " << j << "\n";
-	    break;
-	  case TileType::LOGIC:
-	    s << ".logic_tile " << i << " " << j << "\n";
-	    break;
-	  case TileType::RAMB:
-	    s << ".ramb_tile " << i << " " << j << "\n";
-	    break;
-	  case TileType::RAMT:
-	    s << ".ramt_tile " << i << " " << j << "\n";
-	    break;
-	  }
-	
-	for (const auto &p : tile_nonrouting_cbits.at(tile_type[t]))
-	  {
-	    s << p.first;
-	    for (const auto &cbit : p.second)
-	      s << " " << cbit;
-	    s << "\n";
-	  }
-	s << "\n";
+        int t = tile(i, j);
+        switch(tile_type[t])
+          {
+          case TileType::EMPTY:
+            break;
+          case TileType::IO:
+            s << ".io_tile " << i << " " << j << "\n";
+            break;
+          case TileType::LOGIC:
+            s << ".logic_tile " << i << " " << j << "\n";
+            break;
+          case TileType::RAMB:
+            s << ".ramb_tile " << i << " " << j << "\n";
+            break;
+          case TileType::RAMT:
+            s << ".ramt_tile " << i << " " << j << "\n";
+            break;
+          }
+        
+        for (const auto &p : tile_nonrouting_cbits.at(tile_type[t]))
+          {
+            s << p.first;
+            for (const auto &cbit : p.second)
+              s << " " << cbit;
+            s << "\n";
+          }
+        s << "\n";
       }
   
   std::vector<std::vector<std::pair<int, std::string>>> net_tile_names(n_nets);
@@ -229,7 +229,7 @@ ChipDB::dump(std::ostream &s) const
     {
       s << ".net " << i << "\n";
       for (const auto &p : net_tile_names[i])
-	s << tile_x(p.first) << " " << tile_y(p.first) << " " << p.second << "\n";
+        s << tile_x(p.first) << " " << tile_y(p.first) << " " << p.second << "\n";
       s << "\n";
     }
   
@@ -238,30 +238,30 @@ ChipDB::dump(std::ostream &s) const
       const Switch &sw = switches[i];
       
       s << (sw.bidir ? ".routing" : ".buffer")
-	<< " " << tile_x(sw.tile) << " " << tile_y(sw.tile) << " " << sw.out;
+        << " " << tile_x(sw.tile) << " " << tile_y(sw.tile) << " " << sw.out;
       for (const CBit &cb : sw.cbits)
-	s << " B" << cb.row << "[" << cb.col << "]";
+        s << " B" << cb.row << "[" << cb.col << "]";
       s << "\n";
       
       for (const auto &p : sw.in_val)
-	{
-	  for (int j = 0; j < (int)sw.cbits.size(); ++j)
-	    {
-	      if (p.second & (1 << j))
-		s << "1";
-	      else
-		s << "0";
-	    }	  
-	  s << " " << p.first << "\n";
-	}
+        {
+          for (int j = 0; j < (int)sw.cbits.size(); ++j)
+            {
+              if (p.second & (1 << j))
+                s << "1";
+              else
+                s << "0";
+            }     
+          s << " " << p.first << "\n";
+        }
       s << "\n";
     }
 }
 
 void
 ChipDB::set_device(const std::string &d,
-		   int w, int h,
-		   int n_nets_)
+                   int w, int h,
+                   int n_nets_)
 {
   device = d;
   width = w;
@@ -332,9 +332,9 @@ ChipDBParser::parse_cmd_device()
     fatal("wrong number of arguments");
   
   chipdb->set_device(words[1],
-		     std::stoi(words[2]),
-		     std::stoi(words[3]),
-		     std::stoi(words[4]));
+                     std::stoi(words[2]),
+                     std::stoi(words[3]),
+                     std::stoi(words[4]));
   
   // next command
   read_line();
@@ -355,16 +355,16 @@ ChipDBParser::parse_cmd_pins()
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	return;
+          || line[0] == '.')
+        return;
       
       if (words.size() != 4)
-	fatal("invalid .pins entry");
+        fatal("invalid .pins entry");
       
       const std::string &pin = words[0];
       int x = std::stoi(words[1]),
-	y = std::stoi(words[2]),
-	pos = std::stoi(words[3]);
+        y = std::stoi(words[2]),
+        pos = std::stoi(words[3]);
       int t = chipdb->tile(x, y);
       Location loc(t, pos);
       extend(package.pin_loc, pin, loc);
@@ -377,21 +377,21 @@ ChipDBParser::parse_cmd_gbufpin()
 {
   if (words.size() != 1)
     fatal("wrong number of arguments");
-	      
+              
   for (;;)
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	return;
+          || line[0] == '.')
+        return;
       
       if (words.size() != 4)
-	fatal("invalid .gbufpin entry");
+        fatal("invalid .gbufpin entry");
       
       int x = std::stoi(words[0]),
-	y = std::stoi(words[1]),
-	pos = std::stoi(words[2]),
-	glb_num = std::stoi(words[3]);
+        y = std::stoi(words[1]),
+        pos = std::stoi(words[2]),
+        glb_num = std::stoi(words[3]);
       int t = chipdb->tile(x, y);
       Location loc(t, pos);
       extend(chipdb->loc_pin_glb_num, loc, glb_num);
@@ -420,14 +420,14 @@ ChipDBParser::parse_cmd_tile()
     {
       chipdb->tile_type[t] = TileType::IO;
       for (int p = 0; p < 2; ++p)
-	chipdb->add_cell(CellType::IO, Location(t, p));
+        chipdb->add_cell(CellType::IO, Location(t, p));
     }
   else if (cmd == ".logic_tile")
     {
       chipdb->tile_type[t] = TileType::LOGIC;
-		  
+                  
       for (int p = 0; p < 8; ++p)
-	chipdb->add_cell(CellType::LOGIC, Location(t, p));
+        chipdb->add_cell(CellType::LOGIC, Location(t, p));
     }
   else if (cmd == ".ramb_tile")
     chipdb->tile_type[t] = TileType::RAMB;
@@ -435,7 +435,7 @@ ChipDBParser::parse_cmd_tile()
     {
       assert(cmd == ".ramt_tile");
       chipdb->tile_type[t] = TileType::RAMT;
-		  
+                  
       chipdb->add_cell(CellType::RAM, Location(t, 0));
     }
   
@@ -467,24 +467,24 @@ ChipDBParser::parse_cmd_tile_bits()
     n_rows = std::stoi(words[2]);
   
   extend(chipdb->tile_cbits_block_size,
-	 ty,
-	 std::make_pair(n_columns, n_rows));
+         ty,
+         std::make_pair(n_columns, n_rows));
   
   for (;;)
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	return;
+          || line[0] == '.')
+        return;
       
       if (words.size() < 2)
-	fatal("invalid tile entry");
+        fatal("invalid tile entry");
       
       const std::string &func = words[0];
       
       std::vector<CBit> cbits(words.size() - 1);
       for (unsigned i = 1; i < words.size(); ++i)
-	cbits[i - 1] = parse_cbit(0, words[i]);
+        cbits[i - 1] = parse_cbit(0, words[i]);
       
       extend(chipdb->tile_nonrouting_cbits[ty], func, cbits);
     }
@@ -506,25 +506,25 @@ ChipDBParser::parse_cmd_net()
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	return;
+          || line[0] == '.')
+        return;
       
       if (words.size() != 3)
-	fatal("invalid .net entry");
+        fatal("invalid .net entry");
       
       int x = std::stoi(words[0]),
-	y = std::stoi(words[1]);
+        y = std::stoi(words[1]);
       if (x < 0 || x >= chipdb->width)
-	fatal("tile x out of range");
+        fatal("tile x out of range");
       if (y < 0 || y >= chipdb->height)
-	fatal("tile y out of range");
+        fatal("tile y out of range");
       int t = chipdb->tile(x, y);
       
       if (first)
-	{
-	  chipdb->net_tile_name[n] = std::make_pair(t, words[2]);
-	  first = false;
-	}
+        {
+          chipdb->net_tile_name[n] = std::make_pair(t, words[2]);
+          first = false;
+        }
       extend(chipdb->tile_nets[t], words[2], n);
     }
 }
@@ -553,41 +553,41 @@ ChipDBParser::parse_cmd_buffer_routing()
   for (unsigned i = 4; i < words.size(); i ++)
     cbits[i - 4] = parse_cbit(t, words[i]);
   
-  std::map<int, unsigned> in_val;	      
+  std::map<int, unsigned> in_val;             
   
   for (;;)
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	{
-	  chipdb->switches.push_back(Switch(bidir,
-					    t,
-					    n,
-					    in_val,
-					    cbits));
-	  return;
-	}
+          || line[0] == '.')
+        {
+          chipdb->switches.push_back(Switch(bidir,
+                                            t,
+                                            n,
+                                            in_val,
+                                            cbits));
+          return;
+        }
       
       const std::string &sval = words[0];
       
       if (words.size() != 2
-	  || sval.size() != cbits.size())
-	fatal("invalid .buffer/.routing entry");
+          || sval.size() != cbits.size())
+        fatal("invalid .buffer/.routing entry");
       
       int n2 = std::stoi(words[1]);
       
       unsigned val = 0;
       for (unsigned i = 0; i < sval.size(); i ++)
-	{
-	  if (sval[i] == '1')
-	    val |= (1 << i);
-	  else
-	    {
-	      if (sval[i] != '0')
-		fatal("invalid binary string");
-	    }
-	}
+        {
+          if (sval[i] == '1')
+            val |= (1 << i);
+          else
+            {
+              if (sval[i] != '0')
+                fatal("invalid binary string");
+            }
+        }
       
       extend(in_val, n2, val);
     }
@@ -600,11 +600,11 @@ ChipDBParser::parse_cmd_colbuf()
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	return;
+          || line[0] == '.')
+        return;
       
       if (words.size() != 4)
-	fatal("invalid .colbuf entry");
+        fatal("invalid .colbuf entry");
       
       int src_x = std::stoi(words[0]);
       int src_y = std::stoi(words[1]);
@@ -612,7 +612,7 @@ ChipDBParser::parse_cmd_colbuf()
       int dst_y = std::stoi(words[3]);
       
       chipdb->tile_colbuf_tile[chipdb->tile(dst_x, dst_y)]
-	= chipdb->tile(src_x, src_y);
+        = chipdb->tile(src_x, src_y);
     }
 }
 
@@ -623,18 +623,18 @@ ChipDBParser::parse_cmd_gbufin()
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	return;
+          || line[0] == '.')
+        return;
       
       if (words.size() != 3)
-	fatal("invalid .gbufin entry");
+        fatal("invalid .gbufin entry");
       
       int g = std::stoi(words[2]);
       assert(g < chipdb->n_global_nets);
       
       extend(chipdb->gbufin,
-	     std::make_pair(std::stoi(words[0]), std::stoi(words[1])),
-	     g);
+             std::make_pair(std::stoi(words[0]), std::stoi(words[1])),
+             g);
     }
 }
 
@@ -645,14 +645,14 @@ ChipDBParser::parse_cmd_iolatch()
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	return;
+          || line[0] == '.')
+        return;
       
       if (words.size() != 2)
-	fatal("invalid .iolatch entry");
+        fatal("invalid .iolatch entry");
       
       int x = std::stoi(words[0]),
-	y = std::stoi(words[1]);
+        y = std::stoi(words[1]);
       chipdb->iolatch.push_back(chipdb->tile(x, y));
     }
 }
@@ -662,22 +662,22 @@ ChipDBParser::parse_cmd_ieren()
 {
     for (;;)
       {
-	read_line();
-	if (eof()
-	    || line[0] == '.')
-	  return;
-	
-	if (words.size() != 6)
-	  fatal("invalid .ieren entry");
-	
-	int pio_t = chipdb->tile(std::stoi(words[0]),
-				 std::stoi(words[1])),
-	  ieren_t = chipdb->tile(std::stoi(words[3]),
-				 std::stoi(words[4]));
-	
-	Location pio(pio_t, std::stoi(words[2])),
-	  ieren(ieren_t, std::stoi(words[5]));
-	extend(chipdb->ieren, pio, ieren);
+        read_line();
+        if (eof()
+            || line[0] == '.')
+          return;
+        
+        if (words.size() != 6)
+          fatal("invalid .ieren entry");
+        
+        int pio_t = chipdb->tile(std::stoi(words[0]),
+                                 std::stoi(words[1])),
+          ieren_t = chipdb->tile(std::stoi(words[3]),
+                                 std::stoi(words[4]));
+        
+        Location pio(pio_t, std::stoi(words[2])),
+          ieren(ieren_t, std::stoi(words[5]));
+        extend(chipdb->ieren, pio, ieren);
       }
 }
 
@@ -688,19 +688,19 @@ ChipDBParser::parse_cmd_extra_bits()
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	return;
+          || line[0] == '.')
+        return;
       
       if (words.size() != 4)
-	fatal("invalid .extra_bits entry");
+        fatal("invalid .extra_bits entry");
       
       int bank_num = std::stoi(words[1]),
-	addr_x = std::stoi(words[2]),
-	addr_y = std::stoi(words[3]);
+        addr_x = std::stoi(words[2]),
+        addr_y = std::stoi(words[3]);
       
       extend(chipdb->extra_bits,
-	     words[0],
-	     std::make_tuple(bank_num, addr_x, addr_y));
+             words[0],
+             std::make_tuple(bank_num, addr_x, addr_y));
     }
 }
 
@@ -709,7 +709,7 @@ ChipDBParser::parse_cmd_extra_cell()
 {
   if (words.size() != 4)
     fatal("wrong number of arguments to .extra_cell");
-	      
+              
   const std::string &cell_type = words[3];
   int x = std::stoi(words[1]),
     y = std::stoi(words[2]);
@@ -728,20 +728,20 @@ ChipDBParser::parse_cmd_extra_cell()
     {
       read_line();
       if (eof()
-	  || line[0] == '.')
-	{
-	  extend(chipdb->cell_mfvs, c, mfvs);
-	  return;
-	}
+          || line[0] == '.')
+        {
+          extend(chipdb->cell_mfvs, c, mfvs);
+          return;
+        }
       
       if (words.size() != 4)
-	fatal("invalid .extra_cell entry");
+        fatal("invalid .extra_cell entry");
       
       int mfv_t = chipdb->tile(std::stoi(words[1]),
-			       std::stoi(words[2]));
+                               std::stoi(words[2]));
       extend(mfvs, words[0],
-	     std::make_pair(mfv_t,
-			    words[3]));
+             std::make_pair(mfv_t,
+                            words[3]));
     }
 }
 
@@ -754,46 +754,46 @@ ChipDBParser::parse()
   for (;;)
     {
       if (eof())
-	break;
+        break;
       if (line[0] != '.')
-	fatal(fmt("expected command, got '" << words[0] << "'"));
+        fatal(fmt("expected command, got '" << words[0] << "'"));
       
       const std::string &cmd = words[0];
       if (cmd == ".device")
-	parse_cmd_device();
+        parse_cmd_device();
       else if (cmd == ".pins")
-	parse_cmd_pins();
+        parse_cmd_pins();
       else if (cmd == ".gbufpin")
-	parse_cmd_gbufpin();
+        parse_cmd_gbufpin();
       else if (cmd == ".io_tile"
-	       || cmd == ".logic_tile"
-	       || cmd == ".ramb_tile"
-	       || cmd == ".ramt_tile")
-	parse_cmd_tile();
+               || cmd == ".logic_tile"
+               || cmd == ".ramb_tile"
+               || cmd == ".ramt_tile")
+        parse_cmd_tile();
       else if (cmd == ".io_tile_bits"
-	       || cmd == ".logic_tile_bits"
-	       || cmd == ".ramb_tile_bits"
-	       || cmd == ".ramt_tile_bits")
-	parse_cmd_tile_bits();
+               || cmd == ".logic_tile_bits"
+               || cmd == ".ramb_tile_bits"
+               || cmd == ".ramt_tile_bits")
+        parse_cmd_tile_bits();
       else if (cmd == ".net")
-	parse_cmd_net();
+        parse_cmd_net();
       else if (cmd == ".buffer"
-	       || cmd == ".routing")
-	parse_cmd_buffer_routing();
+               || cmd == ".routing")
+        parse_cmd_buffer_routing();
       else if (cmd == ".colbuf")
-	parse_cmd_colbuf();
+        parse_cmd_colbuf();
       else if (cmd == ".gbufin")
-	parse_cmd_gbufin();
+        parse_cmd_gbufin();
       else if (cmd == ".iolatch")
-	parse_cmd_iolatch();
+        parse_cmd_iolatch();
       else if (cmd == ".ieren")
-	parse_cmd_ieren();
+        parse_cmd_ieren();
       else if (cmd == ".extra_bits")
-	parse_cmd_extra_bits();
+        parse_cmd_extra_bits();
       else if (cmd == ".extra_cell")
-	parse_cmd_extra_cell();
+        parse_cmd_extra_cell();
       else
-	fatal(fmt("unknown directive '" << cmd << "'"));
+        fatal(fmt("unknown directive '" << cmd << "'"));
     }
   
   chipdb->finalize();
@@ -807,17 +807,17 @@ ChipDB::finalize()
   for (const auto &p : tile_nets[t1c1])
     {
       if (is_prefix("glb_netwk_", p.first))
-	{
-	  int n = std::stoi(&p.first[10]);
-	  extend(net_global, p.second, n);
-	}
+        {
+          int n = std::stoi(&p.first[10]);
+          extend(net_global, p.second, n);
+        }
     }
   
   for (int i = 1; i <= n_cells; ++i)
     {
       int t = cell_location[i].tile();
       if (tile_type[t] != TileType::IO)
-	continue;
+        continue;
       
       int b = tile_bank(t);
       bank_cells[b].push_back(i);
@@ -827,19 +827,19 @@ ChipDB::finalize()
   for (int i = 0; i < n_tiles; ++i)
     {
       switch(tile_type[i])
-	{
-	case TileType::LOGIC:
-	  tile_pos_cell[i].resize(8, 0);
-	  break;
-	case TileType::IO:
-	  tile_pos_cell[i].resize(4, 0);
-	  break;
-	case TileType::RAMT:
-	  tile_pos_cell[i].resize(1, 0);
-	  break;
-	default:
-	  break;
-	}
+        {
+        case TileType::LOGIC:
+          tile_pos_cell[i].resize(8, 0);
+          break;
+        case TileType::IO:
+          tile_pos_cell[i].resize(4, 0);
+          break;
+        case TileType::RAMT:
+          tile_pos_cell[i].resize(1, 0);
+          break;
+        default:
+          break;
+        }
     }
   for (int i = 1; i <= n_cells; ++i)
     {
@@ -848,7 +848,7 @@ ChipDB::finalize()
       int t = loc.tile();
       int pos = loc.pos();
       if ((int)tile_pos_cell[t].size() <= pos)
-	tile_pos_cell[t].resize(pos + 1, 0);
+        tile_pos_cell[t].resize(pos + 1, 0);
       assert(tile_pos_cell[t][pos] == 0);
       tile_pos_cell[t][pos] = i;
     }
@@ -860,7 +860,7 @@ ChipDB::finalize()
       int out = switches[s].out;
       extend(out_switches[out], s);
       for (const auto &p : switches[s].in_val)
-	extend(in_switches[p.first], s);
+        extend(in_switches[p.first], s);
     }
 }
 
@@ -869,10 +869,10 @@ ChipDB::find_switch(int in, int out) const
 {
   std::vector<int> t;
   std::set_intersection(out_switches[out].begin(),
-			out_switches[out].end(),
-			in_switches[in].begin(),
-			in_switches[in].end(),
-			std::back_insert_iterator<std::vector<int>>(t));
+                        out_switches[out].end(),
+                        in_switches[in].begin(),
+                        in_switches[in].end(),
+                        std::back_insert_iterator<std::vector<int>>(t));
   assert(t.size() == 1);
   int s = t[0];
   assert(switches[s].out == out);
@@ -890,19 +890,19 @@ ChipDB::bwrite(obstream &obs) const
   for (int t = 0; t < n_tiles; ++t)
     {
       for (const auto &p : tile_nets[t])
-	{
-	  int ni;
-	  auto i = net_name_idx.find(p.first);
-	  if (i == net_name_idx.end())
-	    {
-	      ni = net_name_idx.size();
-	      net_names.push_back(p.first);
-	      net_name_idx.insert(std::make_pair(p.first, ni));
-	    }
-	  else
-	    ni = i->second;
-	  extend(tile_nets_idx[t], ni, p.second);
-	}
+        {
+          int ni;
+          auto i = net_name_idx.find(p.first);
+          if (i == net_name_idx.end())
+            {
+              ni = net_name_idx.size();
+              net_names.push_back(p.first);
+              net_name_idx.insert(std::make_pair(p.first, ni));
+            }
+          else
+            ni = i->second;
+          extend(tile_nets_idx[t], ni, p.second);
+        }
     }
   
   obs << device
@@ -975,7 +975,7 @@ ChipDB::bread(ibstream &ibs)
   for (int i = 0; i < n_tiles; ++i)
     {
       for (const auto &p : tile_nets_idx[i])
-	extend(tile_nets[i], net_names[p.first], p.second);
+        extend(tile_nets[i], net_names[p.first], p.second);
     }
   
   finalize();
@@ -988,7 +988,7 @@ read_chipdb(const std::string &filename)
   std::ifstream ifs(expanded);
   if (ifs.fail())
     fatal(fmt("read_chipdb: failed to open `" << expanded << "': "
-	      << strerror(errno)));
+              << strerror(errno)));
   ChipDB *chipdb;
   if (is_suffix(expanded, ".bin"))
     {

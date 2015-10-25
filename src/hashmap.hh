@@ -6,9 +6,9 @@
 #include <unordered_map>
 
 template<typename Key,
-	 typename T,
-	 typename Hash = std::hash<Key>,
-	 typename KeyEqual = std::equal_to<Key>>
+         typename T,
+         typename Hash = std::hash<Key>,
+         typename KeyEqual = std::equal_to<Key>>
 class HashMap
 {
   using underlying_t = std::unordered_map<Key, T, Hash>;

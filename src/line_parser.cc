@@ -51,33 +51,33 @@ LineParser::split_line()
   for (char ch : line)
     {
       if (instr)
-	{
-	  t.push_back(ch);
-	  if (quote)
-	    quote = false;
-	  else if (ch == '\\')
-	    quote = true;
-	  else if (ch == '"')
-	    {
-	      words.push_back(unescape(t));
-	      t.clear();
-	      instr = false;
-	    }
-	}
+        {
+          t.push_back(ch);
+          if (quote)
+            quote = false;
+          else if (ch == '\\')
+            quote = true;
+          else if (ch == '"')
+            {
+              words.push_back(unescape(t));
+              t.clear();
+              instr = false;
+            }
+        }
       else if (isspace(ch))
-	{
-	  if (!t.empty())
-	    {
-	      words.push_back(t);
-	      t.clear();
-	    }
-	}
+        {
+          if (!t.empty())
+            {
+              words.push_back(t);
+              t.clear();
+            }
+        }
       else
-	{
-	  t.push_back(ch);
-	  if (ch == '"')
-	    instr = true;
-	}
+        {
+          t.push_back(ch);
+          if (ch == '"')
+            instr = true;
+        }
     }
   if (instr)
     fatal("unterminated string constant");
@@ -105,20 +105,20 @@ LineParser::read_line()
     if (p != std::string::npos)
       line.resize(p);
     else if (!line.empty()
-	     && line.back() == '\\')
+             && line.back() == '\\')
       {
-	if (s.eof())
-	  fatal("unexpected backslash before eof");
-	
-	// drop backslash
-	line.pop_back();
-	
-	std::string line2;
-	lp.next_line();
-	std::getline(s, line2);
-	
-	line.append(line2);
-	goto L;
+        if (s.eof())
+          fatal("unexpected backslash before eof");
+        
+        // drop backslash
+        line.pop_back();
+        
+        std::string line2;
+        lp.next_line();
+        std::getline(s, line2);
+        
+        line.append(line2);
+        goto L;
       }
     
     split_line();

@@ -38,7 +38,7 @@ test(int n, random_generator &rg)
     {
       assert(a[i] == b[i]);
       if (b[i])
-	k++;
+        k++;
     }
   // std::cout << k << "\n";
   

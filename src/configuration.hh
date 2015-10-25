@@ -36,14 +36,14 @@ public:
   
   void set_cbit(const CBit &cbit, bool value);
   void set_cbits(const std::vector<CBit> &value_cbits,
-		 unsigned value);
+                 unsigned value);
   void set_extra_cbit(const std::tuple<int, int, int> &t);
   
   void write_txt(std::ostream &s,
-		 const ChipDB *chipdb,
-		 Design *d,
-		 const std::map<Instance *, int, IdLess> &placement,
-		 const std::vector<Net *> &cnet_net);
+                 const ChipDB *chipdb,
+                 Design *d,
+                 const std::map<Instance *, int, IdLess> &placement,
+                 const std::vector<Net *> &cnet_net);
 };
 
 #endif

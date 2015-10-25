@@ -51,61 +51,61 @@ unescape(const std::string &s)
   for (auto i = s.begin(); i != s.end(); ++i)
     {
       if (*i == '\\')
-	{
-	  ++i;
-	  assert(i != s.end());
-	  
-	  switch(*i)
-	    {
-	    case '\'':
-	      r.push_back('\'');
-	      break;
-	    case '\"':
-	      r.push_back('\"');
-	      break;
-	    case '\?':
-	      r.push_back('\?');
-	      break;
-	    case '\\':
-	      r.push_back('\\');
-	      break;
-	    case '\a':
-	      r.push_back('\a');
-	      break;
-	    case '\b':
-	      r.push_back('\b');
-	      break;
-	    case '\f':
-	      r.push_back('\f');
-	      break;
-	    case 'n':
-	      r.push_back('\n');
-	      break;
-	    case 'r':
-	      r.push_back('\r');
-	      break;
-	    case 't':
-	      r.push_back('\t');
-	      break;
-	    case 'v':
-	      r.push_back('\v');
-	      break;
-	    case '0':  case '1':  case '2':  case '3':
-	    case '4':  case '5':  case '6':  case '7':
-	    case '8':  case '9':
-	      {
-		int x = *i++ - '0';
-		if (i != s.end() && *i >= '0' && *i <= '9')
-		  x = x*8 + *i++ - '0';
-		if (i != s.end() && *i >= '0' && *i <= '9')
-		  x = x*8 + *i++ - '0';
-		r.push_back(x);
-	      }
-	      break;
-	    }
-	}
+        {
+          ++i;
+          assert(i != s.end());
+          
+          switch(*i)
+            {
+            case '\'':
+              r.push_back('\'');
+              break;
+            case '\"':
+              r.push_back('\"');
+              break;
+            case '\?':
+              r.push_back('\?');
+              break;
+            case '\\':
+              r.push_back('\\');
+              break;
+            case '\a':
+              r.push_back('\a');
+              break;
+            case '\b':
+              r.push_back('\b');
+              break;
+            case '\f':
+              r.push_back('\f');
+              break;
+            case 'n':
+              r.push_back('\n');
+              break;
+            case 'r':
+              r.push_back('\r');
+              break;
+            case 't':
+              r.push_back('\t');
+              break;
+            case 'v':
+              r.push_back('\v');
+              break;
+            case '0':  case '1':  case '2':  case '3':
+            case '4':  case '5':  case '6':  case '7':
+            case '8':  case '9':
+              {
+                int x = *i++ - '0';
+                if (i != s.end() && *i >= '0' && *i <= '9')
+                  x = x*8 + *i++ - '0';
+                if (i != s.end() && *i >= '0' && *i <= '9')
+                  x = x*8 + *i++ - '0';
+                r.push_back(x);
+              }
+              break;
+            }
+        }
       else
-	r.push_back(*i);
+        r.push_back(*i);
     }
   return r;
 }
@@ -114,52 +114,52 @@ unescape(const std::string &s)
 #if defined(__linux__)
 std::string proc_self_dirname()
 {
-	char path[PATH_MAX];
-	ssize_t buflen = readlink("/proc/self/exe", path, sizeof(path));
-	if (buflen < 0) {
+        char path[PATH_MAX];
+        ssize_t buflen = readlink("/proc/self/exe", path, sizeof(path));
+        if (buflen < 0) {
                 fatal(fmt("readlink(\"/proc/self/exe\") failed: " << strerror(errno)));
-	}
-	while (buflen > 0 && path[buflen-1] != '/')
-		buflen--;
-	return std::string(path, buflen);
+        }
+        while (buflen > 0 && path[buflen-1] != '/')
+                buflen--;
+        return std::string(path, buflen);
 }
 #elif defined(__APPLE__)
 std::string proc_self_dirname()
 {
-	char *path = NULL;
-	uint32_t buflen = 0;
-	while (_NSGetExecutablePath(path, &buflen) != 0)
-		path = (char *) realloc((void *) path, buflen);
-	while (buflen > 0 && path[buflen-1] != '/')
-		buflen--;
-	return std::string(path, buflen);
+        char *path = NULL;
+        uint32_t buflen = 0;
+        while (_NSGetExecutablePath(path, &buflen) != 0)
+                path = (char *) realloc((void *) path, buflen);
+        while (buflen > 0 && path[buflen-1] != '/')
+                buflen--;
+        return std::string(path, buflen);
 }
 #elif defined(_WIN32)
 std::string proc_self_dirname()
 {
-	int i = 0;
+        int i = 0;
 #  ifdef __MINGW32__
-	char longpath[MAX_PATH + 1];
-	char shortpath[MAX_PATH + 1];
+        char longpath[MAX_PATH + 1];
+        char shortpath[MAX_PATH + 1];
 #  else
-	WCHAR longpath[MAX_PATH + 1];
-	TCHAR shortpath[MAX_PATH + 1];
+        WCHAR longpath[MAX_PATH + 1];
+        TCHAR shortpath[MAX_PATH + 1];
 #  endif
-	if (!GetModuleFileName(0, longpath, MAX_PATH+1))
-		fatal("GetModuleFileName() failed.");
-	if (!GetShortPathName(longpath, shortpath, MAX_PATH+1))
-		fatal("GetShortPathName() failed.");
-	while (shortpath[i] != 0)
-		i++;
-	while (i > 0 && shortpath[i-1] != '/' && shortpath[i-1] != '\\')
-		shortpath[--i] = 0;
-	std::string path;
-	for (i = 0; shortpath[i]; i++)
-		path += char(shortpath[i]);
-	return path;
+        if (!GetModuleFileName(0, longpath, MAX_PATH+1))
+                fatal("GetModuleFileName() failed.");
+        if (!GetShortPathName(longpath, shortpath, MAX_PATH+1))
+                fatal("GetShortPathName() failed.");
+        while (shortpath[i] != 0)
+                i++;
+        while (i > 0 && shortpath[i-1] != '/' && shortpath[i-1] != '\\')
+                shortpath[--i] = 0;
+        std::string path;
+        for (i = 0; shortpath[i]; i++)
+                path += char(shortpath[i]);
+        return path;
 }
 #else
-	#error Dont know how to determine process executable base path!
+        #error Dont know how to determine process executable base path!
 #endif
 
 std::string
@@ -167,9 +167,9 @@ expand_filename(const std::string &file)
 {
   if (file[0] == '+')
     return (proc_self_dirname()
-	    + ".."
-	    + std::string(file.begin() + 1,
-			  file.end()));
+            + ".."
+            + std::string(file.begin() + 1,
+                          file.end()));
   else
     return file;
 }

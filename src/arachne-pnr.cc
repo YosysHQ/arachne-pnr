@@ -141,133 +141,133 @@ main(int argc, const char **argv)
   for (int i = 1; i < argc; ++i)
     {
       if (argv[i][0] == '-')
-	{
-	  if (!strcmp(argv[i], "-h")
-	      || !strcmp(argv[i], "--help"))
-	    help = true;
-	  else if (!strcmp(argv[i], "-q")
-	      || !strcmp(argv[i], "--quiet"))
-	    quiet = true;
-	  else if (!strcmp(argv[i], "-d")
-	      || !strcmp(argv[i], "--device"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      device = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "-c")
-		   || !strcmp(argv[i], "--chipdb"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      chipdb_file = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "--write-binary-chipdb"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      binary_chipdb = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "-l")
-		   || !strcmp(argv[i], "--no-promote-globals"))
-	    do_promote_globals = false;
-	  else if (!strcmp(argv[i], "-B")
-	      || !strcmp(argv[i], "--post-pack-blif"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      pack_blif = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "-V")
-	      || !strcmp(argv[i], "--post-pack-verilog"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      pack_verilog = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "--post-place-blif"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      place_blif = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "--route-only"))
-	    route_only = true;
-	  else if (!strcmp(argv[i], "-p")
-		   || !strcmp(argv[i], "--pcf-file"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      pcf_file = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "-P")
-		   || !strcmp(argv[i], "--package"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      package_name_cp = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "-r"))
-	    randomize_seed = true;
-	  else if (!strcmp(argv[i], "-w")
-		   || !strcmp(argv[i], "--write-pcf"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      post_place_pcf = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "-s")
-		   || !strcmp(argv[i], "--seed"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      seed_str = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "-o")
-		   || !strcmp(argv[i], "--output-file"))
-	    {
-	      if (i + 1 >= argc)
-		fatal(fmt(argv[i] << ": expected argument"));
-	      
-	      ++i;
-	      output_file = argv[i];
-	    }
-	  else if (!strcmp(argv[i], "-v")
-		   || !strcmp(argv[i], "--version"))
-	    {
-	      std::cout << version_str << "\n";
-	      exit(EXIT_SUCCESS);
-	    }
-	  else
-	    fatal(fmt("unknown option `" << argv[i] << "'"));
-	}
+        {
+          if (!strcmp(argv[i], "-h")
+              || !strcmp(argv[i], "--help"))
+            help = true;
+          else if (!strcmp(argv[i], "-q")
+              || !strcmp(argv[i], "--quiet"))
+            quiet = true;
+          else if (!strcmp(argv[i], "-d")
+              || !strcmp(argv[i], "--device"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              device = argv[i];
+            }
+          else if (!strcmp(argv[i], "-c")
+                   || !strcmp(argv[i], "--chipdb"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              chipdb_file = argv[i];
+            }
+          else if (!strcmp(argv[i], "--write-binary-chipdb"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              binary_chipdb = argv[i];
+            }
+          else if (!strcmp(argv[i], "-l")
+                   || !strcmp(argv[i], "--no-promote-globals"))
+            do_promote_globals = false;
+          else if (!strcmp(argv[i], "-B")
+              || !strcmp(argv[i], "--post-pack-blif"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              pack_blif = argv[i];
+            }
+          else if (!strcmp(argv[i], "-V")
+              || !strcmp(argv[i], "--post-pack-verilog"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              pack_verilog = argv[i];
+            }
+          else if (!strcmp(argv[i], "--post-place-blif"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              place_blif = argv[i];
+            }
+          else if (!strcmp(argv[i], "--route-only"))
+            route_only = true;
+          else if (!strcmp(argv[i], "-p")
+                   || !strcmp(argv[i], "--pcf-file"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              pcf_file = argv[i];
+            }
+          else if (!strcmp(argv[i], "-P")
+                   || !strcmp(argv[i], "--package"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              package_name_cp = argv[i];
+            }
+          else if (!strcmp(argv[i], "-r"))
+            randomize_seed = true;
+          else if (!strcmp(argv[i], "-w")
+                   || !strcmp(argv[i], "--write-pcf"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              post_place_pcf = argv[i];
+            }
+          else if (!strcmp(argv[i], "-s")
+                   || !strcmp(argv[i], "--seed"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              seed_str = argv[i];
+            }
+          else if (!strcmp(argv[i], "-o")
+                   || !strcmp(argv[i], "--output-file"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              output_file = argv[i];
+            }
+          else if (!strcmp(argv[i], "-v")
+                   || !strcmp(argv[i], "--version"))
+            {
+              std::cout << version_str << "\n";
+              exit(EXIT_SUCCESS);
+            }
+          else
+            fatal(fmt("unknown option `" << argv[i] << "'"));
+        }
       else
-	{
-	  if (input_file)
-	    fatal("too many command-line arguments");
-	  else
-	    input_file = argv[i];
-	}
+        {
+          if (input_file)
+            fatal("too many command-line arguments");
+          else
+            input_file = argv[i];
+        }
     }
   
   if (help)
@@ -303,18 +303,18 @@ main(int argc, const char **argv)
       std::string seed_s = seed_str;
       
       if (seed_s.empty())
-	fatal("invalid empty seed");
+        fatal("invalid empty seed");
       
       for (char ch : seed_s)
-	{
-	  if (ch >= '0'
-	      && ch <= '9')
-	    seed = seed * 10 + (unsigned)(ch - '0');
-	  else
-	    fatal(fmt("invalid character `" 
-		      << ch
-		      << "' in unsigned integer literal in seed"));
-	}
+        {
+          if (ch >= '0'
+              && ch <= '9')
+            seed = seed * 10 + (unsigned)(ch - '0');
+          else
+            fatal(fmt("invalid character `" 
+                      << ch
+                      << "' in unsigned integer literal in seed"));
+        }
     }
   else
     seed = 1;
@@ -323,7 +323,7 @@ main(int argc, const char **argv)
     {
       std::random_device rd;
       do {
-	seed = rd();
+        seed = rd();
       } while (seed == 0);
     }
   
@@ -339,8 +339,8 @@ main(int argc, const char **argv)
     chipdb_file_s = chipdb_file;
   else
     chipdb_file_s = (std::string("+/share/arachne-pnr/chipdb-")
-		     + device 
-		     + ".bin");
+                     + device 
+                     + ".bin");
   *logs << "read_chipdb " << chipdb_file_s << "...\n";
   const ChipDB *chipdb = read_chipdb(chipdb_file_s);
   
@@ -351,21 +351,21 @@ main(int argc, const char **argv)
       std::string expanded = expand_filename(binary_chipdb);
       std::ofstream ofs(expanded);
       if (ofs.fail())
-	fatal(fmt("write_binary_chidpb: failed to open `" << expanded << "': "
-		  << strerror(errno)));
+        fatal(fmt("write_binary_chidpb: failed to open `" << expanded << "': "
+                  << strerror(errno)));
       obstream obs(ofs);
       chipdb->bwrite(obs);
       
       // clean up
       if (chipdb)
-	delete chipdb;
+        delete chipdb;
       
       logs = nullptr;
       if (null_ostream)
-	{
-	  delete null_ostream;
-	  null_ostream = nullptr;
-	}
+        {
+          delete null_ostream;
+          null_ostream = nullptr;
+        }
       
       return 0;
     }
@@ -375,9 +375,9 @@ main(int argc, const char **argv)
   for (const auto &p : chipdb->packages)
     {
       if (first)
-	first = false;
+        first = false;
       else
-	*logs << ", ";
+        *logs << ", ";
       *logs << p.first;
     }
   *logs << "\n";
@@ -414,136 +414,136 @@ main(int argc, const char **argv)
     
     if (route_only)
       {
-	for (Instance *inst : ds.top->instances())
-	  {
-	    const std::string &loc_attr = inst->get_attr("loc").as_string();
-	    int cell;
-	    if (sscanf(loc_attr.c_str(), "%d", &cell) != 1)
-	      fatal("parse error in loc attribute");
-	    extend(ds.placement, inst, cell);
-	  }
+        for (Instance *inst : ds.top->instances())
+          {
+            const std::string &loc_attr = inst->get_attr("loc").as_string();
+            int cell;
+            if (sscanf(loc_attr.c_str(), "%d", &cell) != 1)
+              fatal("parse error in loc attribute");
+            extend(ds.placement, inst, cell);
+          }
       }
     else
       {
-	if (pcf_file)
-	  {
-	    *logs << "read_pcf " << pcf_file << "...\n";
-	    read_pcf(pcf_file, ds);
-	  }
-	
-	*logs << "instantiate_io...\n";
-	instantiate_io(d);
+        if (pcf_file)
+          {
+            *logs << "read_pcf " << pcf_file << "...\n";
+            read_pcf(pcf_file, ds);
+          }
+        
+        *logs << "instantiate_io...\n";
+        instantiate_io(d);
 #ifndef NDEBUG
-	d->check();
+        d->check();
 #endif
-	// d->dump();
-	
-	*logs << "pack...\n";
-	pack(ds);
+        // d->dump();
+        
+        *logs << "pack...\n";
+        pack(ds);
 #ifndef NDEBUG
-	d->check();
+        d->check();
 #endif
-	// d->dump();
-	
-	if (pack_blif)
-	  {
-	    *logs << "write_blif " << pack_blif << "\n";
-	    std::string expanded = expand_filename(pack_blif);
-	    std::ofstream fs(expanded);
-	    if (fs.fail())
-	      fatal(fmt("write_blif: failed to open `" << expanded << "': "
-			<< strerror(errno)));
-	    fs << "# " << version_str << "\n";
-	    d->write_blif(fs);
-	  }
-	if (pack_verilog)
-	  {
-	    *logs << "write_verilog " << pack_verilog << "\n";
-	    std::string expanded = expand_filename(pack_verilog);
-	    std::ofstream fs(expanded);
-	    if (fs.fail())
-	      fatal(fmt("write_verilog: failed to open `" << expanded << "': "
-			<< strerror(errno)));
-	    fs << "/* " << version_str << " */\n";
-	    d->write_verilog(fs);
-	  }
-	
-	*logs << "place_constraints...\n";
-	place_constraints(ds);
+        // d->dump();
+        
+        if (pack_blif)
+          {
+            *logs << "write_blif " << pack_blif << "\n";
+            std::string expanded = expand_filename(pack_blif);
+            std::ofstream fs(expanded);
+            if (fs.fail())
+              fatal(fmt("write_blif: failed to open `" << expanded << "': "
+                        << strerror(errno)));
+            fs << "# " << version_str << "\n";
+            d->write_blif(fs);
+          }
+        if (pack_verilog)
+          {
+            *logs << "write_verilog " << pack_verilog << "\n";
+            std::string expanded = expand_filename(pack_verilog);
+            std::ofstream fs(expanded);
+            if (fs.fail())
+              fatal(fmt("write_verilog: failed to open `" << expanded << "': "
+                        << strerror(errno)));
+            fs << "/* " << version_str << " */\n";
+            d->write_verilog(fs);
+          }
+        
+        *logs << "place_constraints...\n";
+        place_constraints(ds);
 #ifndef NDEBUG
-	d->check();
+        d->check();
 #endif
-	
-	*logs << "promote_globals...\n";
-	promote_globals(ds, do_promote_globals);
+        
+        *logs << "promote_globals...\n";
+        promote_globals(ds, do_promote_globals);
 #ifndef NDEBUG
-	d->check();
+        d->check();
 #endif
-	// d->dump();
-	
-	*logs << "realize_constants...\n";
-	realize_constants(chipdb, d);
+        // d->dump();
+        
+        *logs << "realize_constants...\n";
+        realize_constants(chipdb, d);
 #ifndef NDEBUG
-	d->check();
+        d->check();
 #endif
-	
-	*logs << "place...\n";
-	// d->dump();
-	place(rg, ds);
+        
+        *logs << "place...\n";
+        // d->dump();
+        place(rg, ds);
 #ifndef NDEBUG
-	d->check();
+        d->check();
 #endif
-	// d->dump();
-	
-	if (post_place_pcf)
-	  {
-	    *logs << "write_pcf " << post_place_pcf << "...\n";
-	    std::string expanded = expand_filename(post_place_pcf);
-	    std::ofstream fs(expanded);
-	    if (fs.fail())
-	      fatal(fmt("write_pcf: failed to open `" << expanded << "': "
-			<< strerror(errno)));
-	    fs << "# " << version_str << "\n";
-	    for (const auto &p : ds.placement)
-	      {
-		if (ds.models.is_io(p.first))
-		  {
-		    const Location &loc = chipdb->cell_location[p.second];
-		    std::string pin = package.loc_pin.at(loc);
-		    Port *top_port = (p.first
-				      ->find_port("PACKAGE_PIN")
-				      ->connection_other_port());
-		    assert(isa<Model>(top_port->node())
-			   && cast<Model>(top_port->node()) == ds.top);
-		    
-		    fs << "set_io " << top_port->name() << " " << pin << "\n";
-		  }
-	      }
-	  }
-	
-	if (place_blif)
-	  {
-	    for (const auto &p : ds.placement)
-	      {
-		// p.first->set_attr("loc", fmt(p.second));
-		const Location &loc = chipdb->cell_location[p.second];
-		int t = loc.tile();
-		int pos = loc.pos();
-		p.first->set_attr("loc",
-				  fmt(chipdb->tile_x(t)
-				      << "," << chipdb->tile_y(t)
-				      << "/" << pos));
-	      }
-	    
-	    *logs << "write_blif " << place_blif << "\n";
-	    std::string expanded = expand_filename(place_blif);
-	    std::ofstream fs(expanded);
-	    if (fs.fail())
-	      fatal(fmt("write_blif: failed to open `" << expanded << "': "
-			<< strerror(errno)));
-	    fs << "# " << version_str << "\n";
-	    d->write_blif(fs);
-	  }
+        // d->dump();
+        
+        if (post_place_pcf)
+          {
+            *logs << "write_pcf " << post_place_pcf << "...\n";
+            std::string expanded = expand_filename(post_place_pcf);
+            std::ofstream fs(expanded);
+            if (fs.fail())
+              fatal(fmt("write_pcf: failed to open `" << expanded << "': "
+                        << strerror(errno)));
+            fs << "# " << version_str << "\n";
+            for (const auto &p : ds.placement)
+              {
+                if (ds.models.is_io(p.first))
+                  {
+                    const Location &loc = chipdb->cell_location[p.second];
+                    std::string pin = package.loc_pin.at(loc);
+                    Port *top_port = (p.first
+                                      ->find_port("PACKAGE_PIN")
+                                      ->connection_other_port());
+                    assert(isa<Model>(top_port->node())
+                           && cast<Model>(top_port->node()) == ds.top);
+                    
+                    fs << "set_io " << top_port->name() << " " << pin << "\n";
+                  }
+              }
+          }
+        
+        if (place_blif)
+          {
+            for (const auto &p : ds.placement)
+              {
+                // p.first->set_attr("loc", fmt(p.second));
+                const Location &loc = chipdb->cell_location[p.second];
+                int t = loc.tile();
+                int pos = loc.pos();
+                p.first->set_attr("loc",
+                                  fmt(chipdb->tile_x(t)
+                                      << "," << chipdb->tile_y(t)
+                                      << "/" << pos));
+              }
+            
+            *logs << "write_blif " << place_blif << "\n";
+            std::string expanded = expand_filename(place_blif);
+            std::ofstream fs(expanded);
+            if (fs.fail())
+              fatal(fmt("write_blif: failed to open `" << expanded << "': "
+                        << strerror(errno)));
+            fs << "# " << version_str << "\n";
+            d->write_blif(fs);
+          }
       }
     
     *logs << "route...\n";
@@ -554,18 +554,18 @@ main(int argc, const char **argv)
     
     if (output_file)
       {
-	*logs << "write_txt " << output_file << "...\n";
-	std::string expanded = expand_filename(output_file);
-	std::ofstream fs(expanded);
-	if (fs.fail())
-	  fatal(fmt("write_txt: failed to open `" << expanded << "': "
-		    << strerror(errno)));
-	ds.conf.write_txt(fs, chipdb, d, ds.placement, ds.cnet_net);
+        *logs << "write_txt " << output_file << "...\n";
+        std::string expanded = expand_filename(output_file);
+        std::ofstream fs(expanded);
+        if (fs.fail())
+          fatal(fmt("write_txt: failed to open `" << expanded << "': "
+                    << strerror(errno)));
+        ds.conf.write_txt(fs, chipdb, d, ds.placement, ds.cnet_net);
       }
     else
       {
-	*logs << "write_txt <stdout>...\n";
-	ds.conf.write_txt(std::cout, chipdb, d, ds.placement, ds.cnet_net);
+        *logs << "write_txt <stdout>...\n";
+        ds.conf.write_txt(std::cout, chipdb, d, ds.placement, ds.cnet_net);
       }
   }
   

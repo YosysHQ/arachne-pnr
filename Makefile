@@ -90,6 +90,7 @@ uninstall:
 
 .PHONY: clean
 clean:
-	rm -f src/*.o tests/*.o src/*.d tests/*.d bin/arachne-pnr tests/test_bv
+	rm -f src/*.o tests/*.o src/*.d tests/*.d bin/arachne-pnr
+	rm -f tests/test_bv tests/test_us
 	rm -f share/arachne-pnr/*.bin
 	rm -f src/version_*

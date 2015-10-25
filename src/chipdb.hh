@@ -115,10 +115,10 @@ public:
 public:
   Switch() {}
   Switch(bool bi,
-	 int t,
-	 int o,
-	 const std::map<int, unsigned> &iv,
-	 const std::vector<CBit> &cb)
+         int t,
+         int o,
+         const std::map<int, unsigned> &iv,
+         const std::vector<CBit> &cb)
     : bidir(bi),
       tile(t),
       out(o),
@@ -245,7 +245,7 @@ public:
   std::vector<std::map<std::string, int>> tile_nets;
   
   std::map<TileType,
-	  std::map<std::string, std::vector<CBit>>>
+          std::map<std::string, std::vector<CBit>>>
     tile_nonrouting_cbits;
   
   CBit extra_cell_cbit(int ec, const std::string &name) const;
@@ -305,7 +305,7 @@ public:
     
     int ramb_t = ramt_t - width;
     assert(ramb_t == tile(tile_x(ramt_t),
-			  tile_y(ramt_t)-1));
+                          tile_y(ramt_t)-1));
     assert(tile_type[ramb_t] == TileType::RAMB);
     return ramb_t;
   }

@@ -34,25 +34,25 @@ instantiate_io(Design *d)
       
       Port *q = p->connection_other_port();
       if (q
-	  && isa<Instance>(q->node())
-	  && ((models.is_ioX(cast<Instance>(q->node()))
-	       && q->name() == "PACKAGE_PIN")
-	      || (models.is_pllX(cast<Instance>(q->node()))
-		  && q->name() == "PACKAGEPIN")))
-	continue;
+          && isa<Instance>(q->node())
+          && ((models.is_ioX(cast<Instance>(q->node()))
+               && q->name() == "PACKAGE_PIN")
+              || (models.is_pllX(cast<Instance>(q->node()))
+                  && q->name() == "PACKAGEPIN")))
+        continue;
       
 #ifndef NDEBUG
       bool matched = false;
 #endif
       Net *n = p->connection();
       if (n
-	  && n->name() == p->name())
-	{
+          && n->name() == p->name())
+        {
 #ifndef NDEBUG
-	  matched = true;
+          matched = true;
 #endif
-	  top->rename_net(n, n->name());
-	}
+          top->rename_net(n, n->name());
+        }
       
       Net *t = top->add_net(p->name());
       assert(t);
@@ -62,50 +62,50 @@ instantiate_io(Design *d)
       Instance *io_inst = top->add_instance(io_model);
       io_inst->find_port("PACKAGE_PIN")->connect(t);
       switch(p->direction())
-	{
-	case Direction::IN:
-	  {
-	    io_inst->find_port("D_IN_0")->connect(n);
-	    io_inst->set_param("PIN_TYPE", BitVector(6, 1)); // 000001
-	  }
-	  break;
-	  
-	case Direction::OUT:
-	case Direction::INOUT:
-	  {
-	    if (q
-		&& isa<Instance>(q->node())
-		&& cast<Instance>(q->node())->instance_of() == tbuf_model
-		&& q->name() == "Y")
-	      {
-		Instance *tbuf = cast<Instance>(q->node());
-		
-		io_inst->find_port("D_OUT_0")->connect(tbuf->find_port("A")->connection());
-		io_inst->find_port("D_IN_0")->connect(tbuf->find_port("Y")->connection());
-		io_inst->find_port("OUTPUT_ENABLE")->connect(tbuf->find_port("E")->connection());
-		
-		io_inst->set_param("PIN_TYPE", BitVector(6, 0x29)); // 101001
-		
-		tbuf->find_port("A")->disconnect();
-		tbuf->find_port("E")->disconnect();
-		tbuf->find_port("Y")->disconnect();
-		tbuf->remove();
-		delete tbuf;
-	      }
-	    else
-	      {
-		if (p->direction() == Direction::INOUT)
-		  fatal(fmt("bidirectional port `" << p->name()
-			    << "' must be driven by tri-state buffer"));
-		
-		io_inst->find_port("D_OUT_0")->connect(n);
-		io_inst->set_param("PIN_TYPE", BitVector(6, 0x19)); // 011001
-	      }
-	  }
-	  break;
-	  
-	default: abort();
-	}
+        {
+        case Direction::IN:
+          {
+            io_inst->find_port("D_IN_0")->connect(n);
+            io_inst->set_param("PIN_TYPE", BitVector(6, 1)); // 000001
+          }
+          break;
+          
+        case Direction::OUT:
+        case Direction::INOUT:
+          {
+            if (q
+                && isa<Instance>(q->node())
+                && cast<Instance>(q->node())->instance_of() == tbuf_model
+                && q->name() == "Y")
+              {
+                Instance *tbuf = cast<Instance>(q->node());
+                
+                io_inst->find_port("D_OUT_0")->connect(tbuf->find_port("A")->connection());
+                io_inst->find_port("D_IN_0")->connect(tbuf->find_port("Y")->connection());
+                io_inst->find_port("OUTPUT_ENABLE")->connect(tbuf->find_port("E")->connection());
+                
+                io_inst->set_param("PIN_TYPE", BitVector(6, 0x29)); // 101001
+                
+                tbuf->find_port("A")->disconnect();
+                tbuf->find_port("E")->disconnect();
+                tbuf->find_port("Y")->disconnect();
+                tbuf->remove();
+                delete tbuf;
+              }
+            else
+              {
+                if (p->direction() == Direction::INOUT)
+                  fatal(fmt("bidirectional port `" << p->name()
+                            << "' must be driven by tri-state buffer"));
+                
+                io_inst->find_port("D_OUT_0")->connect(n);
+                io_inst->set_param("PIN_TYPE", BitVector(6, 0x19)); // 011001
+              }
+          }
+          break;
+          
+        default: abort();
+        }
     }
   
   d->prune();

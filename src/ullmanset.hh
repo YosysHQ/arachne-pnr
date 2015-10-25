@@ -48,7 +48,7 @@ public:
   {
     unsigned p = pos[k];
     return (p < n
-	    && key[p] == k);
+            && key[p] == k);
   }
   
   void insert(int k)
@@ -79,9 +79,9 @@ public:
     --n;
     if (p != n)
       {
-	int ell = key[n];
-	pos[ell] = p;
-	key[p] = ell;
+        int ell = key[n];
+        pos[ell] = p;
+        key[p] = ell;
       }
   }
   

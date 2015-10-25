@@ -74,17 +74,17 @@ Packer::Packer(DesignState &ds)
   for (const auto &p : top->nets())
     {
       if (p.second->is_constant())
-	{
-	  if (p.second->constant() == Value::ONE)
-	    const1 = p.second;
-	  else
-	    {
-	      assert(p.second->constant() == Value::ZERO);
-	      const0 = p.second;
-	    }
-	}
+        {
+          if (p.second->constant() == Value::ONE)
+            const1 = p.second;
+          else
+            {
+              assert(p.second->constant() == Value::ZERO);
+              const0 = p.second;
+            }
+        }
       if (const0 && const1)
-	break;
+        break;
     }
   
   // will prune
@@ -104,7 +104,7 @@ Packer::Packer(DesignState &ds)
 
 void
 Packer::lc_from_dff(Instance *lc_inst,
-		    Instance *dff_inst)
+                    Instance *dff_inst)
 {
   const std::string &dff_name = dff_inst->instance_of()->name();
   const char *suffix = &dff_name[6];
@@ -163,17 +163,17 @@ Packer::lc_from_dff(Instance *lc_inst,
   if (sr)
     {
       if (set_noreset)
-	{
-	  lc_inst->find_port("SR")->connect(dff_inst->find_port("S")->connection());
-	  lc_inst->set_param("SET_NORESET", BitVector(1, 1));
-	}
+        {
+          lc_inst->find_port("SR")->connect(dff_inst->find_port("S")->connection());
+          lc_inst->set_param("SET_NORESET", BitVector(1, 1));
+        }
       else
-	{
-	  lc_inst->find_port("SR")->connect(dff_inst->find_port("R")->connection());
-	}
+        {
+          lc_inst->find_port("SR")->connect(dff_inst->find_port("R")->connection());
+        }
       
       if (async_sr)
-	lc_inst->set_param("ASYNC_SR", BitVector(1, 1));
+        lc_inst->set_param("ASYNC_SR", BitVector(1, 1));
     }
   else
     {
@@ -187,7 +187,7 @@ Packer::lc_from_dff(Instance *lc_inst,
 
 void
 Packer::lc_from_lut(Instance *lc_inst,
-		    Instance *lut_inst)
+                    Instance *lut_inst)
 {
   lc_inst->find_port("I0")->connect(lut_inst->find_port("I0")->connection());
   lc_inst->find_port("I1")->connect(lut_inst->find_port("I1")->connection());
@@ -230,12 +230,12 @@ Packer::carry_pass_through_lc(Instance *lc_inst, Port *cout)
 
 void
 Packer::lc_from_carry(Instance *lc_inst,
-		      Instance *carry_inst)
+                      Instance *carry_inst)
 {
   assert((lc_inst->find_port("I1")->connection()
-	  == carry_inst->find_port("I0")->connection())
-	 && (lc_inst->find_port("I2")->connection()
-	     == carry_inst->find_port("I1")->connection()));
+          == carry_inst->find_port("I0")->connection())
+         && (lc_inst->find_port("I2")->connection()
+             == carry_inst->find_port("I1")->connection()));
   
   lc_inst->find_port("CIN")->connect(carry_inst->find_port("CI")->connection());
   lc_inst->find_port("COUT")->connect(carry_inst->find_port("CO")->connection());
@@ -253,43 +253,43 @@ Packer::pack_dffs()
       ++i;
       
       if (models.is_dff(inst))
-	{
-	  Instance *lc_inst = top->add_instance(models.lc);
-	  
-	  Port *d_port = inst->find_port("D");
-	  
-	  Port *d_driver = d_port->connection_other_port();
-	  
-	  Instance *lut_inst = nullptr;
-	  if (d_driver)
-	    {
-	      Instance *d_driver_inst = dyn_cast<Instance>(d_driver->node());
-	      if (d_driver_inst
-		  && models.is_lut4(d_driver_inst)
-		  && d_driver->name() == "O")
-		lut_inst = d_driver_inst;
-	    }
-	  
-	  lc_from_dff(lc_inst, inst);
-	  
-	  if (lut_inst)
-	    lc_from_lut(lc_inst, lut_inst);
-	  else
-	    pass_through_lc(lc_inst, d_port);
-	  
-	  inst->remove();
-	  delete inst;
-	  
-	  if (lut_inst)
-	    {
-	      if (i != instances.end()
-		  && *i == lut_inst)
-		++i;
-	      
-	      lut_inst->remove();
-	      delete lut_inst;
-	    }
-	}
+        {
+          Instance *lc_inst = top->add_instance(models.lc);
+          
+          Port *d_port = inst->find_port("D");
+          
+          Port *d_driver = d_port->connection_other_port();
+          
+          Instance *lut_inst = nullptr;
+          if (d_driver)
+            {
+              Instance *d_driver_inst = dyn_cast<Instance>(d_driver->node());
+              if (d_driver_inst
+                  && models.is_lut4(d_driver_inst)
+                  && d_driver->name() == "O")
+                lut_inst = d_driver_inst;
+            }
+          
+          lc_from_dff(lc_inst, inst);
+          
+          if (lut_inst)
+            lc_from_lut(lc_inst, lut_inst);
+          else
+            pass_through_lc(lc_inst, d_port);
+          
+          inst->remove();
+          delete inst;
+          
+          if (lut_inst)
+            {
+              if (i != instances.end()
+                  && *i == lut_inst)
+                ++i;
+              
+              lut_inst->remove();
+              delete lut_inst;
+            }
+        }
     }
 }
 
@@ -302,16 +302,16 @@ Packer::pack_luts()
       Instance *inst = *i;
       ++i;
       if (models.is_lut4(inst))
-	{
-	  Instance *lc_inst = top->add_instance(models.lc);
-	  
-	  lc_from_lut(lc_inst, inst);
- 	  
-	  lc_inst->find_port("O")->connect(inst->find_port("O")->connection());
-	  
- 	  inst->remove();
- 	  delete inst;
-	}
+        {
+          Instance *lc_inst = top->add_instance(models.lc);
+          
+          lc_from_lut(lc_inst, inst);
+          
+          lc_inst->find_port("O")->connect(inst->find_port("O")->connection());
+          
+          inst->remove();
+          delete inst;
+        }
     }      
 }
 
@@ -323,8 +323,8 @@ Packer::driver(Net *n)
   for (Port *p : n->connections())
     {
       if (p->is_output()
-	  || p->is_bidir())
-	return p;
+          || p->is_bidir())
+        return p;
     }
   return nullptr;
 }
@@ -348,13 +348,13 @@ Packer::find_carry_lc(Instance *c)
   for (Port *p : ci_conn->connections())
     {
       if (Instance *p_inst = dyn_cast<Instance>(p->node()))
-	{
-	  if (models.is_lc(p_inst)
-	      && p->name() == "I3"
-	      && i0_conn == p_inst->find_port("I1")->connection()
-	      && i1_conn == p_inst->find_port("I2")->connection())
-	    return p_inst;
-	}
+        {
+          if (models.is_lc(p_inst)
+              && p->name() == "I3"
+              && i0_conn == p_inst->find_port("I1")->connection()
+              && i1_conn == p_inst->find_port("I2")->connection())
+            return p_inst;
+        }
     }
   
   return nullptr;
@@ -375,138 +375,138 @@ Packer::pack_carries_from(Instance *f)
       Port *out = c->find_port("CO");
       Net *out_conn = out->connection();
       if (out_conn
-	  && chain.size() == max_chain_length - 1)
-	{
-	  // break chain
-	  Instance *out_lc_inst = top->add_instance(models.lc);
-	  
-	  carry_pass_through_lc(out_lc_inst, chain.back()->find_port("COUT"));
-	  chain.push_back(out_lc_inst);
-	  
-	  chains.chains.push_back(chain);
-	  chain.clear();
-	}
+          && chain.size() == max_chain_length - 1)
+        {
+          // break chain
+          Instance *out_lc_inst = top->add_instance(models.lc);
+          
+          carry_pass_through_lc(out_lc_inst, chain.back()->find_port("COUT"));
+          chain.push_back(out_lc_inst);
+          
+          chains.chains.push_back(chain);
+          chain.clear();
+        }
       
       Port *in = c->find_port("CI");
       Net *in_conn = in->connection();
       
       if (chain.size() % 8 == 0)
-	{
-	  global_clk = nullptr;
-	  global_cen = nullptr;
-	  global_sr = nullptr;
-	}
+        {
+          global_clk = nullptr;
+          global_cen = nullptr;
+          global_sr = nullptr;
+        }
       
       if (chain.empty()
-	  && in_conn
-	  && !in_conn->is_constant())
-	{
-	  // carry in
-	  Instance *in_lc_inst = top->add_instance(models.lc);
-	  
-	  Net *t = top->add_net(in_conn);
-	  
-	  in_lc_inst->find_port("COUT")->connect(t);
-	  in_lc_inst->find_port("I0")->connect(const0);
-	  in_lc_inst->find_port("I1")->connect(in_conn);
-	  in_lc_inst->find_port("I2")->connect(const0);
-	  in_lc_inst->find_port("I3")->connect(const0);
-	  in_lc_inst->find_port("CIN")->connect(const1);
-	  
-	  in_lc_inst->set_param("CARRY_ENABLE", BitVector(1, 1));
-	  
-	  chain.push_back(in_lc_inst);
-	  
-	  in->connect(t);
-	  in_conn = t;
-	  
-	  ++n_carry_pass_through;
-	}
+          && in_conn
+          && !in_conn->is_constant())
+        {
+          // carry in
+          Instance *in_lc_inst = top->add_instance(models.lc);
+          
+          Net *t = top->add_net(in_conn);
+          
+          in_lc_inst->find_port("COUT")->connect(t);
+          in_lc_inst->find_port("I0")->connect(const0);
+          in_lc_inst->find_port("I1")->connect(in_conn);
+          in_lc_inst->find_port("I2")->connect(const0);
+          in_lc_inst->find_port("I3")->connect(const0);
+          in_lc_inst->find_port("CIN")->connect(const1);
+          
+          in_lc_inst->set_param("CARRY_ENABLE", BitVector(1, 1));
+          
+          chain.push_back(in_lc_inst);
+          
+          in->connect(t);
+          in_conn = t;
+          
+          ++n_carry_pass_through;
+        }
       
       Instance *lc_inst = find_carry_lc(c);
       if (lc_inst)
-	{
-	  Net *clk = lc_inst->find_port("CLK")->connection(),
-	    *cen = lc_inst->find_port("CEN")->connection(),
-	    *sr = lc_inst->find_port("SR")->connection();
-	  
-	  if ((global_clk
-	       && global_clk != clk)
-	      || (global_cen
-		  && global_cen != cen)
-	      || (global_sr
-		  && global_sr != sr))
-	    {
-	      lc_inst = nullptr;
-	      goto L;
-	    }
-	  if (!global_clk)
-	    global_clk = clk;
-	  if (!global_cen)
-	    global_cen = cen;
-	  if (!global_sr)
-	    global_sr = sr;
-	}
+        {
+          Net *clk = lc_inst->find_port("CLK")->connection(),
+            *cen = lc_inst->find_port("CEN")->connection(),
+            *sr = lc_inst->find_port("SR")->connection();
+          
+          if ((global_clk
+               && global_clk != clk)
+              || (global_cen
+                  && global_cen != cen)
+              || (global_sr
+                  && global_sr != sr))
+            {
+              lc_inst = nullptr;
+              goto L;
+            }
+          if (!global_clk)
+            global_clk = clk;
+          if (!global_cen)
+            global_cen = cen;
+          if (!global_sr)
+            global_sr = sr;
+        }
       
       if (!lc_inst)
-	{
-	L:
-	  lc_inst = top->add_instance(models.lc);
-	  
-	  lc_inst->find_port("I1")->connect(c->find_port("I0")->connection());
-	  lc_inst->find_port("I2")->connect(c->find_port("I1")->connection());
-	  
-	  if (!in_conn
-	      || in_conn->is_constant()
-	      || in_conn->connections().size() == 2)
-	    {
-	      // could try to pack lut here
-	    }
-	  else
-	    {
-	      Port *p = chain.back()->find_port("COUT");
-	      assert(p && p->connection() == in_conn);
-	      carry_pass_through_lc(lc_inst, p);
-	      
-	      c->find_port("CI")->connect(p->connection());
-	    }
-	}
+        {
+        L:
+          lc_inst = top->add_instance(models.lc);
+          
+          lc_inst->find_port("I1")->connect(c->find_port("I0")->connection());
+          lc_inst->find_port("I2")->connect(c->find_port("I1")->connection());
+          
+          if (!in_conn
+              || in_conn->is_constant()
+              || in_conn->connections().size() == 2)
+            {
+              // could try to pack lut here
+            }
+          else
+            {
+              Port *p = chain.back()->find_port("COUT");
+              assert(p && p->connection() == in_conn);
+              carry_pass_through_lc(lc_inst, p);
+              
+              c->find_port("CI")->connect(p->connection());
+            }
+        }
       
       lc_from_carry(lc_inst, c);
       chain.push_back(lc_inst);
       
       Instance *next_c = nullptr;
       if (out_conn)
-	{
-	  for (Port *p : out_conn->connections())
-	    {
-	      if (Instance *inst = dyn_cast<Instance>(p->node()))
-		{
-		  if (models.is_carry(inst)
-		      && p->name() == "CI")
-		    {
-		      if (next_c)
-			extend(ready, inst);
-		      else
-			next_c = inst;
-		    }
-		}
-	    }
-	}
+        {
+          for (Port *p : out_conn->connections())
+            {
+              if (Instance *inst = dyn_cast<Instance>(p->node()))
+                {
+                  if (models.is_carry(inst)
+                      && p->name() == "CI")
+                    {
+                      if (next_c)
+                        extend(ready, inst);
+                      else
+                        next_c = inst;
+                    }
+                }
+            }
+        }
       
       if (!next_c
-	  && out_conn)
-	{
-	  assert(chain.size() < max_chain_length);
-	  
-	  Instance *lc2_inst = top->add_instance(models.lc);
-	  
-	  Port *p = chain.back()->find_port("COUT");
-	  assert(p && p->connection() == out_conn);
-	  carry_pass_through_lc(lc2_inst, p);
-	  
-	  chain.push_back(lc2_inst);
-	}
+          && out_conn)
+        {
+          assert(chain.size() < max_chain_length);
+          
+          Instance *lc2_inst = top->add_instance(models.lc);
+          
+          Port *p = chain.back()->find_port("COUT");
+          assert(p && p->connection() == out_conn);
+          carry_pass_through_lc(lc2_inst, p);
+          
+          chain.push_back(lc2_inst);
+        }
       
       c->remove();
       delete c;
@@ -526,15 +526,15 @@ Packer::pack_carries()
   for (Instance *inst : instances)
     {
       if (models.is_carry(inst))
-	{
-	  Port *in = inst->find_port("CI");
-	  Net *in_conn = in->connection();
-	  Port *p = driver(in_conn);
-	  if (!p
-	      || !isa<Instance>(p->node())
-	      || !models.is_carry(cast<Instance>(p->node())))
-	    extend(ready, inst);
-	}
+        {
+          Port *in = inst->find_port("CI");
+          Net *in_conn = in->connection();
+          Port *p = driver(in_conn);
+          if (!p
+              || !isa<Instance>(p->node())
+              || !models.is_carry(cast<Instance>(p->node())))
+            extend(ready, inst);
+        }
     }
   
   while (!ready.empty())
@@ -559,7 +559,7 @@ Packer::pack()
   for (int i = 0; i < chipdb->n_tiles; ++i)
     {
       if (chipdb->tile_type[i] == TileType::RAMT)
-	++n_ramt_tiles;
+        ++n_ramt_tiles;
     }
   
   int n_io = 0,
@@ -575,69 +575,69 @@ Packer::pack()
   for (Instance *inst : top->instances())
     {
       if (models.is_lc(inst))
-	{
-	  ++n_lc;
-	  if (inst->get_param("DFF_ENABLE").get_bit(0))
-	    {
-	      if (inst->get_param("CARRY_ENABLE").get_bit(0))
-		++n_lc_carry_dff;
-	      else
-		++n_lc_dff;
-	    }
-	  else
-	    {
-	      if (inst->get_param("CARRY_ENABLE").get_bit(0))
-		++n_lc_carry;
-	    }
-	}
+        {
+          ++n_lc;
+          if (inst->get_param("DFF_ENABLE").get_bit(0))
+            {
+              if (inst->get_param("CARRY_ENABLE").get_bit(0))
+                ++n_lc_carry_dff;
+              else
+                ++n_lc_dff;
+            }
+          else
+            {
+              if (inst->get_param("CARRY_ENABLE").get_bit(0))
+                ++n_lc_carry;
+            }
+        }
       else if (models.is_io(inst))
-	++n_io;
+        ++n_io;
       else if (models.is_gb(inst))
-	++n_gb;
+        ++n_gb;
       else if (models.is_warmboot(inst))
-	++n_warmboot;
+        ++n_warmboot;
       else if (models.is_gb_io(inst))
-	{
-	  ++n_io;
-	  ++n_gb_io;
-	}
+        {
+          ++n_io;
+          ++n_gb_io;
+        }
       else if (models.is_pllX(inst))
-	++n_pll;
+        ++n_pll;
       else
-	{ 
-	  assert(models.is_ramX(inst));
-	  ++n_bram;
-	}
+        { 
+          assert(models.is_ramX(inst));
+          ++n_bram;
+        }
     }
   
   int n_logic_tiles = 0;
   for (int i = 0; i < chipdb->n_tiles; ++i)
     {
       if (chipdb->tile_type[i] == TileType::LOGIC)
-	++n_logic_tiles;
+        ++n_logic_tiles;
     }
   
   int n_warmboot_cells = 0;
   for (int i = 0; i < chipdb->n_cells; ++i)
     {
       if (chipdb->cell_type[i+1] == CellType::WARMBOOT)
-	++n_warmboot_cells;
+        ++n_warmboot_cells;
     }
   
   *logs << "\nAfter packing:\n"
-	<< "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
-	<< "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
-	<< "  GB_IOs     " << n_gb_io << " / " << chipdb->n_global_nets << "\n"
-	<< "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
-	<< "  DFF        " << n_lc_dff << "\n"
-	<< "  CARRY      " << n_lc_carry << "\n"
-	<< "  CARRY, DFF " << n_lc_carry_dff << "\n"
-	<< "  DFF PASS   " << n_dff_pass_through << "\n"
-	<< "  CARRY PASS " << n_carry_pass_through << "\n"
-	<< "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
-	<< "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
-	<< "PLLs         " << n_pll << " / " 
-	<< chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n\n";
+        << "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
+        << "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
+        << "  GB_IOs     " << n_gb_io << " / " << chipdb->n_global_nets << "\n"
+        << "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
+        << "  DFF        " << n_lc_dff << "\n"
+        << "  CARRY      " << n_lc_carry << "\n"
+        << "  CARRY, DFF " << n_lc_carry_dff << "\n"
+        << "  DFF PASS   " << n_dff_pass_through << "\n"
+        << "  CARRY PASS " << n_carry_pass_through << "\n"
+        << "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
+        << "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
+        << "PLLs         " << n_pll << " / " 
+        << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n\n";
 }
 
 void

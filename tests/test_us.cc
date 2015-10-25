@@ -40,7 +40,7 @@ test(int n, random_generator &rg)
     {
       assert(contains(a, i) == b.contains(i));
       if (b.contains(i))
-	++k;
+        ++k;
     }
   // std::cout << n << " " << k << "\n";
   

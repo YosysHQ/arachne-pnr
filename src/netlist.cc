@@ -29,16 +29,16 @@ write_string_escaped(std::ostream &s, const std::string &str)
   for (char ch : str)
     {
       if (ch == '"'
-	  || ch == '\\')
-	s << '\\' << ch;
+          || ch == '\\')
+        s << '\\' << ch;
       else if (isprint(ch))
-	s << ch;
+        s << ch;
       else if (ch == '\n')
-	s << "\n";
+        s << "\n";
       else if (ch == '\t')
-	s << "\t";
+        s << "\t";
       else
-	s << fmt(std::oct << std::setw(3) << std::setfill('0') << (int)ch);
+        s << fmt(std::oct << std::setw(3) << std::setfill('0') << (int)ch);
     }
   s << '"';
 }
@@ -49,7 +49,7 @@ operator<<(std::ostream &s, const Const &c)
   if (c.m_is_bits)
     {
       for (int i = c.m_bitval.size() - 1; i >= 0; --i)
-	s << (c.m_bitval[i] ? '1' : '0');
+        s << (c.m_bitval[i] ? '1' : '0');
     }
   else
     write_string_escaped(s, c.m_strval);
@@ -81,9 +81,9 @@ Const::write_verilog(std::ostream &s) const
   if (m_is_bits)
     {
       s << m_bitval.size()
-	<< "'b";
+        << "'b";
       for (int i = m_bitval.size() - 1; i >= 0; --i)
-	s << (m_bitval[i] ? '1' : '0');
+        s << (m_bitval[i] ? '1' : '0');
     }
   else
     write_string_escaped(s, m_strval);
@@ -144,22 +144,22 @@ bool
 Port::is_output() const
 {
   assert(m_node
-	 && (isa<Model>(m_node)
-	     || isa<Instance>(m_node)));
+         && (isa<Model>(m_node)
+             || isa<Instance>(m_node)));
   return (isa<Instance>(m_node)
-	  ? m_dir == Direction::OUT
-	  : m_dir == Direction::IN); // model
+          ? m_dir == Direction::OUT
+          : m_dir == Direction::IN); // model
 }
 
 bool
 Port::is_input() const
 {
   assert(m_node
-	 && (isa<Model>(m_node)
-	     || isa<Instance>(m_node)));
+         && (isa<Model>(m_node)
+             || isa<Instance>(m_node)));
   return (isa<Instance>(m_node)
-	  ? m_dir == Direction::IN
-	  : m_dir == Direction::OUT); // model
+          ? m_dir == Direction::IN
+          : m_dir == Direction::OUT); // model
 }
 
 Node::~Node()
@@ -223,9 +223,9 @@ Instance::merge_attrs(const Instance *inst)
     {
       auto j = m_attrs.find("src");
       if (j != m_attrs.end())
-	j->second = Const(j->second.as_string() + "|" + i->second.as_string());
+        j->second = Const(j->second.as_string() + "|" + i->second.as_string());
       else
-	m_attrs.insert(*i);
+        m_attrs.insert(*i);
     }
 }
 
@@ -233,7 +233,7 @@ bool
 Instance::has_param(const std::string &pn) const
 { 
   return (contains_key(m_params, pn)
-	  || m_instance_of->has_param(pn));
+          || m_instance_of->has_param(pn));
 }
 
 const Const &
@@ -256,14 +256,14 @@ Instance::remove()
 
 void
 Instance::write_blif(std::ostream &s,
-		     const std::map<Net *, std::string, IdLess> &net_name) const
+                     const std::map<Net *, std::string, IdLess> &net_name) const
 {
   s << ".gate " << m_instance_of->name();
   for (Port *p : m_ordered_ports)
     {
       s << " " << p->name() << "=";
       if (p->connected())
-	s << net_name.at(p->connection());
+        s << net_name.at(p->connection());
     }
   s << "\n";
   
@@ -281,7 +281,7 @@ Instance::dump() const
     {
       *logs << " " << p->name() << "=";
       if (p->connected())
-	*logs << p->connection()->name();
+        *logs << p->connection()->name();
     }
   *logs << " # " << this << "\n";
   
@@ -298,12 +298,12 @@ write_verilog_name(std::ostream &s, const std::string &name)
   for (char ch : name)
     {
       if (! (isalnum(ch)
-	     || ch == '_'
-	     || ch == '$'))
-	{
-	  quote = true;
-	  break;
-	}
+             || ch == '_'
+             || ch == '$'))
+        {
+          quote = true;
+          break;
+        }
     }
   if (quote)
     s << '\\';
@@ -314,22 +314,22 @@ write_verilog_name(std::ostream &s, const std::string &name)
 
 void
 Instance::write_verilog(std::ostream &s,
-			const std::map<Net *, std::string, IdLess> &net_name,
-			const std::string &inst_name) const
+                        const std::map<Net *, std::string, IdLess> &net_name,
+                        const std::string &inst_name) const
 {
   if (!m_attrs.empty())
     {
       s << "  (* ";
       bool first = true;
       for (const auto &p : m_attrs)
-	{
-	  if (first)
-	    first = false;
-	  else
-	    s << ", ";
-	  s << p.first << "=";
-	  p.second.write_verilog(s);
-	}
+        {
+          if (first)
+            first = false;
+          else
+            s << ", ";
+          s << p.first << "=";
+          p.second.write_verilog(s);
+        }
       s << " *)\n";
     }
   
@@ -341,18 +341,18 @@ Instance::write_verilog(std::ostream &s,
       s << " #(";
       bool first = true;
       for (const auto &p : m_params)
-	{
-	  if (first)
-	    first = false;
-	  else
-	    s << ", ";
-	      
-	  s << "\n    .";
-	  write_verilog_name(s, p.first);
-	  s << "(";
-	  p.second.write_verilog(s);
-	  s << ")";
-	}
+        {
+          if (first)
+            first = false;
+          else
+            s << ", ";
+              
+          s << "\n    .";
+          write_verilog_name(s, p.first);
+          s << "(";
+          p.second.write_verilog(s);
+          s << ")";
+        }
       s << "\n  ) ";
     }
   
@@ -363,17 +363,17 @@ Instance::write_verilog(std::ostream &s,
     {
       Net *conn = p->connection();
       if (conn)
-	{
-	  if (first)
-	    first = false;
-	  else
-	    s << ",";
-	  s << "\n    .";
-	  write_verilog_name(s, p->name());
-	  s << "(";
-	  write_verilog_name(s, conn->name());
-	  s << ")";
-	}
+        {
+          if (first)
+            first = false;
+          else
+            s << ",";
+          s << "\n    .";
+          write_verilog_name(s, p->name());
+          s << "(";
+          write_verilog_name(s, conn->name());
+          s << ")";
+        }
     }
   s << "\n  );\n";
 }
@@ -476,16 +476,16 @@ Model::boundary_nets(const Design *d) const
     {
       Net *n = p->connection();
       if (n)
-	{
-	  Port *q = p->connection_other_port();
-	  if (q
-	      && isa<Instance>(q->node())
-	      && ((models.is_ioX(cast<Instance>(q->node()))
-		   && q->name() == "PACKAGE_PIN")
-		  || (models.is_pllX(cast<Instance>(q->node()))
-		      && q->name() == "PACKAGEPIN")))
-	    extend(bnets, n);
-	}
+        {
+          Port *q = p->connection_other_port();
+          if (q
+              && isa<Instance>(q->node())
+              && ((models.is_ioX(cast<Instance>(q->node()))
+                   && q->name() == "PACKAGE_PIN")
+                  || (models.is_pllX(cast<Instance>(q->node()))
+                      && q->name() == "PACKAGEPIN")))
+            extend(bnets, n);
+        }
     }
   return bnets;
 }
@@ -521,7 +521,7 @@ Model::index_internal_nets(const Design *d) const
     {
       Net *n = p.second;
       if (contains(bnets, n))
-	continue;
+        continue;
       
       vnets.push_back(n);
       extend(net_idx, n, n_nets);
@@ -557,35 +557,35 @@ Model::prune()
       
       int n_distinct = n->connections().size();
       bool driver = false,
-	input = false;
+        input = false;
       if (n->is_constant())
-	{
-	  driver = true;
-	  ++n_distinct;
-	}
+        {
+          driver = true;
+          ++n_distinct;
+        }
       for (Port *p : n->connections())
-	{
-	  if (p->is_input()
-	      || p->is_bidir())
-	    input = true;
-	  if (p->is_output()
-	      || p->is_bidir())
-	    driver = true;
-	  if (input && driver)
-	    break;
-	}
+        {
+          if (p->is_input()
+              || p->is_bidir())
+            input = true;
+          if (p->is_output()
+              || p->is_bidir())
+            driver = true;
+          if (input && driver)
+            break;
+        }
       
       if (input && driver && n_distinct > 1)
-	continue;
+        continue;
       
       // remove n
       for (auto j = n->connections().begin();
-	   j != n->connections().end();)
-	{
-	  Port *p = *j;
-	  ++j;
-	  p->disconnect();
-	}
+           j != n->connections().end();)
+        {
+          Port *p = *j;
+          ++j;
+          p->disconnect();
+        }
       m_nets.erase(t);
       delete n;
     }
@@ -622,19 +622,19 @@ Model::check(const Design *d) const
   for (Port *p : m_ordered_ports)
     {
       if (p->is_bidir())
-	{
-	  Net *n = p->connection();
-	  if (n)
-	    {
-	      Port *q = p->connection_other_port();
-	      assert (q
-		      && isa<Instance>(q->node())
-		      && ((models.is_ioX(cast<Instance>(q->node()))
-			   && q->name() == "PACKAGE_PIN")
-			  || (models.is_pllX(cast<Instance>(q->node()))
-			      && q->name() == "PACKAGEPIN")));
-	    }
-	}
+        {
+          Net *n = p->connection();
+          if (n)
+            {
+              Port *q = p->connection_other_port();
+              assert (q
+                      && isa<Instance>(q->node())
+                      && ((models.is_ioX(cast<Instance>(q->node()))
+                           && q->name() == "PACKAGE_PIN")
+                          || (models.is_pllX(cast<Instance>(q->node()))
+                              && q->name() == "PACKAGEPIN")));
+            }
+        }
     }
   
   std::set<Net *, IdLess> bnets = boundary_nets(d);
@@ -646,20 +646,20 @@ Model::check(const Design *d) const
       assert(!n->connections().empty());
       
       if (contains(bnets, n))
-	continue;
+        continue;
       
       int n_drivers = 0;
       bool input = false;
       if (n->is_constant())
-	++n_drivers;
+        ++n_drivers;
       for (Port *p2 : n->connections())
-	{
-	  assert(!p2->is_bidir());
-	  if (p2->is_input())
-	    input = true;
-	  if (p2->is_output())
-	    ++n_drivers;
-	}
+        {
+          assert(!p2->is_bidir());
+          if (p2->is_input())
+            input = true;
+          if (p2->is_output())
+            ++n_drivers;
+        }
       
       assert(n_drivers == 1 && input);
     }
@@ -667,7 +667,7 @@ Model::check(const Design *d) const
 #endif
 
 std::pair<std::map<Net *, std::string, IdLess>,
-	  std::set<Net *, IdLess>>
+          std::set<Net *, IdLess>>
 Model::shared_names() const
 {
   std::set<std::string> names;
@@ -678,26 +678,26 @@ Model::shared_names() const
       Net *n = p->connection();
       extend(names, p->name());
       if (n
-	  && n->name() == p->name())
-	{
-	  extend(net_name, n, p->name());
-	  extend(is_port, n);
-	}
+          && n->name() == p->name())
+        {
+          extend(net_name, n, p->name());
+          extend(is_port, n);
+        }
     }
   for (const auto &p : m_nets)
     {
       if (contains(is_port, p.second))
-	continue;
+        continue;
       
       int i = 2;
       std::string shared_net_name = p.first;
     L:
       if (contains(names, shared_net_name))
-	{
-	  shared_net_name = fmt(p.first << "$" << i);
-	  ++i;
-	  goto L;
-	}
+        {
+          shared_net_name = fmt(p.first << "$" << i);
+          ++i;
+          goto L;
+        }
       extend(names, shared_net_name);
       extend(net_name, p.second, shared_net_name);
     }
@@ -713,8 +713,8 @@ Model::write_blif(std::ostream &s) const
   for (Port *p : m_ordered_ports)
     {
       if (p->direction() == Direction::IN
-	  || p->direction() == Direction::INOUT)
-	s << " " << p->name();
+          || p->direction() == Direction::INOUT)
+        s << " " << p->name();
     }
   s << "\n";
   
@@ -722,8 +722,8 @@ Model::write_blif(std::ostream &s) const
   for (Port *p : m_ordered_ports)
     {
       if (p->direction() == Direction::OUT
-	  || p->direction() == Direction::INOUT)
-	s << " " << p->name();
+          || p->direction() == Direction::INOUT)
+        s << " " << p->name();
     }
   s << "\n";
   
@@ -734,19 +734,19 @@ Model::write_blif(std::ostream &s) const
   for (const auto &p : net_name)
     {
       if (p.second != p.first->name())
-	s << "# " << p.first->name() << " -> " << p.second << "\n";
+        s << "# " << p.first->name() << " -> " << p.second << "\n";
     }
   
   for (const auto &p : m_nets)
     {
       if (p.second->is_constant())
-	{
-	  s << ".names " << p.first << "\n";
-	  if (p.second->constant() == Value::ONE)
-	    s << "1\n";
-	  else
-	    assert(p.second->constant() == Value::ZERO);
-	}
+        {
+          s << ".names " << p.first << "\n";
+          if (p.second->constant() == Value::ONE)
+            s << "1\n";
+          else
+            assert(p.second->constant() == Value::ZERO);
+        }
     }
   
   for (auto i : m_instances)
@@ -756,17 +756,17 @@ Model::write_blif(std::ostream &s) const
     {
       Net *n = p->connection();
       if (n
-	  && n->name() != p->name())
-	{
-	  if (p->is_input())
-	    s << ".names " << net_name.at(n) << " " << p->name() << "\n";
-	  else
-	    {
-	      assert(p->is_output());
-	      s << ".names " << p->name() << " " << net_name.at(n) << "\n";
-	    }
-	  s << "1 1\n";
-	}
+          && n->name() != p->name())
+        {
+          if (p->is_input())
+            s << ".names " << net_name.at(n) << " " << p->name() << "\n";
+          else
+            {
+              assert(p->is_output());
+              s << ".names " << p->name() << " " << net_name.at(n) << "\n";
+            }
+          s << "1 1\n";
+        }
     }
   
   s << ".end\n";
@@ -782,21 +782,21 @@ Model::write_verilog(std::ostream &s) const
   for (Port *p : m_ordered_ports)
     {
       if (first)
-	first = false;
+        first = false;
       else
-	s << ", ";
+        s << ", ";
       switch(p->direction())
-	{
-	case Direction::IN:
-	  s << "input ";
-	  break;
-	case Direction::OUT:
-	  s << "output ";
-	  break;
-	case Direction::INOUT:
-	  s << "inout ";
-	  break;
-	}
+        {
+        case Direction::IN:
+          s << "input ";
+          break;
+        case Direction::OUT:
+          s << "output ";
+          break;
+        case Direction::INOUT:
+          s << "inout ";
+          break;
+        }
       write_verilog_name(s, p->name());
     }
   s << ");\n";
@@ -808,27 +808,27 @@ Model::write_verilog(std::ostream &s) const
   for (const auto &p : net_name)
     {
       if (p.second != p.first->name())
-	s << "  // " << p.first->name() << " -> " << p.second << "\n";
+        s << "  // " << p.first->name() << " -> " << p.second << "\n";
     }
   
   for (const auto &p : m_nets)
     {
       if (contains(is_port, p.second))
-	continue;
+        continue;
       
       s << "  wire ";
       write_verilog_name(s, net_name.at(p.second));
       if (p.second->is_constant())
-	{
-	  s << " = ";
-	  if (p.second->constant() == Value::ONE)
-	    s << "1";
-	  else
-	    {
-	      assert(p.second->constant() == Value::ZERO);
-	      s << "0";
-	    }
-	}
+        {
+          s << " = ";
+          if (p.second->constant() == Value::ONE)
+            s << "1";
+          else
+            {
+              assert(p.second->constant() == Value::ZERO);
+              s << "0";
+            }
+        }
       s << ";\n";
     }
   
@@ -836,24 +836,24 @@ Model::write_verilog(std::ostream &s) const
     {
       Net *n = p->connection();
       if (n
-	  && n->name() != p->name())
-	{
-	  if (p->is_input())
-	    {
-	      s << "  assign ";
-	      write_verilog_name(s, net_name.at(n));
-	      s << " = " << p->name() << ";\n";
-	    }
-	  else
-	    {
-	      assert(p->is_output());
-	      s << "  assign " << p->name() << " = ";
-	      write_verilog_name(s, net_name.at(n));
-	      s << ";\n";
-	    }
-	}
+          && n->name() != p->name())
+        {
+          if (p->is_input())
+            {
+              s << "  assign ";
+              write_verilog_name(s, net_name.at(n));
+              s << " = " << p->name() << ";\n";
+            }
+          else
+            {
+              assert(p->is_output());
+              s << "  assign " << p->name() << " = ";
+              write_verilog_name(s, net_name.at(n));
+              s << ";\n";
+            }
+        }
       else
-	assert(contains(is_port, n));
+        assert(contains(is_port, n));
     }
   
   int k = 0;
@@ -965,95 +965,95 @@ Design::create_standard_models()
   for (int neg_clk = 0; neg_clk <= 1; ++neg_clk)
     for (int cen = 0; cen <= 1; ++cen)
       for (int sr = 0; sr <= 4; ++sr)
-	{
-	  std::string name = "SB_DFF";
-	  if (neg_clk)
-	    name.push_back('N');
-	  if (cen)
-	    name.push_back('E');
-	  switch(sr)
-	    {
-	    case 0:  break;
-	    case 1:
-	      name.append("SR");
-	      break;
-	    case 2:
-	      name.append("R");
-	      break;
-	    case 3:
-	      name.append("SS");
-	      break;
-	    case 4:
-	      name.append("S");
-	      break;
-	    default:
-	      abort();
-	    }
-	
-	  Model *dff = new Model(this, name);
-	  dff->add_port("Q", Direction::OUT);
-	  dff->add_port("C", Direction::IN, Value::ZERO);
-	  if (cen)
-	    dff->add_port("E", Direction::IN, Value::ONE);
-	  switch(sr)
-	    {
-	    case 0:  break;
-	    case 1:
-	    case 2:
-	      dff->add_port("R", Direction::IN, Value::ZERO);
-	      break;
-	    case 3:
-	    case 4:
-	      dff->add_port("S", Direction::IN, Value::ZERO);
-	      break;
-	    default:
-	      abort();
-	    }
-	  dff->add_port("D", Direction::IN, Value::ZERO);
-	}
+        {
+          std::string name = "SB_DFF";
+          if (neg_clk)
+            name.push_back('N');
+          if (cen)
+            name.push_back('E');
+          switch(sr)
+            {
+            case 0:  break;
+            case 1:
+              name.append("SR");
+              break;
+            case 2:
+              name.append("R");
+              break;
+            case 3:
+              name.append("SS");
+              break;
+            case 4:
+              name.append("S");
+              break;
+            default:
+              abort();
+            }
+        
+          Model *dff = new Model(this, name);
+          dff->add_port("Q", Direction::OUT);
+          dff->add_port("C", Direction::IN, Value::ZERO);
+          if (cen)
+            dff->add_port("E", Direction::IN, Value::ONE);
+          switch(sr)
+            {
+            case 0:  break;
+            case 1:
+            case 2:
+              dff->add_port("R", Direction::IN, Value::ZERO);
+              break;
+            case 3:
+            case 4:
+              dff->add_port("S", Direction::IN, Value::ZERO);
+              break;
+            default:
+              abort();
+            }
+          dff->add_port("D", Direction::IN, Value::ZERO);
+        }
   
   for (int nr = 0; nr <= 1; ++nr)
     for (int nw = 0; nw <= 1; ++nw)
       {
-	std::string name = "SB_RAM40_4K";
-	
-	if (nr)
-	  name.append("NR");
-	if (nw)
-	  name.append("NW");
-	Model *bram = new Model(this, name);
-	
-	for (int i = 0; i <= 15; ++i)
-	  bram->add_port(fmt("RDATA[" << i << "]"), Direction::OUT);
-	for (int i = 0; i <= 10; ++i)
-	  bram->add_port(fmt("RADDR[" << i << "]"), Direction::IN, Value::ZERO);
-	
-	for (int i = 0; i <= 10; ++i)
-	  bram->add_port(fmt("WADDR[" << i << "]"), Direction::IN, Value::ZERO);
-	for (int i = 0; i <= 15; ++i)
-	  bram->add_port(fmt("MASK[" << i << "]"), Direction::IN, Value::ZERO);
-	for (int i = 0; i <= 15; ++i)
-	  bram->add_port(fmt("WDATA[" << i << "]"), Direction::IN, Value::ZERO);
-	
-	bram->add_port("RCLKE", Direction::IN, Value::ONE);
-	
-	if (nr)
-	  bram->add_port("RCLKN", Direction::IN, Value::ZERO);
-	else
-	  bram->add_port("RCLK", Direction::IN, Value::ZERO);
-	bram->add_port("RE", Direction::IN, Value::ZERO);
-	
-	bram->add_port("WCLKE", Direction::IN, Value::ONE);
-	if (nw)
-	  bram->add_port("WCLKN", Direction::IN, Value::ZERO);
-	else
-	  bram->add_port("WCLK", Direction::IN, Value::ZERO);
-	bram->add_port("WE", Direction::IN, Value::ZERO);
-	
-	for (int i = 0; i <= 15; ++i)
-	  bram->set_param(fmt("INIT_" << hexdigit(i, 'A')), BitVector(256, 0));
-	bram->set_param("READ_MODE", BitVector(2, 0));
-	bram->set_param("WRITE_MODE", BitVector(2, 0));
+        std::string name = "SB_RAM40_4K";
+        
+        if (nr)
+          name.append("NR");
+        if (nw)
+          name.append("NW");
+        Model *bram = new Model(this, name);
+        
+        for (int i = 0; i <= 15; ++i)
+          bram->add_port(fmt("RDATA[" << i << "]"), Direction::OUT);
+        for (int i = 0; i <= 10; ++i)
+          bram->add_port(fmt("RADDR[" << i << "]"), Direction::IN, Value::ZERO);
+        
+        for (int i = 0; i <= 10; ++i)
+          bram->add_port(fmt("WADDR[" << i << "]"), Direction::IN, Value::ZERO);
+        for (int i = 0; i <= 15; ++i)
+          bram->add_port(fmt("MASK[" << i << "]"), Direction::IN, Value::ZERO);
+        for (int i = 0; i <= 15; ++i)
+          bram->add_port(fmt("WDATA[" << i << "]"), Direction::IN, Value::ZERO);
+        
+        bram->add_port("RCLKE", Direction::IN, Value::ONE);
+        
+        if (nr)
+          bram->add_port("RCLKN", Direction::IN, Value::ZERO);
+        else
+          bram->add_port("RCLK", Direction::IN, Value::ZERO);
+        bram->add_port("RE", Direction::IN, Value::ZERO);
+        
+        bram->add_port("WCLKE", Direction::IN, Value::ONE);
+        if (nw)
+          bram->add_port("WCLKN", Direction::IN, Value::ZERO);
+        else
+          bram->add_port("WCLK", Direction::IN, Value::ZERO);
+        bram->add_port("WE", Direction::IN, Value::ZERO);
+        
+        for (int i = 0; i <= 15; ++i)
+          bram->set_param(fmt("INIT_" << hexdigit(i, 'A')), BitVector(256, 0));
+        bram->set_param("READ_MODE", BitVector(2, 0));
+        bram->set_param("WRITE_MODE", BitVector(2, 0));
       }
 
   Model *pll_core = new Model(this, "SB_PLL40_CORE");

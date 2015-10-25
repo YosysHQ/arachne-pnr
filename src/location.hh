@@ -45,7 +45,7 @@ public:
   bool operator==(const Location &loc2) const
   {
     return (m_tile == loc2.m_tile
-	    && m_pos == loc2.m_pos);
+            && m_pos == loc2.m_pos);
   }
   bool operator!=(const Location &loc2) const { return !operator==(loc2); }
   

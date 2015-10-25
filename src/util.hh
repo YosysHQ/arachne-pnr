@@ -71,15 +71,15 @@ public:
     
     for (;;)
       {
-	// randomly distributed 0 .. (m-1)
-	unsigned x = random();
-	if (x >= k*d)
-	  continue;
-	
-	// randomly disributed 0 ..(k*m-1)
-	int r = min + (int)(x % d);
-	assert(min <= r && r <= max);
-	return r;
+        // randomly distributed 0 .. (m-1)
+        unsigned x = random();
+        if (x >= k*d)
+          continue;
+        
+        // randomly disributed 0 ..(k*m-1)
+        int r = min + (int)(x % d);
+        assert(min <= r && r <= max);
+        return r;
       }
   }
   
@@ -134,8 +134,8 @@ operator<<(std::ostream &s, const std::map<K, V> &M)
 {
   s << "{";
   std::transform(M.begin(), M.end(),
-		 std::ostream_iterator<std::string>(s, ", "),
-		 [](const std::pair<K, V> &p) { return PrettyKV<K, V>(p); });
+                 std::ostream_iterator<std::string>(s, ", "),
+                 [](const std::pair<K, V> &p) { return PrettyKV<K, V>(p); });
   return s << "}";
 }
 
@@ -144,8 +144,8 @@ operator<<(std::ostream &s, const std::unordered_map<K, V> &M)
 {
   s << "{";
   std::transform(M.begin(), M.end(),
-		 std::ostream_iterator<std::string>(s, ", "),
-		 [](const std::pair<K, V> &p) { return PrettyKV<K, V>(p); });
+                 std::ostream_iterator<std::string>(s, ", "),
+                 [](const std::pair<K, V> &p) { return PrettyKV<K, V>(p); });
   return s << "}";
 }
 
@@ -185,8 +185,8 @@ keys(const M &m)
 {
   std::set<typename M::key_type> keys;
   std::transform(m.begin(), m.end(),
-		 std::inserter(keys, keys.end()),
-		 [](const typename M::value_type &p) { return p.first; });
+                 std::inserter(keys, keys.end()),
+                 [](const typename M::value_type &p) { return p.first; });
   return std::move(keys);
 }
 
@@ -230,8 +230,8 @@ is_prefix(const std::string &prefix, const std::string &s)
   if (prefix.size() > s.size())
     return false;
   auto r = std::mismatch(prefix.begin(), prefix.end(), 
-			 s.begin(),
-			 std::equal_to<char>());
+                         s.begin(),
+                         std::equal_to<char>());
   return r.first == prefix.end();
 }
 
@@ -241,8 +241,8 @@ is_suffix(const std::string &s, const std::string &suffix)
   if (suffix.size() > s.size())
     return false;
   auto r = std::mismatch(suffix.rbegin(), suffix.rend(),
-			 s.rbegin(),
-			 std::equal_to<char>());
+                         s.rbegin(),
+                         std::equal_to<char>());
   return r.first == suffix.rend();
 }
 
@@ -253,8 +253,8 @@ hexdigit(int i, char a = 'a')
 {
   assert(i >= 0 && i < 16);
   return (i < 10 
-	  ? '0' + i
-	  : a + (i - 10));
+          ? '0' + i
+          : a + (i - 10));
 }
 
 template<typename T> inline const T &

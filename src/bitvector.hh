@@ -42,20 +42,20 @@ public:
     BitRef &operator=(bool x)
     {
       size_t w = (i - B) / 64,
-	b = (i - B) & 63;
+        b = (i - B) & 63;
       uint64_t m = ((uint64_t)1 << b);
       assert(w < v.size());
       if (x)
-	v[w] |= m;
+        v[w] |= m;
       else
-	v[w] &= ~m;
+        v[w] &= ~m;
       return *this;
     }
     
     operator bool() const
     {
       size_t w = (i - B) / 64,
-	b = (i - B) & 63;
+        b = (i - B) & 63;
       uint64_t m = ((uint64_t)1 << b);
       assert(w < v.size());
       return v[w] & m;

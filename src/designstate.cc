@@ -21,7 +21,7 @@ DesignState::is_dual_pll(Instance *inst) const
   else
     {
       assert(inst->instance_of()->name() == "SB_PLL40_PAD"
-	     || inst->instance_of()->name() == "SB_PLL40_CORE");
+             || inst->instance_of()->name() == "SB_PLL40_CORE");
       return false;
     }
 }
@@ -30,7 +30,7 @@ std::vector<int>
 DesignState::pll_out_io_cells(Instance *inst, int cell) const
 {
   assert(models.is_pllX(inst)
-	 && chipdb->cell_type[cell] == CellType::PLL);
+         && chipdb->cell_type[cell] == CellType::PLL);
   
   bool dual = is_dual_pll(inst);
   

@@ -80,11 +80,11 @@ Promoter::Promoter(DesignState &ds_)
   for (const auto &p : top->nets())
     {
       if (p.second->is_constant()
-	  && p.second->constant() == Value::ZERO)
-	{
-	  const0 = p.second;
-	  break;
-	}
+          && p.second->constant() == Value::ZERO)
+        {
+          const0 = p.second;
+          break;
+        }
     }
   
   // will prune
@@ -105,44 +105,44 @@ Promoter::port_gc(Port *conn, bool indirect)
   if (models.is_lc(inst))
     {
       if (conn->name() == "CLK")
-	return gc_clk;
+        return gc_clk;
       else if (conn->name() == "CEN")
-	return gc_cen;
+        return gc_cen;
       else if (conn->name() == "SR")
-	return gc_sr;
+        return gc_sr;
       else if (indirect
-	       && (conn->name() == "I0"
-		   || conn->name() == "I1"
-		   || conn->name() == "I2"
-		   || conn->name() == "I3"))
-	return gc_clk;
+               && (conn->name() == "I0"
+                   || conn->name() == "I1"
+                   || conn->name() == "I2"
+                   || conn->name() == "I3"))
+        return gc_clk;
     }
   else if (models.is_ioX(inst))
     {
       if (conn->name() == "INPUT_CLOCK"
-	  || conn->name() == "OUTPUT_CLOCK")
-	return gc_clk;
+          || conn->name() == "OUTPUT_CLOCK")
+        return gc_clk;
     }
   else if (models.is_gb(inst)
-	   || models.is_warmboot(inst)
-	   || models.is_pllX(inst))
+           || models.is_warmboot(inst)
+           || models.is_pllX(inst))
     ;
   else
     {
       assert(models.is_ramX(inst));
       if (conn->name() == "WCLK"
-	  || conn->name() == "WCLKN"
-	  || conn->name() == "RCLK"
-	  || conn->name() == "RCLKN")
-	return gc_clk;
+          || conn->name() == "WCLKN"
+          || conn->name() == "RCLK"
+          || conn->name() == "RCLKN")
+        return gc_clk;
       else if (conn->name() == "WCLKE")
-	return gc_wclke;
+        return gc_wclke;
       else if (conn->name() == "WE")
-	return gc_we;
+        return gc_we;
       else if (conn->name() == "RCLKE")
-	return gc_rclke;
+        return gc_rclke;
       else if (conn->name() == "RE")
-	return gc_re;
+        return gc_re;
     }
   
   return 0;
@@ -192,22 +192,22 @@ Promoter::make_routable(Net *n, int g)
       ++i;
       
       if (!p->is_input())
-	continue;
+        continue;
       if (routable(g, p))
-	continue;
+        continue;
       
       if (!internal)
-	{
-	  internal = top->add_net(n);
-	  
-	  Instance *pass_inst = top->add_instance(models.lc);
-	  pass_inst->find_port("I0")->connect(n);
-	  pass_inst->find_port("I1")->connect(const0);
-	  pass_inst->find_port("I2")->connect(const0);
-	  pass_inst->find_port("I3")->connect(const0);
-	  pass_inst->set_param("LUT_INIT", BitVector(2, 2));
-	  pass_inst->find_port("O")->connect(internal);
-	}
+        {
+          internal = top->add_net(n);
+          
+          Instance *pass_inst = top->add_instance(models.lc);
+          pass_inst->find_port("I0")->connect(n);
+          pass_inst->find_port("I1")->connect(const0);
+          pass_inst->find_port("I2")->connect(const0);
+          pass_inst->find_port("I3")->connect(const0);
+          pass_inst->set_param("LUT_INIT", BitVector(2, 2));
+          pass_inst->find_port("O")->connect(internal);
+        }
       p->connect(internal);
     }
 }
@@ -237,54 +237,54 @@ Promoter::promote(bool do_promote)
       int c = p.second;
       
       if (models.is_gb_io(inst))
-	{
-	  Port *out = inst->find_port("GLOBAL_BUFFER_OUTPUT");
-	  if (out->connected())
-	    {
-	      int g = chipdb->loc_pin_glb_num.at(chipdb->cell_location[c]);
-	      for (uint8_t gc : global_classes)
-		{
-		  if (gc & (1 << g))
-		    ++gc_used[gc];
-		}
-	      make_routable(out->connection(), g);
-	    }
-	}
+        {
+          Port *out = inst->find_port("GLOBAL_BUFFER_OUTPUT");
+          if (out->connected())
+            {
+              int g = chipdb->loc_pin_glb_num.at(chipdb->cell_location[c]);
+              for (uint8_t gc : global_classes)
+                {
+                  if (gc & (1 << g))
+                    ++gc_used[gc];
+                }
+              make_routable(out->connection(), g);
+            }
+        }
       else if (models.is_pllX(inst))
-	{
-	  plls.push_back(std::make_pair(inst, c));
-	  
-	  Port *a = inst->find_port("PLLOUTGLOBAL");
-	  if (!a)
-	    a = inst->find_port("PLLOUTGLOBALA");
-	  assert(a);
-	  if (a->connected())
-	    {
-	      const auto &p2 = chipdb->cell_mfvs.at(c).at("PLLOUT_A");
-	      Location loc(p2.first, std::stoi(p2.second));
-	      int g = chipdb->loc_pin_glb_num.at(loc);
-	      for (uint8_t gc : global_classes)
-		{
-		  if (gc & (1 << g))
-		    ++gc_used[gc];
-		}
-	      make_routable(a->connection(), g);
-	    }
-	  
-	  Port *b = inst->find_port("PLLOUTGLOBALB");
-	  if (b && b->connected())
-	    {
-	      const auto &p2 = chipdb->cell_mfvs.at(c).at("PLLOUT_B");
-	      Location loc(p2.first, std::stoi(p2.second));
-	      int g = chipdb->loc_pin_glb_num.at(loc);
-	      for (uint8_t gc : global_classes)
-		{
-		  if (gc & (1 << g))
-		    ++gc_used[gc];
-		}
-	      make_routable(b->connection(), g);
-	    }
-	}
+        {
+          plls.push_back(std::make_pair(inst, c));
+          
+          Port *a = inst->find_port("PLLOUTGLOBAL");
+          if (!a)
+            a = inst->find_port("PLLOUTGLOBALA");
+          assert(a);
+          if (a->connected())
+            {
+              const auto &p2 = chipdb->cell_mfvs.at(c).at("PLLOUT_A");
+              Location loc(p2.first, std::stoi(p2.second));
+              int g = chipdb->loc_pin_glb_num.at(loc);
+              for (uint8_t gc : global_classes)
+                {
+                  if (gc & (1 << g))
+                    ++gc_used[gc];
+                }
+              make_routable(a->connection(), g);
+            }
+          
+          Port *b = inst->find_port("PLLOUTGLOBALB");
+          if (b && b->connected())
+            {
+              const auto &p2 = chipdb->cell_mfvs.at(c).at("PLLOUT_B");
+              Location loc(p2.first, std::stoi(p2.second));
+              int g = chipdb->loc_pin_glb_num.at(loc);
+              for (uint8_t gc : global_classes)
+                {
+                  if (gc & (1 << g))
+                    ++gc_used[gc];
+                }
+              make_routable(b->connection(), g);
+            }
+        }
     }
   
   for (const auto &p : plls)
@@ -304,72 +304,72 @@ Promoter::promote(bool do_promote)
     {
       Net *n = nets[i];
       if (contains(boundary_nets, n)
-	  || n->is_constant())
-	continue;
+          || n->is_constant())
+        continue;
       
       std::map<uint8_t, int> n_gc;
       for (uint8_t gc : global_classes)
-	extend(n_gc, gc, 0);
+        extend(n_gc, gc, 0);
       
       Port *driver = nullptr;
       for (Port *conn : n->connections())
-	{
-	  assert(!conn->is_bidir());
-	  if (conn->is_output())
-	    {
-	      assert(!driver);
-	      driver = conn;
-	    }
-	  
-	  int gc = port_gc(conn, false);
-	  if (gc)
-	    ++n_gc[gc];
-	}
+        {
+          assert(!conn->is_bidir());
+          if (conn->is_output())
+            {
+              assert(!driver);
+              driver = conn;
+            }
+          
+          int gc = port_gc(conn, false);
+          if (gc)
+            ++n_gc[gc];
+        }
       
       int max_gc = 0;
       int max_n = 0;
       for (const auto &p : n_gc)
-	{
-	  if (p.second > max_n)
-	    {
-	      max_gc = p.first;
-	      max_n = p.second;
-	    }
-	}
+        {
+          if (p.second > max_n)
+            {
+              max_gc = p.first;
+              max_n = p.second;
+            }
+        }
       
       if (driver
-	  && isa<Instance>(driver->node())
-	  && ((models.is_gbX(cast<Instance>(driver->node()))
-	       && driver->name() == "GLOBAL_BUFFER_OUTPUT")
-	      || (models.is_pllX(cast<Instance>(driver->node()))
-		  && (driver->name() == "PLLOUTGLOBAL"
-		      || driver->name() == "PLLOUTGLOBALA"
-		      || driver->name() == "PLLOUTGLOBALB"))))
-	{
-	  Instance *gb_inst = cast<Instance>(driver->node());
-	  
-	  uint8_t gc = max_gc ? max_gc : gc_clk;
-	  
-	  ++n_global;
-	  ++gc_global[gc];
-	  
-	  if (models.is_gbX(gb_inst))
-	    extend(gb_inst_gc, gb_inst, gc);
-	  for (uint8_t gc2 : global_classes)
-	    {
-	      if ((gc2 & gc) == gc)
-		++gc_used[gc2];
-	    }
-	}
+          && isa<Instance>(driver->node())
+          && ((models.is_gbX(cast<Instance>(driver->node()))
+               && driver->name() == "GLOBAL_BUFFER_OUTPUT")
+              || (models.is_pllX(cast<Instance>(driver->node()))
+                  && (driver->name() == "PLLOUTGLOBAL"
+                      || driver->name() == "PLLOUTGLOBALA"
+                      || driver->name() == "PLLOUTGLOBALB"))))
+        {
+          Instance *gb_inst = cast<Instance>(driver->node());
+          
+          uint8_t gc = max_gc ? max_gc : gc_clk;
+          
+          ++n_global;
+          ++gc_global[gc];
+          
+          if (models.is_gbX(gb_inst))
+            extend(gb_inst_gc, gb_inst, gc);
+          for (uint8_t gc2 : global_classes)
+            {
+              if ((gc2 & gc) == gc)
+                ++gc_used[gc2];
+            }
+        }
       else if (do_promote
-	       && driver
-	       && max_gc
-	       && max_n > 4)
-	{
-	  extend(net_driver, i, driver);
-	  extend(net_gc, i, max_gc);
-	  promote_q.insert(std::make_pair(max_n, i));
-	}
+               && driver
+               && max_gc
+               && max_n > 4)
+        {
+          extend(net_driver, i, driver);
+          extend(net_gc, i, max_gc);
+          promote_q.insert(std::make_pair(max_n, i));
+        }
     }
   
   int n_promoted = 0;
@@ -382,68 +382,68 @@ Promoter::promote(bool do_promote)
       std::pair<int, int> p = *promote_q.begin();
       promote_q.erase(promote_q.begin());
       assert(promote_q.empty()
-	     || promote_q.begin()->first <= p.first);
+             || promote_q.begin()->first <= p.first);
       
       Net *n = nets[p.second];
       uint8_t gc = net_gc.at(p.second);
       
       for (int gc2 : global_classes)
-	{
-	  int k2 = 0;
-	  for (int i = 0; i < 8; ++i)
-	    {
-	      if (gc2 & (1 << i))
-		++k2;
-	    }
-	  
-	  if ((gc2 & gc) == gc)
-	    {
-	      if (gc_used.at(gc2) >= k2)
-		goto L;
-	    }
-	}
+        {
+          int k2 = 0;
+          for (int i = 0; i < 8; ++i)
+            {
+              if (gc2 & (1 << i))
+                ++k2;
+            }
+          
+          if ((gc2 & gc) == gc)
+            {
+              if (gc_used.at(gc2) >= k2)
+                goto L;
+            }
+        }
       
       {
-	++n_promoted;
-	++gc_promoted[gc];
-	
-	Instance *gb_inst = top->add_instance(models.gb);
-	Net *t = top->add_net(n);
-	
-	int n_conn = 0;
-	int n_conn_promoted = 0;
-	for (auto i = n->connections().begin();
-	     i != n->connections().end();)
-	  {
-	    Port *conn = *i;
-	    ++i;
-	    if (conn->is_output()
-		|| conn->is_bidir())
-	      continue;
-	    
-	    ++n_conn;
-	    int conn_gc = port_gc(conn, true);
-	    if ((conn_gc & gc) == gc)
-	      {
-		++n_conn_promoted;
-		conn->connect(t);
-	      }
-	  }
-	
-	gb_inst->find_port("USER_SIGNAL_TO_GLOBAL_BUFFER")->connect(n);
-	gb_inst->find_port("GLOBAL_BUFFER_OUTPUT")->connect(t);
-	
-	++n_global;
-	++gc_global[gc];
-	extend(gb_inst_gc, gb_inst, gc);
-	for (uint8_t gc2 : global_classes)
-	  {
-	    if ((gc2 & gc) == gc)
-	      ++gc_used[gc2];
-	  }
-	
-	*logs << "  promoted " << n->name()
-	      << ", " << n_conn_promoted << " / " << n_conn << "\n";
+        ++n_promoted;
+        ++gc_promoted[gc];
+        
+        Instance *gb_inst = top->add_instance(models.gb);
+        Net *t = top->add_net(n);
+        
+        int n_conn = 0;
+        int n_conn_promoted = 0;
+        for (auto i = n->connections().begin();
+             i != n->connections().end();)
+          {
+            Port *conn = *i;
+            ++i;
+            if (conn->is_output()
+                || conn->is_bidir())
+              continue;
+            
+            ++n_conn;
+            int conn_gc = port_gc(conn, true);
+            if ((conn_gc & gc) == gc)
+              {
+                ++n_conn_promoted;
+                conn->connect(t);
+              }
+          }
+        
+        gb_inst->find_port("USER_SIGNAL_TO_GLOBAL_BUFFER")->connect(n);
+        gb_inst->find_port("GLOBAL_BUFFER_OUTPUT")->connect(t);
+        
+        ++n_global;
+        ++gc_global[gc];
+        extend(gb_inst_gc, gb_inst, gc);
+        for (uint8_t gc2 : global_classes)
+          {
+            if ((gc2 & gc) == gc)
+              ++gc_used[gc2];
+          }
+        
+        *logs << "  promoted " << n->name()
+              << ", " << n_conn_promoted << " / " << n_conn << "\n";
       }
     L:;
     }
@@ -452,13 +452,13 @@ Promoter::promote(bool do_promote)
   for (const auto &p : gc_promoted)
     {
       if (p.second)
-	*logs << "    " << p.second << " " << global_class_name(p.first) << "\n";
+        *logs << "    " << p.second << " " << global_class_name(p.first) << "\n";
     }
   *logs << "  " << n_global << " globals\n";
   for (const auto &p : gc_global)
     {
       if (p.second)
-	*logs << "    " << p.second << " " << global_class_name(p.first) << "\n";
+        *logs << "    " << p.second << " " << global_class_name(p.first) << "\n";
     }
   
   d->prune();

@@ -7,8 +7,8 @@
 template<typename T> struct Hash;
 
 template<typename T,
-	 typename Hash = std::hash<T>,
-	 typename KeyEqual = std::equal_to<T>>
+         typename Hash = std::hash<T>,
+         typename KeyEqual = std::equal_to<T>>
 class HashSet
 {
   using underlying_t = std::unordered_set<T, Hash>;
