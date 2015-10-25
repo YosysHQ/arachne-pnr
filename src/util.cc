@@ -99,6 +99,7 @@ unescape(const std::string &s)
                   x = x*8 + *i++ - '0';
                 if (i != s.end() && *i >= '0' && *i <= '9')
                   x = x*8 + *i++ - '0';
+                i--;
                 r.push_back(x);
               }
               break;
