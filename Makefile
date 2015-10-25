@@ -49,6 +49,8 @@ simpletest: all tests/test_bv tests/test_us
 	./tests/test_us
 	cd tests/simple && ICEBOX=$(ICEBOX) bash run-test.sh
 	cd tests/regression && bash run-test.sh
+	cd tests/blif && bash run-test.sh
+	cd tests/error && bash run-test.sh
 	@echo
 	@echo 'All tests passed.'
 	@echo
@@ -60,6 +62,8 @@ test: all tests/test_bv ./tests/test_us
 	make -C examples/rot clean && make -C examples/rot
 	cd tests/simple && ICEBOX=$(ICEBOX) bash run-test.sh
 	cd tests/regression && bash run-test.sh
+	cd tests/blif && bash run-test.sh
+	cd tests/error && bash run-test.sh
 	cd tests/fsm && bash run-test.sh
 	cd tests/combinatorial && bash run-test.sh
 	@echo
@@ -74,7 +78,7 @@ testvg:
 	@echo
 
 fuzz-pcf: all
-	afl-fuzz -t 2500 -m 500 -i fuzz/pcf/testcases -o fuzz/pcf/findings bin/arachne-pnr -p @@ fuzz/pcf/rot.blif
+	afl-fuzz -t 2500 -m 500 -x fuzz/pcf/pcf.dict -i fuzz/pcf/testcases -o fuzz/pcf/findings bin/arachne-pnr -p @@ fuzz/pcf/rot.blif -o /dev/null
 
 -include src/*.d
 

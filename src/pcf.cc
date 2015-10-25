@@ -46,6 +46,7 @@ void
 PCFParser::parse()
 {
   std::map<std::string, Location> net_pin_loc;
+  std::map<Location, std::string> pin_loc_net;
   
   for (;;)
     {
@@ -105,13 +106,15 @@ PCFParser::parse()
             fatal(fmt("unknown pin `" << pin_name << "' on package `"
                       << package.name << "'"));
           
-          const Location &loc = i->second;
-          
-          auto j = net_pin_loc.find(net_name);
-          if (j != net_pin_loc.end())
+          if (contains(net_pin_loc, net_name))
             fatal(fmt("duplicate pin constraints for net `" << net_name << "'"));
           
+          const Location &loc = i->second;
+          if (contains(pin_loc_net, loc))
+            fatal(fmt("duplicate pin constraints for pin `" << pin_name <<"'"));
+          
           extend(net_pin_loc, net_name, loc);
+          extend(pin_loc_net, loc, net_name);
         }
       else
         fatal(fmt("unknown command `" << cmd << "'"));
