@@ -95,9 +95,9 @@ unescape(const std::string &s)
 	    case '8':  case '9':
 	      {
 		int x = *i++ - '0';
-		if (i != s.end())
+		if (i != s.end() && *i >= '0' && *i <= '9')
 		  x = x*8 + *i++ - '0';
-		if (i != s.end())
+		if (i != s.end() && *i >= '0' && *i <= '9')
 		  x = x*8 + *i++ - '0';
 		r.push_back(x);
 	      }
