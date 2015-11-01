@@ -23,10 +23,24 @@ void
 instantiate_io(Design *d)
 {
   Models models(d);
-
+  
   Model *top = d->top();
   Model *io_model = d->find_model("SB_IO");
   Model *tbuf_model = d->find_model("$_TBUF_");
+  
+  for (Instance *inst : top->instances())
+    {
+      if (!models.is_tbuf(inst))
+        continue;
+      
+      Port *p = inst->find_port("Y");
+      Port *q = p->connection_other_port();
+      if (!q
+          || !isa<Model>(q->node())
+          || (q->direction() != Direction::OUT
+              && q->direction() != Direction::INOUT))
+        fatal("$_TBUF_ gate must drive top-level output or inout port");
+    }
   
   for (auto i : top->ports())
     {
