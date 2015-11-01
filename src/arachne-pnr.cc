@@ -482,6 +482,8 @@ main(int argc, const char **argv)
         d->check();
 #endif
         
+        // d->dump();
+        
         *logs << "promote_globals...\n";
         promote_globals(ds, do_promote_globals);
 #ifndef NDEBUG
@@ -553,6 +555,8 @@ main(int argc, const char **argv)
             d->write_blif(fs);
           }
       }
+    
+    // d->dump();
     
     *logs << "route...\n";
     route(ds);

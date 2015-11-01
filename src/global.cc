@@ -149,9 +149,9 @@ Promoter::port_gc(Port *conn, bool indirect)
 }
 
 bool
-Promoter::routable(int g, Port *p)
+Promoter::routable(int gc, Port *p)
 {
-  return (bool)(port_gc(p, true) & (1 << g));
+  return (bool)((port_gc(p, true) & gc) == gc);
 }
 
 void
@@ -182,7 +182,7 @@ Promoter::pll_pass_through(Instance *inst, int cell, const char *p_name)
 }
 
 void
-Promoter::make_routable(Net *n, int g)
+Promoter::make_routable(Net *n, int gc)
 {
   Net *internal = nullptr;
   for (auto i = n->connections().begin();
@@ -193,7 +193,7 @@ Promoter::make_routable(Net *n, int g)
       
       if (!p->is_input())
         continue;
-      if (routable(g, p))
+      if (routable(gc, p))
         continue;
       
       if (!internal)
@@ -247,7 +247,7 @@ Promoter::promote(bool do_promote)
                   if (gc & (1 << g))
                     ++gc_used[gc];
                 }
-              make_routable(out->connection(), g);
+              make_routable(out->connection(), 1 << g);
             }
         }
       else if (models.is_pllX(inst))
@@ -268,7 +268,7 @@ Promoter::promote(bool do_promote)
                   if (gc & (1 << g))
                     ++gc_used[gc];
                 }
-              make_routable(a->connection(), g);
+              make_routable(a->connection(), 1 << g);
             }
           
           Port *b = inst->find_port("PLLOUTGLOBALB");
@@ -282,7 +282,7 @@ Promoter::promote(bool do_promote)
                   if (gc & (1 << g))
                     ++gc_used[gc];
                 }
-              make_routable(b->connection(), g);
+              make_routable(b->connection(), 1 << g);
             }
         }
     }
@@ -354,7 +354,12 @@ Promoter::promote(bool do_promote)
           ++gc_global[gc];
           
           if (models.is_gbX(gb_inst))
-            extend(gb_inst_gc, gb_inst, gc);
+            {
+              if (driver->connected())
+                make_routable(driver->connection(), gc);
+              
+              extend(gb_inst_gc, gb_inst, gc);
+            }
           for (uint8_t gc2 : global_classes)
             {
               if ((gc2 & gc) == gc)

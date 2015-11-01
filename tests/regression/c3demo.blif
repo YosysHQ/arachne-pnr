@@ -1,0 +1,31 @@
+.model c3demo
+.inputs CLK12MHZ
+.outputs CLKOUT
+.names $false
+.names $true
+1
+.names $undef
+.gate SB_LUT4 I0=$false I1=$true I2=divided_clock[0] I3=$false O=$0\divided_clock[7:0][0]
+.attr src "/usr/local/bin/../share/yosys/ice40/arith_map.v:53"
+.param LUT_INIT 0110100110010110
+.gate SB_DFF C=CLK12MHZ D=$0\divided_clock[7:0][0] Q=divided_clock[0]
+.attr src "c3demo.v:61|/usr/local/bin/../share/yosys/ice40/cells_map.v:2"
+.gate SB_GB GLOBAL_BUFFER_OUTPUT=clk USER_SIGNAL_TO_GLOBAL_BUFFER=divided_clock[0]
+.attr src "c3demo.v:64"
+.names clk CLKOUT
+1 1
+.names $undef divided_clock[1]
+1 1
+.names $undef divided_clock[2]
+1 1
+.names $undef divided_clock[3]
+1 1
+.names $undef divided_clock[4]
+1 1
+.names $undef divided_clock[5]
+1 1
+.names $undef divided_clock[6]
+1 1
+.names $undef divided_clock[7]
+1 1
+.end
