@@ -26,6 +26,7 @@
 #include "ullmanset.hh"
 #include "hashmap.hh"
 #include "designstate.hh"
+#include "global.hh"
 
 #include <iomanip>
 #include <vector>
@@ -510,7 +511,7 @@ Placer::valid(int t)
             return false;
           
           Instance *inst = gates[g2];
-          int gc = gb_inst_gc.at(inst);
+          int gc = lookup_or_default(gb_inst_gc, inst, gc_clk);
           int global = chipdb->gbufin.at(std::make_pair(x, y));
           if (! (gc & (1 << global)))
             return false;
@@ -946,7 +947,7 @@ Placer::place_initial()
       if (ct == CellType::GB)
         {
           Instance *inst = gates[i];
-          io_q.insert(std::make_pair(gb_inst_gc.at(inst), i));
+          io_q.insert(std::make_pair(lookup_or_default(gb_inst_gc, inst, gc_clk), i));
         }
       else
         {
