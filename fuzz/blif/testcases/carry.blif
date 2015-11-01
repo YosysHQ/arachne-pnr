@@ -1,0 +1,16 @@
+.model top
+.inputs a0 a1 b0 b1
+.outputs o0 o1 o2
+.names f
+.names t
+1
+.names $undef
+.gate SB_LUT4 I0=f I1=b0 I2=a0 I3=f O=o0
+.param LUT_INIT 0110100110010110
+.gate SB_CARRY CI=f CO=a I0=b0 I1=a0
+.gate SB_LUT4 I0=f I1=b1 I2=a1 I3=a O=o1
+.param LUT_INIT 0110100110010110
+.gate SB_CARRY CI=a CO=b I0=b1 I1=a1
+.gate SB_LUT4 I0=f I1=f I2=f I3=b O=o2
+.param LUT_INIT 0110100110010110
+.end

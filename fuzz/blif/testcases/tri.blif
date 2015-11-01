@@ -1,0 +1,10 @@
+.model test
+.inputs s1 s2 a1 a2 b
+.outputs y
+.names f
+.gate SB_LUT4 I0=s1 I1=s2 I2=f I3=f O=c
+.param LUT_INIT 1011
+.gate SB_LUT4 I0=a1 I1=a2 I2=s2 I3=f O=d
+.param LUT_INIT 10101100
+.gate $_TBUF_ A=d E=c Y=y
+.end

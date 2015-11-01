@@ -389,6 +389,14 @@ main(int argc, const char **argv)
     fatal(fmt("unknown package `" << package_name << "'"));
   const Package &package = package_i->second;
   
+#ifdef __AFL_HAVE_MANUAL_CONTROL
+  __AFL_INIT();
+#endif
+  
+  /*
+  while (__AFL_LOOP(1000)) {
+  */
+  
   Design *d;
   if (input_file)
     {
@@ -486,7 +494,7 @@ main(int argc, const char **argv)
 #ifndef NDEBUG
         d->check();
 #endif
-        
+	
         *logs << "place...\n";
         // d->dump();
         place(rg, ds);
@@ -571,6 +579,10 @@ main(int argc, const char **argv)
   
   if (d)
     delete d;
+  
+  /*
+  }
+  */
   
   if (chipdb)
     delete chipdb;

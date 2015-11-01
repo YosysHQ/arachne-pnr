@@ -1,0 +1,6 @@
+.model gate
+.inputs a
+.outputs t
+.gate SB_IO D_OUT_0=a PACKAGE_PIN=t
+.attr src "io.v:4"
+.end

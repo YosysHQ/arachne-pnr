@@ -1,0 +1,16 @@
+.model top
+.inputs dummy refclk
+.outputs clk D5
+.names t
+1
+.gate SB_PLL40_CORE BYPASS=f PLLOUTCORE=clk REFERENCECLK=refclk RESETB=t
+.attr src "pll.v:3"
+.param DIVF 0000000
+.param DIVQ 110
+.param DIVR 0000
+.param FEEDBACK_PATH "SIMPLE"
+.param FILTER_RANGE 001
+.param PLLOUT_SELECT "GENCLK_HALF"
+.names t D5
+1 1
+.end

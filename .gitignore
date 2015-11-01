@@ -6,3 +6,8 @@
 /tests/test_us
 /diff
 save
+/fuzz/*/findings
+/src/version_*.cc
+/tests/*/1k
+/tests/*/8k
+/share

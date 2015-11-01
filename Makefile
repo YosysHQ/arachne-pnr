@@ -80,6 +80,9 @@ testvg:
 fuzz-pcf: all
 	afl-fuzz -t 2500 -m 500 -x fuzz/pcf/pcf.dict -i fuzz/pcf/testcases -o fuzz/pcf/findings bin/arachne-pnr -p @@ fuzz/pcf/rot.blif -o /dev/null
 
+fuzz-blif: all
+	afl-fuzz -t 2500 -m 500 -x fuzz/blif/blif.dict -i fuzz/blif/testcases -o fuzz/blif/findings bin/arachne-pnr @@ -o /dev/null
+
 -include src/*.d
 
 .PHONY: install

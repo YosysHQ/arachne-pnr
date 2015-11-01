@@ -1,0 +1,10 @@
+.model top
+.inputs c w0 w1 w2 w3 a0 a1 a2 a3
+.outputs r0 r1 r2 r3
+.names t
+1
+.gate SB_RAM40_4K RADDR[0]=a0 RADDR[1]=a1 RADDR[2]=a2 RADDR[3]=a3 RADDR[4]=t RADDR[5]=t RADDR[6]=t RADDR[7]=t RCLK=c RCLKE=t RDATA[0]=r0 RDATA[1]=r1 RDATA[2]=r2 RDATA[3]=r3 RE=t WADDR[0]=a0 WADDR[1]=a1 WADDR[2]=a2 WADDR[3]=a3 WADDR[4]=t WADDR[5]=t WADDR[6]=t WADDR[7]=t WCLK=c WCLKE=t WDATA[0]=w0 WDATA[1]=w1 WDATA[2]=w2 WDATA[3]=w3 WE=t
+.attr src "bram.v:7"
+.param INIT_0 00111011101110111
+.param READ_MODE 00000000000
+.end

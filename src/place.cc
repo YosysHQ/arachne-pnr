@@ -1582,6 +1582,7 @@ Placer::place()
   *logs << "  initial wire length = " << wire_length() << "\n";
   
   int n_no_progress = 0;
+  
   for (;;)
     {
       n_move = n_accept = 0;

@@ -1,0 +1,8 @@
+.model test
+.inputs clk in
+.outputs out
+.gate SB_DFF C=gclk D=in Q=r
+.gate SB_GB GLOBAL_BUFFER_OUTPUT=gclk USER_SIGNAL_TO_GLOBAL_BUFFER=clk
+.names r out
+1 1
+.end

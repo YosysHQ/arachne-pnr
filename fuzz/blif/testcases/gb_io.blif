@@ -1,0 +1,25 @@
+.model test
+.inputs ic
+.outputs oc o0 r1 r2 r3
+.names f
+.names t
+1
+.gate SB_LUT4 I0=r0 I1=r1 I2=f I3=f O=d1
+.param LUT_INIT 0110
+.gate SB_LUT4 I0=f I1=t I2=r0 I3=f O=d0
+.param LUT_INIT 0110100110010110
+.gate SB_CARRY CI=r0 CO=a I0=f I1=r1
+.gate SB_LUT4 I0=f I1=f I2=r2 I3=a O=d2
+.param LUT_INIT 0110100110010110
+.gate SB_CARRY CI=a CO=b I0=f I1=r2
+.gate SB_LUT4 I0=f I1=f I2=r3 I3=b O=d3
+.param LUT_INIT 0110100110010110
+.gate SB_DFF C=c D=d0 Q=r0
+.gate SB_DFF C=c D=d1 Q=r1
+.gate SB_DFF C=c D=d2 Q=r2
+.gate SB_DFF C=c D=d3 Q=r3
+.gate SB_GB_IO D_IN_0=oc GLOBAL_BUFFER_OUTPUT=c PACKAGE_PIN=ic
+.param PIN_TYPE 000001
+.names r0 o0
+1 1
+.end
