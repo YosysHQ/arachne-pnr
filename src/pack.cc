@@ -543,6 +543,20 @@ Packer::pack_carries()
       ready.erase(inst);
       pack_carries_from(inst);
     }
+  
+  std::set<Instance *, IdLess> done;
+  for (const auto &ch : chains.chains)
+    for (Instance *inst : ch)
+      extend(done, inst);
+  
+  for (Instance *inst : instances)
+    {
+      if (!models.is_carry(inst))
+        continue;
+      
+      if (!contains(done, inst))
+        fatal("carry chain loop");
+    }
 }
 
 void

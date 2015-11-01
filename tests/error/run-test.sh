@@ -9,3 +9,9 @@ if [ x"$?" != x"1" ]; then
     echo "error, stopping."
     exit 1
 fi
+
+$arachne_pnr carry_loop.blif -o /dev/null
+if [ x"$?" != x"1" ]; then
+    echo "error, stopping."
+    exit 1
+fi
