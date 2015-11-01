@@ -262,7 +262,7 @@ ConstraintsPlacer::place()
           if (!io)
             continue;
           
-          const BitVector &pin_type = pll->get_param("PIN_TYPE").as_bits();
+          const BitVector &pin_type = io->get_param("PIN_TYPE").as_bits();
           if (io->find_port("D_IN_0")->connected()
               || io->find_port("D_IN_1")->connected()
               || !pin_type[0]
@@ -303,7 +303,7 @@ ConstraintsPlacer::place()
                   Instance *io = cell_gate[io_cell];
                   if (io)
                     {
-                      const BitVector &pin_type = inst->get_param("PIN_TYPE").as_bits();
+                      const BitVector &pin_type = io->get_param("PIN_TYPE").as_bits();
                       if (io->find_port("D_IN_0")->connected()
                           || io->find_port("D_IN_1")->connected()
                           || !pin_type[0]

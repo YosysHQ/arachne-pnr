@@ -27,3 +27,5 @@ for d in 1k 8k; do
     $arachne_pnr -d $d j1a_gb_fail.blif -o $d/j1a_gb_fail.txt
     icepack $d/j1a_gb_fail.txt $d/j1a_gb_fail.bin
 done
+
+$arachne_pnr -d 8k -p pin_type_fail.pcf pin_type_fail.blif
