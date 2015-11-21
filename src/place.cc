@@ -213,8 +213,7 @@ Placer::chain_random_loc(int c)
       int e_nt = (chains.chains[e].size() + 7) / 8;
       int e_start = chain_start[e],
         e_end = e_start + e_nt - 1;
-      if ((new_start > e_start && new_start <= e_end)
-          || (new_end >= e_start && new_end < e_end))
+      if (e_start <= new_end && new_start <= e_end)
         return std::make_pair(Location(), false);
     }
   
