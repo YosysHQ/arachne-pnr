@@ -30,5 +30,7 @@ class IdLess;
 class DesignState;
 
 extern void place(random_generator &rg, DesignState &ds);
+extern void place_set(random_generator &rg, DesignState &ds, 
+		      const std::map<Instance *, int, IdLess> &new_placement);
 
 #endif

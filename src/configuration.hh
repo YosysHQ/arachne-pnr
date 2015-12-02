@@ -24,6 +24,7 @@ class Design;
 class Instance;
 class Net;
 class IdLess;
+class DesignState;
 
 class Configuration
 {
@@ -45,5 +46,7 @@ public:
                  const std::map<Instance *, int, IdLess> &placement,
                  const std::vector<Net *> &cnet_net);
 };
+
+extern void configure_placement(DesignState &ds);
 
 #endif

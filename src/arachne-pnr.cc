@@ -417,6 +417,8 @@ main(int argc, const char **argv)
 #endif
   // d->dump();
   
+  std::map<Instance *, int, IdLess> placement1, placement2;
+  
   {
     DesignState ds(chipdb, package, d);
     
@@ -426,9 +428,18 @@ main(int argc, const char **argv)
           {
             const std::string &loc_attr = inst->get_attr("loc").as_string();
             int cell;
-            if (sscanf(loc_attr.c_str(), "%d", &cell) != 1)
+#if 1
+	    if (sscanf(loc_attr.c_str(), "%d", &cell) != 1)
               fatal("parse error in loc attribute");
             extend(ds.placement, inst, cell);
+#endif
+#if 0
+	    int cell2;
+            if (sscanf(loc_attr.c_str(), "%d,%d", &cell, &cell2) != 2)
+              fatal("parse error in loc attribute");
+            extend(placement1, inst, cell);
+	    extend(placement2, inst, cell2);
+#endif
           }
       }
     else
@@ -530,33 +541,47 @@ main(int argc, const char **argv)
                   }
               }
           }
-        
-        if (place_blif)
-          {
-            for (const auto &p : ds.placement)
-              {
-                // p.first->set_attr("loc", fmt(p.second));
-                const Location &loc = chipdb->cell_location[p.second];
-                int t = loc.tile();
-                int pos = loc.pos();
-                p.first->set_attr("loc",
-                                  fmt(chipdb->tile_x(t)
-                                      << "," << chipdb->tile_y(t)
-                                      << "/" << pos));
-              }
-            
-            *logs << "write_blif " << place_blif << "\n";
-            std::string expanded = expand_filename(place_blif);
-            std::ofstream fs(expanded);
-            if (fs.fail())
-              fatal(fmt("write_blif: failed to open `" << expanded << "': "
-                        << strerror(errno)));
-            fs << "# " << version_str << "\n";
-            d->write_blif(fs);
-          }
       }
     
     // d->dump();
+    
+#if 0
+    place_set(rg, ds, placement1);
+    for (const auto &p : ds.placement)
+      {
+	int cell2 = placement1.at(p.first);
+	if (p.second != cell2)
+	  *logs << p.second << " vs " << cell2 << "\n";
+      }
+#endif
+    
+    if (place_blif)
+      {
+	for (const auto &p : ds.placement)
+	  {
+	    p.first->set_attr("loc", fmt(p.second));
+#if 0
+	    const Location &loc = chipdb->cell_location[p.second];
+	    int t = loc.tile();
+	    int pos = loc.pos();
+	    p.first->set_attr("loc",
+			      fmt(chipdb->tile_x(t)
+				  << "," << chipdb->tile_y(t)
+				  << "/" << pos));
+#endif
+	  }
+            
+	*logs << "write_blif " << place_blif << "\n";
+	std::string expanded = expand_filename(place_blif);
+	std::ofstream fs(expanded);
+	if (fs.fail())
+	  fatal(fmt("write_blif: failed to open `" << expanded << "': "
+		    << strerror(errno)));
+	fs << "# " << version_str << "\n";
+	d->write_blif(fs);
+      }
+    
+    configure_placement(ds);
     
     *logs << "route...\n";
     route(ds);
