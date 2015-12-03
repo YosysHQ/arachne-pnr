@@ -52,6 +52,8 @@ public:
 
 class Router
 {
+  random_generator &rg;
+  
   const ChipDB *chipdb;
   Design *d;
   Models &models;
@@ -112,7 +114,7 @@ class Router
 #endif
   
 public:
-  Router(DesignState &ds);
+  Router(random_generator &rg_, DesignState &ds);
   
   void route();
 };
@@ -277,8 +279,9 @@ Router::check()
 }
 #endif
 
-Router::Router(DesignState &ds)
-  : chipdb(ds.chipdb),
+Router::Router(random_generator &rg_, DesignState &ds)
+  : rg(rg_),
+    chipdb(ds.chipdb),
     d(ds.d),
     models(ds.models),
     placement(ds.placement),
@@ -486,7 +489,7 @@ Router::visit(int cn)
       if (visited.contains(cn2))
         continue;
       
-      int cn2_cost = 1;  // base
+      int cn2_cost = 1 + rg.random_int(0, 5);  // base
       if (passes == max_passes)
         {
           if (demand[cn2])
@@ -870,9 +873,9 @@ Router::route()
 }
 
 void
-route(DesignState &ds)
+route(random_generator &rg, DesignState &ds)
 {
-  Router router(ds);
+  Router router(rg, ds);
   
   clock_t start = clock();
   router.route();

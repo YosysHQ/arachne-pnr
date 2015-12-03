@@ -26,6 +26,6 @@ class Instance;
 class ChipDB;
 class Configuration;
 
-extern void route(DesignState &ds);
+extern void route(random_generator &rg, DesignState &ds);
 
 #endif

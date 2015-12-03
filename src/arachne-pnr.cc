@@ -584,7 +584,7 @@ main(int argc, const char **argv)
     configure_placement(ds);
     
     *logs << "route...\n";
-    route(ds);
+    route(rg, ds);
 #ifndef NDEBUG
     d->check();
 #endif
