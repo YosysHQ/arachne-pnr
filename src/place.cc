@@ -14,8 +14,8 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "util.hh"
+#include "pass.hh"
 #include "casting.hh"
-#include "place.hh"
 #include "netlist.hh"
 #include "chipdb.hh"
 #include "location.hh"
@@ -1792,10 +1792,19 @@ Placer::place()
         << "\n";
 }
 
+class Place : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  Place() : Pass("place") {}
+} place_pass;
+
 void
-place(random_generator &rg, DesignState &ds)
+Place::run(DesignState &ds, const std::vector<std::string> &args) const
 {
-  Placer placer(rg, ds);
+  if (args.size() != 0)
+    fatal("instantiate_io: wrong number of arguments");
+  
+  Placer placer(ds.rg, ds);
   
   clock_t start = clock();
   placer.place();

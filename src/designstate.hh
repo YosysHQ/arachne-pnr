@@ -5,9 +5,12 @@
 #include "carry.hh"
 #include "configuration.hh"
 
+class random_generator;
+
 class DesignState
 {
 public:
+  random_generator &rg;
   const ChipDB *chipdb;
   const Package &package;
   Design *d;
@@ -22,8 +25,11 @@ public:
   Configuration conf;
   
 public:
-  DesignState(const ChipDB *chipdb_, const Package &package_, Design *d_);
+  DesignState(random_generator &rg_, const ChipDB *chipdb_, const Package &package_);
+  ~DesignState();
   
   bool is_dual_pll(Instance *inst) const;
   std::vector<int> pll_out_io_cells(Instance *inst, int cell) const;
+  
+  void set_design(Design *d_);
 };

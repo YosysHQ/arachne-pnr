@@ -14,6 +14,8 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "util.hh"
+#include "pass.hh"
+#include "chipdb.hh"
 #include "chipdb.hh"
 #include "netlist.hh"
 #include "pcf.hh"
@@ -123,16 +125,28 @@ PCFParser::parse()
   constraints.net_pin_loc = net_pin_loc;
 }
 
+class ReadPCF : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  ReadPCF() : Pass("read_pcf") {}
+} read_pcf_pass;
+  
 void
-read_pcf(const std::string &filename, DesignState &ds)
+ReadPCF::run(DesignState &ds, const std::vector<std::string> &args) const
 {
-  std::string expanded = expand_filename(filename);
-  std::ifstream fs(expanded);
-  if (fs.fail())
-    fatal(fmt("read_pcf: failed to open `" << expanded << "': "
-              << strerror(errno)));
-  PCFParser parser(filename, fs, ds);
-  return parser.parse();
+  if (args.size() == 1)
+    {
+      std::string filename = args[0];
+      std::string expanded = expand_filename(filename);
+      std::ifstream fs(expanded);
+      if (fs.fail())
+        fatal(fmt("read_pcf: failed to open `" << expanded << "': "
+                  << strerror(errno)));
+      PCFParser parser(filename, fs, ds);
+      parser.parse();
+    }
+  else
+    fatal("read_pcf: wrong number of arguments");
 }
 
 class ConstraintsPlacer
@@ -330,9 +344,57 @@ ConstraintsPlacer::place()
     }
 }
 
+class PlaceConstraints : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  PlaceConstraints() : Pass("place_constraints") {}
+} place_constraints_pass;
+
 void
-place_constraints(DesignState &ds)
+PlaceConstraints::run(DesignState &ds, const std::vector<std::string> &args) const
 {
+  if (args.size() != 0)
+    fatal("instantiate_io: wrong number of arguments");
+  
   ConstraintsPlacer placer(ds);
   placer.place();
+}
+
+class WritePCF : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  WritePCF() : Pass("write_pcf") {}
+} write_pcf_pass;
+  
+void
+WritePCF::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  if (args.size() == 1)
+    {
+      std::string filename = args[0];
+      std::string expanded = expand_filename(filename);
+      std::ofstream fs(expanded);
+      if (fs.fail())
+        fatal(fmt("write_pcf: failed to open `" << expanded << "': "
+                  << strerror(errno)));
+      fs << "# " << version_str << "\n";
+      for (const auto &p : ds.placement)
+        {
+          if (ds.models.is_io(p.first))
+            {
+              const Location &loc = ds.chipdb->cell_location[p.second];
+              std::string pin = ds.package.loc_pin.at(loc);
+              Port *top_port = (p.first
+                                ->find_port("PACKAGE_PIN")
+                                ->connection_other_port());
+              assert(isa<Model>(top_port->node())
+                     && cast<Model>(top_port->node()) == ds.top);
+                    
+              fs << "set_io " << top_port->name() << " " << pin << "\n";
+            }
+        }
+      
+    }
+  else
+    fatal("write_pcf: too few arguments");
 }

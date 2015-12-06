@@ -14,14 +14,26 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "netlist.hh"
-#include "io.hh"
+#include "pass.hh"
+#include "designstate.hh"
 #include "casting.hh"
 
 #include <cassert>
 
+class InstantiateIO : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  InstantiateIO() : Pass("instantiate_io") {}
+} instantiate_io_pass;
+
 void
-instantiate_io(Design *d)
+InstantiateIO::run(DesignState &ds, const std::vector<std::string> &args) const
 {
+  if (args.size() != 0)
+    fatal("instantiate_io: wrong number of arguments");
+  
+  Design *d = ds.d;
+  
   Models models(d);
   
   Model *top = d->top();

@@ -14,6 +14,7 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "util.hh"
+#include "pass.hh"
 #include "casting.hh"
 #include "netlist.hh"
 #include "chipdb.hh"
@@ -654,9 +655,18 @@ Packer::pack()
         << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n\n";
 }
 
+class Pack : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  Pack() : Pass("pack") {}
+} pack_pass;
+
 void
-pack(DesignState &ds)
+Pack::run(DesignState &ds, const std::vector<std::string> &args) const
 {
+  if (args.size() != 0)
+    fatal("pack: wrong number of arguments");
+  
   Packer packer(ds);
   packer.pack();
 }

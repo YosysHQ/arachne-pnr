@@ -14,6 +14,7 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "netlist.hh"
+#include "pass.hh"
 #include "global.hh"
 #include "chipdb.hh"
 #include "casting.hh"
@@ -469,9 +470,25 @@ Promoter::promote(bool do_promote)
   d->prune();
 }
 
+class PromoteGlobals : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  PromoteGlobals() : Pass("promote_globals") {}
+} promote_globals_pass;
+
 void
-promote_globals(DesignState &ds, bool do_promote)
+PromoteGlobals::run(DesignState &ds, const std::vector<std::string> &args) const
 {
+  bool do_promote = true;
+  for (size_t i = 0; i < args.size(); ++i)
+    {
+      if (args[i] == "-l"
+          || args[i] == "--no-promote-globals")
+        do_promote = false;
+      else
+        fatal(fmt("unexpected argument `" << args[i] << "'"));
+    }
+  
   Promoter promoter(ds);
   promoter.promote(do_promote);
 }

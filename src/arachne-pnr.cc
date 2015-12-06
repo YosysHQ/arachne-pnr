@@ -13,19 +13,13 @@
    You should have received a copy of the GNU General Public License
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
+#include "pass.hh"
+#include "passlist.hh"
 #include "netlist.hh"
 #include "chipdb.hh"
-#include "blif.hh"
-#include "pack.hh"
-#include "io.hh"
-#include "place.hh"
-#include "route.hh"
 #include "configuration.hh"
-#include "pcf.hh"
 #include "casting.hh"
-#include "global.hh"
 #include "carry.hh"
-#include "constant.hh"
 #include "designstate.hh"
 #include "util.hh"
 
@@ -122,12 +116,12 @@ main(int argc, const char **argv)
   
   bool help = false,
     quiet = false,
-    do_promote_globals = true,
     route_only = false,
     randomize_seed = false;
   std::string device = "1k";
   const char *chipdb_file = nullptr,
     *input_file = nullptr,
+    *do_promote_globals = nullptr,
     *package_name_cp = nullptr,
     *pcf_file = nullptr,
     *post_place_pcf = nullptr,
@@ -176,7 +170,7 @@ main(int argc, const char **argv)
             }
           else if (!strcmp(argv[i], "-l")
                    || !strcmp(argv[i], "--no-promote-globals"))
-            do_promote_globals = false;
+            do_promote_globals = argv[i];
           else if (!strcmp(argv[i], "-B")
               || !strcmp(argv[i], "--post-pack-blif"))
             {
@@ -269,6 +263,12 @@ main(int argc, const char **argv)
             input_file = argv[i];
         }
     }
+  
+  // defaults
+  if (!input_file)
+    input_file = "-";
+  if (!output_file)
+    output_file = "-";
   
   if (help)
     {
@@ -396,29 +396,11 @@ main(int argc, const char **argv)
   /*
   while (__AFL_LOOP(1000)) {
   */
-  
-  Design *d;
-  if (input_file)
-    {
-      *logs << "read_blif " << input_file << "...\n";
-      d = read_blif(input_file);
-    }
-  else
-    {
-      *logs << "read_blif <stdin>...\n";
-      d = read_blif("<stdin>", std::cin);
-    }
-  // d->dump();
-  
-  *logs << "prune...\n";
-  d->prune();
-#ifndef NDEBUG
-  d->check();
-#endif
-  // d->dump();
-  
+    
   {
-    DesignState ds(chipdb, package, d);
+    DesignState ds(rg, chipdb, package);
+    
+    Pass::run(ds, "read_blif", {input_file});
     
     if (route_only)
       {
@@ -434,102 +416,28 @@ main(int argc, const char **argv)
     else
       {
         if (pcf_file)
-          {
-            *logs << "read_pcf " << pcf_file << "...\n";
-            read_pcf(pcf_file, ds);
-          }
+          Pass::run(ds, "read_pcf", {pcf_file});
         
-        *logs << "instantiate_io...\n";
-        instantiate_io(d);
-#ifndef NDEBUG
-        d->check();
-#endif
-        // d->dump();
-        
-        *logs << "pack...\n";
-        pack(ds);
-#ifndef NDEBUG
-        d->check();
-#endif
-        // d->dump();
+        Pass::run(ds, "instantiate_io");
+        Pass::run(ds, "pack");
         
         if (pack_blif)
-          {
-            *logs << "write_blif " << pack_blif << "\n";
-            std::string expanded = expand_filename(pack_blif);
-            std::ofstream fs(expanded);
-            if (fs.fail())
-              fatal(fmt("write_blif: failed to open `" << expanded << "': "
-                        << strerror(errno)));
-            fs << "# " << version_str << "\n";
-            d->write_blif(fs);
-          }
+          Pass::run(ds, "write_blif", {pack_blif});
         if (pack_verilog)
-          {
-            *logs << "write_verilog " << pack_verilog << "\n";
-            std::string expanded = expand_filename(pack_verilog);
-            std::ofstream fs(expanded);
-            if (fs.fail())
-              fatal(fmt("write_verilog: failed to open `" << expanded << "': "
-                        << strerror(errno)));
-            fs << "/* " << version_str << " */\n";
-            d->write_verilog(fs);
-          }
+          Pass::run(ds, "write_verilog", {pack_verilog});
         
-        *logs << "place_constraints...\n";
-        place_constraints(ds);
-#ifndef NDEBUG
-        d->check();
-#endif
+        Pass::run(ds, "place_constraints");
         
-        // d->dump();
+        if (do_promote_globals)
+          Pass::run(ds, "promote_globals", {do_promote_globals});
+        else
+          Pass::run(ds, "promote_globals");
         
-        *logs << "promote_globals...\n";
-        promote_globals(ds, do_promote_globals);
-#ifndef NDEBUG
-        d->check();
-#endif
-        // d->dump();
-        
-        *logs << "realize_constants...\n";
-        realize_constants(chipdb, d);
-#ifndef NDEBUG
-        d->check();
-#endif
-	
-        *logs << "place...\n";
-        // d->dump();
-        place(rg, ds);
-#ifndef NDEBUG
-        d->check();
-#endif
-        // d->dump();
+        Pass::run(ds, "realize_constants");
+        Pass::run(ds, "place");
         
         if (post_place_pcf)
-          {
-            *logs << "write_pcf " << post_place_pcf << "...\n";
-            std::string expanded = expand_filename(post_place_pcf);
-            std::ofstream fs(expanded);
-            if (fs.fail())
-              fatal(fmt("write_pcf: failed to open `" << expanded << "': "
-                        << strerror(errno)));
-            fs << "# " << version_str << "\n";
-            for (const auto &p : ds.placement)
-              {
-                if (ds.models.is_io(p.first))
-                  {
-                    const Location &loc = chipdb->cell_location[p.second];
-                    std::string pin = package.loc_pin.at(loc);
-                    Port *top_port = (p.first
-                                      ->find_port("PACKAGE_PIN")
-                                      ->connection_other_port());
-                    assert(isa<Model>(top_port->node())
-                           && cast<Model>(top_port->node()) == ds.top);
-                    
-                    fs << "set_io " << top_port->name() << " " << pin << "\n";
-                  }
-              }
-          }
+          Pass::run(ds, "write_pcf", {post_place_pcf});
         
         if (place_blif)
           {
@@ -545,51 +453,18 @@ main(int argc, const char **argv)
                                       << "/" << pos));
               }
             
-            *logs << "write_blif " << place_blif << "\n";
-            std::string expanded = expand_filename(place_blif);
-            std::ofstream fs(expanded);
-            if (fs.fail())
-              fatal(fmt("write_blif: failed to open `" << expanded << "': "
-                        << strerror(errno)));
-            fs << "# " << version_str << "\n";
-            d->write_blif(fs);
+            Pass::run(ds, "write_blif", {place_blif});
           }
       }
     
-    // d->dump();
+    Pass::run(ds, "route");
     
-    *logs << "route...\n";
-    route(ds);
-#ifndef NDEBUG
-    d->check();
-#endif
-    
-    if (output_file)
-      {
-        *logs << "write_txt " << output_file << "...\n";
-        std::string expanded = expand_filename(output_file);
-        std::ofstream fs(expanded);
-        if (fs.fail())
-          fatal(fmt("write_txt: failed to open `" << expanded << "': "
-                    << strerror(errno)));
-        ds.conf.write_txt(fs, chipdb, d, ds.placement, ds.cnet_net);
-      }
-    else
-      {
-        *logs << "write_txt <stdout>...\n";
-        ds.conf.write_txt(std::cout, chipdb, d, ds.placement, ds.cnet_net);
-      }
+    Pass::run(ds, "write_conf", {output_file});
   }
-  
-  if (d)
-    delete d;
   
   /*
   }
   */
-  
-  if (chipdb)
-    delete chipdb;
   
   logs = nullptr;
   if (null_ostream)

@@ -4,8 +4,8 @@
 # CXX = clang++
 
 # build optimized without -DNDEBUG
-# OPTDEBUGFLAGS = -O0 -fno-inline -g
-OPTDEBUGFLAGS = -O2 # -DNDEBUG
+OPTDEBUGFLAGS = -O0 -fno-inline -g
+# OPTDEBUGFLAGS = -O2 # -DNDEBUG
 SRC = src
 
 # clang only: -Wglobal-constructors
@@ -26,7 +26,8 @@ VER_HASH = $(shell echo "$(VER) $(GIT_REV)" | sum | cut -d ' ' -f -1)
 src/version_$(VER_HASH).cc:
 	echo "const char *version_str = \"arachne-pnr $(VER) (git sha1 $(GIT_REV), $(notdir $(CXX)) `$(CXX) --version | tr ' ()' '\n' | grep '^[0-9]' | head -n1` $(filter -f% -m% -O% -DNDEBUG,$(CXXFLAGS)))\";" > src/version_$(VER_HASH).cc
 
-bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
+# src/pass.o must come before all passes
+bin/arachne-pnr: src/pass.o src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/passlist.o src/version_$(VER_HASH).o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr $(ICEBOX)/chipdb-1k.txt

@@ -14,6 +14,8 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "util.hh"
+#include "pass.hh"
+#include "designstate.hh"
 #include "netlist.hh"
 #include "casting.hh"
 
@@ -21,6 +23,7 @@
 #include <cstring>
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 
 static void
 write_string_escaped(std::ostream &s, const std::string &str)
@@ -1296,6 +1299,23 @@ Design::dump() const
   write_blif(*logs);
 }
 
+Models::Models()
+  : lut4(nullptr),
+    carry(nullptr),
+    lc(nullptr),
+    io(nullptr),
+    gb(nullptr),
+    gb_io(nullptr),
+    ram(nullptr),
+    ramnr(nullptr),
+    ramnw(nullptr),
+    ramnrnw(nullptr),
+    warmboot(nullptr),
+    tbuf(nullptr)
+{
+}
+
+
 Models::Models(const Design *d)
 {
   lut4 = d->find_model("SB_LUT4");
@@ -1310,4 +1330,52 @@ Models::Models(const Design *d)
   ramnrnw = d->find_model("SB_RAM40_4KNRNW");
   warmboot = d->find_model("SB_WARMBOOT");
   tbuf = d->find_model("$_TBUF_");
+}
+
+class WriteBlif : Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  WriteBlif() : Pass("write_blif") {}
+} read_blif_pass;
+
+void
+WriteBlif::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  if (args.size() == 1)
+    {
+      std::string filename = args[0];
+      std::string expanded = expand_filename(filename);
+      std::ofstream fs(expanded);
+      if (fs.fail())
+        fatal(fmt("write_blif: failed to open `" << expanded << "': "
+                  << strerror(errno)));
+      fs << "# " << version_str << "\n";
+      ds.d->write_blif(fs);
+    }
+  else
+    fatal("read_blif: too few arguments");
+}
+
+class WriteVerilog : Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  WriteVerilog() : Pass("write_verilog") {}
+} write_verilog_pass;
+
+void
+WriteVerilog::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  if (args.size() == 1)
+    {
+      std::string filename = args[0];
+      std::string expanded = expand_filename(filename);
+      std::ofstream fs(expanded);
+      if (fs.fail())
+        fatal(fmt("write_verilog: failed to open `" << expanded << "': "
+                  << strerror(errno)));
+      fs << "/* " << version_str << " */\n";
+      ds.d->write_verilog(fs);
+    }
+  else
+    fatal("write_verilog: too few arguments");
 }

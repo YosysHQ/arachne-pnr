@@ -1,13 +1,36 @@
 
 #include "designstate.hh"
 
-DesignState::DesignState(const ChipDB *chipdb_, const Package &package_, Design *d_)
-  : chipdb(chipdb_),
-    package(package_),
-    d(d_),
-    models(d_),
-    top(d_->top())
+DesignState::DesignState(random_generator &rg_, const ChipDB *chipdb_, const Package &package_)
+  : rg(rg_),
+    chipdb(chipdb_),
+    package(package_)
 {
+}
+
+DesignState::~DesignState()
+{
+  if (chipdb)
+    {
+      delete chipdb;
+      chipdb = nullptr;
+    }
+  
+  if (d)
+    {
+      delete d;
+      d = nullptr;
+      models = Models();
+      top = nullptr;
+    }
+}
+
+void
+DesignState::set_design(Design *d_)
+{
+  d = d_;
+  models = Models(d);
+  top = d->top();
 }
 
 bool

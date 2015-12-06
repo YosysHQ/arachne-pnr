@@ -14,12 +14,15 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "chipdb.hh"
+#include "pass.hh"
+#include "designstate.hh"
 #include "configuration.hh"
 #include "util.hh"
 #include "netlist.hh"
 
 #include <cassert>
 #include <iostream>
+#include <fstream>
 
 Configuration::Configuration()
 {
@@ -135,4 +138,33 @@ Configuration::write_txt(std::ostream &s,
       if (n)
         s << ".sym " << i << " " << n->name() << "\n";
     }
+}
+
+class WriteConf : Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  WriteConf() : Pass("write_conf") {}
+} write_conf_pass;
+
+void
+WriteConf::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  if (args.size() == 1)
+    {
+      std::string filename = args[0];
+      
+      if (filename == "-")
+        ds.conf.write_txt(std::cout, ds.chipdb, ds.d, ds.placement, ds.cnet_net);
+      else
+        {
+          std::string expanded = expand_filename(filename);
+          std::ofstream fs(expanded);
+          if (fs.fail())
+            fatal(fmt("write_txt: failed to open `" << expanded << "': "
+                      << strerror(errno)));
+          ds.conf.write_txt(fs, ds.chipdb, ds.d, ds.placement, ds.cnet_net);
+        }
+    }
+  else
+    fatal("write_conf: too few arguments");
 }

@@ -14,6 +14,8 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "util.hh"
+#include "pass.hh"
+#include "designstate.hh"
 #include "netlist.hh"
 #include "line_parser.hh"
 #include "bitvector.hh"
@@ -390,21 +392,37 @@ BlifParser::parse()
   return d;
 }
 
-Design *
-read_blif(const std::string &filename)
-{
-  std::string expanded = expand_filename(filename);
-  std::ifstream fs(expanded);
-  if (fs.fail())
-    fatal(fmt("read_blif: failed to open `" << expanded << "': "
-              << strerror(errno)));
-  BlifParser parser(filename, fs);
-  return parser.parse();
-}
+class ReadBlif : Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  ReadBlif() : Pass("read_blif") {}
+} read_blife_pass;
 
-Design *
-read_blif(const std::string &filename, std::istream &s)
+void
+ReadBlif::run(DesignState &ds, const std::vector<std::string> &args) const
 {
-  BlifParser parser(filename, s);
-  return parser.parse();
+  if (args.size() == 1)
+    {
+      std::string filename = args[0];
+      
+      if (filename == "-")
+        {
+          BlifParser parser(filename, std::cin);
+          ds.set_design(parser.parse());
+        }
+      else
+        {
+          std::string expanded = expand_filename(filename);
+          std::ifstream fs(expanded);
+          if (fs.fail())
+            fatal(fmt("read_blif: failed to open `" << expanded << "': "
+                      << strerror(errno)));
+          BlifParser parser(filename, fs);
+          ds.set_design(parser.parse());
+        }
+    }
+  else
+    fatal("read_blif: too few arguments");
+  
+  ds.d->prune();
 }

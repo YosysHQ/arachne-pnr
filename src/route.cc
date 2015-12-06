@@ -14,6 +14,7 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "util.hh"
+#include "pass.hh"
 #include "casting.hh"
 #include "netlist.hh"
 #include "location.hh"
@@ -869,9 +870,18 @@ Router::route()
         << "span_12    " << n_span12_used << " / " << n_span12 << "\n\n";
 }
 
+class Route : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  Route() : Pass("route") {}
+} route_pass;
+
 void
-route(DesignState &ds)
+Route::run(DesignState &ds, const std::vector<std::string> &args) const
 {
+  if (args.size() != 0)
+    fatal("instantiate_io: wrong number of arguments");
+  
   Router router(ds);
   
   clock_t start = clock();

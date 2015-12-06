@@ -14,14 +14,25 @@
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "netlist.hh"
-#include "constant.hh"
-#include "chipdb.hh"
+#include "pass.hh"
+#include "designstate.hh"
 
 #include <cassert>
 
+class RealizeConstants : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  RealizeConstants() : Pass("realize_constants") {}
+} realize_constants_pass;
+
 void
-realize_constants(const ChipDB *chipdb, Design *d)
+RealizeConstants::run(DesignState &ds, const std::vector<std::string> &args) const
 {
+  if (args.size() != 0)
+    fatal("instantiate_io: wrong number of arguments");
+  
+  Design *d = ds.d;
+  
   Models models(d);
   Model *top = d->top();
   

@@ -19,9 +19,6 @@
 #include <map>
 #include <string>
 
-class Design;
-class DesignState;
-
 class Constraints
 {
 public:
@@ -33,9 +30,5 @@ public:
     : net_pin_loc(np)
   {}
 };
-
-void read_pcf(const std::string &filename, DesignState &ds);
-
-void place_constraints(DesignState &ds);
 
 #endif
