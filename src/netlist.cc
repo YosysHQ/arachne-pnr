@@ -897,6 +897,7 @@ Design::create_standard_models()
   lc->add_port("CLK", Direction::IN, Value::ZERO);
   lc->add_port("CEN", Direction::IN, Value::ONE);
   lc->add_port("SR", Direction::IN, Value::ZERO);
+  lc->add_port("LO", Direction::OUT);
   lc->add_port("O", Direction::OUT);
   lc->add_port("COUT", Direction::OUT);
   

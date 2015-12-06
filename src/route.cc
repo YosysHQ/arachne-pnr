@@ -151,6 +151,8 @@ Router::port_cnet(Instance *inst, Port *p)
         }
       else if (p_name == "COUT")
         tile_net_name = fmt("lutff_" << loc.pos() << "/cout");
+      else if (p_name == "LO")
+        tile_net_name = fmt("lutff_" << loc.pos() << "/lout");
       else
         {
           assert(p_name == "O");
