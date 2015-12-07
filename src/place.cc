@@ -1365,7 +1365,7 @@ Placer::place()
       placement[inst] = cell;
     }
   
-#if 1
+#if 0
   if (qwp)
     {
       for (int g = 1; g <= n_gates; ++g)
