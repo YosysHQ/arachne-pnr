@@ -125,28 +125,47 @@ PCFParser::parse()
   constraints.net_pin_loc = net_pin_loc;
 }
 
-class ReadPCF : public Pass {
+static class ReadPCFPass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  ReadPCF() : Pass("read_pcf") {}
+  ReadPCFPass() : Pass("read_pcf") {}
 } read_pcf_pass;
-  
+
 void
-ReadPCF::run(DesignState &ds, const std::vector<std::string> &args) const
+ReadPCFPass::usage() const
 {
-  if (args.size() == 1)
+  std::cout
+    << "  " << name() << " <pcf-file>\n"
+    << "\n"
+    << "    Load <pcf-file>.\n";
+}
+
+void
+ReadPCFPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  std::string filename;
+  bool saw_filename = false;
+  
+  for (const auto &arg : args)
     {
-      std::string filename = args[0];
-      std::string expanded = expand_filename(filename);
-      std::ifstream fs(expanded);
-      if (fs.fail())
-        fatal(fmt("read_pcf: failed to open `" << expanded << "': "
-                  << strerror(errno)));
-      PCFParser parser(filename, fs, ds);
-      parser.parse();
+      if (saw_filename)
+        fatal(fmt("too many arguments: unexpected argument `" << arg << "'"));
+          
+      filename = arg;
+      saw_filename = true;
     }
-  else
-    fatal("read_pcf: wrong number of arguments");
+  
+  if (!saw_filename)
+    fatal("too few arguments: expected <pcf-file>");
+  
+  std::string expanded = expand_filename(filename);
+  std::ifstream fs(expanded);
+  if (fs.fail())
+    fatal(fmt("read_pcf: failed to open `" << expanded << "': "
+              << strerror(errno)));
+  PCFParser parser(filename, fs, ds);
+  parser.parse();
 }
 
 class ConstraintsPlacer
@@ -262,6 +281,7 @@ ConstraintsPlacer::place()
       
       cell_gate[c] = inst;
       extend(ds.placement, inst, c);
+      extend(ds.locked, inst);
     }
   
   for (int c : chipdb->cell_type_cells[cell_type_idx(CellType::PLL)])
@@ -332,6 +352,7 @@ ConstraintsPlacer::place()
                 {
                   cell_gate[c] = inst;
                   extend(ds.placement, inst, c);
+                  extend(ds.locked, inst);
                   ++n_pll_placed;
                   break;
                 }
@@ -344,57 +365,87 @@ ConstraintsPlacer::place()
     }
 }
 
-class PlaceConstraints : public Pass {
+static class PlaceConstraintsPass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  PlaceConstraints() : Pass("place_constraints") {}
+  PlaceConstraintsPass() : Pass("place_constraints") {}
 } place_constraints_pass;
 
 void
-PlaceConstraints::run(DesignState &ds, const std::vector<std::string> &args) const
+PlaceConstraintsPass::usage() const
 {
-  if (args.size() != 0)
-    fatal("instantiate_io: wrong number of arguments");
+  std::cout
+    << "  " << name() << "\n"
+    << "\n"
+    << "    Place gates constrained by PCF file.\n";
+}
+
+void
+PlaceConstraintsPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  for (const auto &arg : args)
+    {
+      fatal(fmt("unexpected argument `" << arg << "'"));        
+    }
   
   ConstraintsPlacer placer(ds);
   placer.place();
 }
 
-class WritePCF : public Pass {
+static class WritePCFPass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  WritePCF() : Pass("write_pcf") {}
+  WritePCFPass() : Pass("write_pcf") {}
 } write_pcf_pass;
-  
+
 void
-WritePCF::run(DesignState &ds, const std::vector<std::string> &args) const
+WritePCFPass::usage() const
 {
-  if (args.size() == 1)
+  std::cout
+    << "  " << name() << " <pcf-file>\n"
+    << "\n"
+    << "    Write <pcf-file> based on current placement.\n";
+}
+
+void
+WritePCFPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  std::string filename;
+  bool saw_filename = false;
+  
+  for (const auto &arg : args)
     {
-      std::string filename = args[0];
-      std::string expanded = expand_filename(filename);
-      std::ofstream fs(expanded);
-      if (fs.fail())
-        fatal(fmt("write_pcf: failed to open `" << expanded << "': "
-                  << strerror(errno)));
-      fs << "# " << version_str << "\n";
-      for (const auto &p : ds.placement)
-        {
-          if (ds.models.is_io(p.first))
-            {
-              const Location &loc = ds.chipdb->cell_location[p.second];
-              std::string pin = ds.package.loc_pin.at(loc);
-              Port *top_port = (p.first
-                                ->find_port("PACKAGE_PIN")
-                                ->connection_other_port());
-              assert(isa<Model>(top_port->node())
-                     && cast<Model>(top_port->node()) == ds.top);
-                    
-              fs << "set_io " << top_port->name() << " " << pin << "\n";
-            }
-        }
-      
+      if (saw_filename)
+        fatal(fmt("too many arguments: unexpected argument `" << arg << "'"));
+          
+      filename = arg;
+      saw_filename = true;
     }
-  else
-    fatal("write_pcf: too few arguments");
+  
+  if (!saw_filename)
+    fatal("too few arguments: expected <pcf-file>");
+  
+  std::string expanded = expand_filename(filename);
+  std::ofstream fs(expanded);
+  if (fs.fail())
+    fatal(fmt("write_pcf: failed to open `" << expanded << "': "
+              << strerror(errno)));
+  fs << "# " << version_str << "\n";
+  for (const auto &p : ds.placement)
+    {
+      if (ds.models.is_io(p.first))
+        {
+          const Location &loc = ds.chipdb->cell_location[p.second];
+          std::string pin = ds.package.loc_pin.at(loc);
+          Port *top_port = (p.first
+                            ->find_port("PACKAGE_PIN")
+                            ->connection_other_port());
+          assert(isa<Model>(top_port->node())
+                 && cast<Model>(top_port->node()) == ds.top);
+                    
+          fs << "set_io " << top_port->name() << " " << pin << "\n";
+        }
+    }
 }

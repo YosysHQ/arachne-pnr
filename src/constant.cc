@@ -19,17 +19,29 @@
 
 #include <cassert>
 
-class RealizeConstants : public Pass {
+class RealizeConstantsPass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  RealizeConstants() : Pass("realize_constants") {}
+  RealizeConstantsPass() : Pass("realize_constants") {}
 } realize_constants_pass;
 
 void
-RealizeConstants::run(DesignState &ds, const std::vector<std::string> &args) const
+RealizeConstantsPass::usage() const
 {
-  if (args.size() != 0)
-    fatal("instantiate_io: wrong number of arguments");
+  std::cout
+    << "  " << name() << "\n"
+    << "\n"
+    << "    Realized required constant (0 or 1) signals.\n";
+}
+
+void
+RealizeConstantsPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  for (const auto &arg : args)
+    {
+      fatal(fmt("unexpected argument `" << arg << "'"));        
+    }
   
   Design *d = ds.d;
   

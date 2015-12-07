@@ -392,37 +392,55 @@ BlifParser::parse()
   return d;
 }
 
-class ReadBlif : Pass {
+static class ReadBlifPass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  ReadBlif() : Pass("read_blif") {}
+  ReadBlifPass() : Pass("read_blif") {}
 } read_blife_pass;
 
 void
-ReadBlif::run(DesignState &ds, const std::vector<std::string> &args) const
+ReadBlifPass::usage() const
 {
-  if (args.size() == 1)
+  std::cout
+    << "  " << name() << " <blif-file>\n"
+    << "\n"
+    << "    Read <blif-file>.  `-' for standard input.\n";
+}
+
+void
+ReadBlifPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  std::string filename;
+  bool saw_filename = false;
+  
+  for (const auto &arg : args)
     {
-      std::string filename = args[0];
-      
-      if (filename == "-")
-        {
-          BlifParser parser(filename, std::cin);
-          ds.set_design(parser.parse());
-        }
-      else
-        {
-          std::string expanded = expand_filename(filename);
-          std::ifstream fs(expanded);
-          if (fs.fail())
-            fatal(fmt("read_blif: failed to open `" << expanded << "': "
-                      << strerror(errno)));
-          BlifParser parser(filename, fs);
-          ds.set_design(parser.parse());
-        }
+      if (saw_filename)
+        fatal(fmt("too many arguments: unexpected argument `" << arg << "'"));
+          
+      filename = arg;
+      saw_filename = true;
+    }
+  
+  if (!saw_filename)
+    fatal("too few arguments: expected <pcf-file>");
+  
+  if (filename == "-")
+    {
+      BlifParser parser(filename, std::cin);
+      ds.set_design(parser.parse());
     }
   else
-    fatal("read_blif: too few arguments");
+    {
+      std::string expanded = expand_filename(filename);
+      std::ifstream fs(expanded);
+      if (fs.fail())
+        fatal(fmt("read_blif: failed to open `" << expanded << "': "
+                  << strerror(errno)));
+      BlifParser parser(filename, fs);
+      ds.set_design(parser.parse());
+    }
   
   ds.d->prune();
 }

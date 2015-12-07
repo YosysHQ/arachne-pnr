@@ -870,17 +870,29 @@ Router::route()
         << "span_12    " << n_span12_used << " / " << n_span12 << "\n\n";
 }
 
-class Route : public Pass {
+static class RoutePass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  Route() : Pass("route") {}
+  RoutePass() : Pass("route") {}
 } route_pass;
 
 void
-Route::run(DesignState &ds, const std::vector<std::string> &args) const
+RoutePass::usage() const
 {
-  if (args.size() != 0)
-    fatal("instantiate_io: wrong number of arguments");
+  std::cout
+    << "  " << name() << "\n"
+    << "\n"
+    << "    Route design.  Must be placed.\n";
+}
+
+void
+RoutePass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  for (const auto &arg : args)
+    {
+      fatal(fmt("unexpected argument `" << arg << "'"));
+    }
   
   Router router(ds);
   

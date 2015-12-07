@@ -47,11 +47,12 @@ usage()
     << "Place and route netlist.  Input file is in BLIF format.  Output is\n"
     << "(text) bitstream.\n"
     << "\n"
-    << "    -h, --help\n"
-    << "        Print this usage message.\n"
+    << "    -B <file>, --post-pack-blif <file>\n"
+    << "        Write post-pack netlist to <file> as BLIF.\n"
     << "\n"
-    << "    -q, --quiet\n"
-    << "        Run quite.  Don't output progress messages.\n"
+    << "    -c <file>, --chipdb <chipdb-file>\n"
+    << "        Read chip database from <chipdb-file>.\n"
+    << "        Default: +/share/arachne-pnr/chipdb-<device>.bin\n"
     << "\n"
     << "    -d <device>, --device <device>\n"
     << "        Target device <device>.  Supported devices:\n"
@@ -59,49 +60,56 @@ usage()
     << "          8k - Lattice Semiconductor iCE40LP/HX8K\n"
     << "        Default: 1k\n"
     << "\n"
-    << "    -c <file>, --chipdb <chipdb-file>\n"
-    << "        Read chip database from <chipdb-file>.\n"
-    << "        Default: +/share/arachne-pnr/chipdb-<device>.bin\n"
+    << "    -e <passlist-file>\n"
+    << "        Execute <passlist-file> instead of the standard workflow.\n"
+    << "        Options controlling the standard workflow will be ignored.\n"
     << "\n"
-    << "    --write-binary-chipdb <file>\n"
-    << "        Write binary chipdb to <file>.\n"
+    << "    -h, --help\n"
+    << "        Print this usage message and exit.\n"
     << "\n"
     << "    -l, --no-promote-globals\n"
     << "        Don't promote nets to globals.\n"
     << "\n"
-    << "    -B <file>, --post-pack-blif <file>\n"
-    << "        Write post-pack netlist to <file> as BLIF.\n"
-    << "    -V <file>, --post-pack-verilog <file>\n"
-    << "        Write post-pack netlist to <file> as Verilog.\n"
-    << "\n"
-    << "    --post-place-blif <file>\n"
-    << "        Write post-place netlist to <file> as BLIF.\n"
-    << "\n"
-    << "    --route-only\n"
-    << "        Input must include placement.\n"
-    << "\n"
-    << "    -p <pcf-file>, --pcf-file <pcf-file>\n"
-    << "        Read physical constraints from <pcf-file>.\n"
+    << "    -o <output-file>, --output-file <output-file>\n"
+    << "        Write output to <output-file>.\n"
     << "\n"
     << "    -P <package>, --package <package>\n"
     << "        Target package <package>.\n"
     << "        Default: tq144 for 1k, ct256 for 8k\n"
     << "\n"
+    << "    -p <pcf-file>, --pcf-file <pcf-file>\n"
+    << "        Read physical constraints from <pcf-file>.\n"
+    << "\n"
+    << "    --post-place-blif <file>\n"
+    << "        Write post-place netlist to <file> as BLIF.\n"
+    << "\n"
+    << "    -q, --quiet\n"
+    << "        Run quite.  Don't output progress messages.\n"
+    << "\n"
     << "    -r\n"
     << "        Randomize seed.\n"
+    << "\n"
+    << "    --route-only\n"
+    << "        Input must include placement.\n"
     << "\n"
     << "    -s <int>, --seed <int>\n"
     << "        Set seed for random generator to <int>.\n"
     << "        Default: 1\n"
     << "\n"
+    << "    -t, --list-passes\n"
+    << "        Print list of support passes with usage and exit.\n"
+    << "\n"
+    << "    -V <file>, --post-pack-verilog <file>\n"
+    << "        Write post-pack netlist to <file> as Verilog.\n"
+    << "\n"
+    << "    -v, --version\n"
+    << "        Print version and exit.\n"
+    << "\n"
     << "    -w <pcf-file>, --write-pcf <pcf-file>\n"
     << "        Write pin assignments to <pcf-file> after placement.\n"
     << "\n"
-    << "    -o <output-file>, --output-file <output-file>\n"
-    << "        Write output to <output-file>.\n"
-    << "\n"
-    << "    -v, --version\n"
-    << "        Print version and exit.\n";
+    << "    --write-binary-chipdb <file>\n"
+    << "        Write binary chipdb to <file>.\n";
 }
 
 struct null_ostream : public std::ostream
@@ -130,7 +138,8 @@ main(int argc, const char **argv)
     *place_blif = nullptr,
     *output_file = nullptr,
     *seed_str = nullptr,
-    *binary_chipdb = nullptr;
+    *binary_chipdb = nullptr,
+    *passlist_file = nullptr;
   
   for (int i = 1; i < argc; ++i)
     {
@@ -159,6 +168,14 @@ main(int argc, const char **argv)
               
               ++i;
               chipdb_file = argv[i];
+            }
+          else if (!strcmp(argv[i], "-e"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              passlist_file = argv[i];
             }
           else if (!strcmp(argv[i], "--write-binary-chipdb"))
             {
@@ -236,6 +253,13 @@ main(int argc, const char **argv)
               
               ++i;
               seed_str = argv[i];
+            }
+          else if (!strcmp(argv[i], "-t")
+                   || !strcmp(argv[i], "--list-passes"))
+            {
+              std::cout << "Supported passes:\n\n";
+              Pass::print_passes();
+              exit(EXIT_SUCCESS);
             }
           else if (!strcmp(argv[i], "-o")
                    || !strcmp(argv[i], "--output-file"))
@@ -396,70 +420,78 @@ main(int argc, const char **argv)
   /*
   while (__AFL_LOOP(1000)) {
   */
-    
+  
   {
     DesignState ds(rg, chipdb, package);
     
-    Pass::run(ds, "read_blif", {input_file});
-    
-    if (route_only)
+    if (passlist_file)
       {
-        for (Instance *inst : ds.top->instances())
-          {
-            const std::string &loc_attr = inst->get_attr("loc").as_string();
-            int cell;
-            if (sscanf(loc_attr.c_str(), "%d", &cell) != 1)
-              fatal("parse error in loc attribute");
-            extend(ds.placement, inst, cell);
-          }
+        PassList passlist(passlist_file);
+        passlist.run(ds);
       }
     else
-      {
-        if (pcf_file)
-          Pass::run(ds, "read_pcf", {pcf_file});
-        
-        Pass::run(ds, "instantiate_io");
-        Pass::run(ds, "pack");
-        
-        if (pack_blif)
-          Pass::run(ds, "write_blif", {pack_blif});
-        if (pack_verilog)
-          Pass::run(ds, "write_verilog", {pack_verilog});
-        
-        Pass::run(ds, "place_constraints");
-        
-        if (do_promote_globals)
-          Pass::run(ds, "promote_globals", {do_promote_globals});
-        else
-          Pass::run(ds, "promote_globals");
-        
-        Pass::run(ds, "realize_constants");
-        Pass::run(ds, "place");
-        
-        if (post_place_pcf)
-          Pass::run(ds, "write_pcf", {post_place_pcf});
-        
-        if (place_blif)
+      {      
+        Pass::run(ds, "read_blif", {input_file});
+    
+        if (route_only)
           {
-            for (const auto &p : ds.placement)
+            for (Instance *inst : ds.top->instances())
               {
-                // p.first->set_attr("loc", fmt(p.second));
-                const Location &loc = chipdb->cell_location[p.second];
-                int t = loc.tile();
-                int pos = loc.pos();
-                p.first->set_attr("loc",
-                                  fmt(chipdb->tile_x(t)
-                                      << "," << chipdb->tile_y(t)
-                                      << "/" << pos));
+                const std::string &loc_attr = inst->get_attr("loc").as_string();
+                int cell;
+                if (sscanf(loc_attr.c_str(), "%d", &cell) != 1)
+                  fatal("parse error in loc attribute");
+                extend(ds.placement, inst, cell);
               }
-            
-            Pass::run(ds, "write_blif", {place_blif});
           }
+        else
+          {
+            if (pcf_file)
+              Pass::run(ds, "read_pcf", {pcf_file});
+        
+            Pass::run(ds, "instantiate_io");
+            Pass::run(ds, "pack");
+        
+            if (pack_blif)
+              Pass::run(ds, "write_blif", {pack_blif});
+            if (pack_verilog)
+              Pass::run(ds, "write_verilog", {pack_verilog});
+        
+            Pass::run(ds, "place_constraints");
+        
+            if (do_promote_globals)
+              Pass::run(ds, "promote_globals", {do_promote_globals});
+            else
+              Pass::run(ds, "promote_globals");
+        
+            Pass::run(ds, "realize_constants");
+            Pass::run(ds, "place");
+        
+            if (post_place_pcf)
+              Pass::run(ds, "write_pcf", {post_place_pcf});
+        
+            if (place_blif)
+              {
+                for (const auto &p : ds.placement)
+                  {
+                    // p.first->set_attr("loc", fmt(p.second));
+                    const Location &loc = chipdb->cell_location[p.second];
+                    int t = loc.tile();
+                    int pos = loc.pos();
+                    p.first->set_attr("loc",
+                                      fmt(chipdb->tile_x(t)
+                                          << "," << chipdb->tile_y(t)
+                                          << "/" << pos));
+                  }
+            
+                Pass::run(ds, "write_blif", {place_blif});
+              }
+          }
+    
+        Pass::run(ds, "route");
+    
+        Pass::run(ds, "write_conf", {output_file});
       }
-    
-    Pass::run(ds, "route");
-    
-    Pass::run(ds, "write_conf", {output_file});
   }
   
   /*

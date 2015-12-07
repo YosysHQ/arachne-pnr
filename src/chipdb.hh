@@ -286,6 +286,16 @@ public:
     return x + width*y;
   }
   
+  double unit_x(int t) const
+  {
+    return (double)tile_x(t) / (double)(width - 1);
+  }
+  
+  double unit_y(int t) const
+  {
+    return (double)tile_y(t) / (double)(height - 1);
+  }
+  
   int tile_x(int t) const
   {
     assert(t >= 0 && t <= n_tiles);

@@ -8,5 +8,7 @@ private:
   std::vector<std::vector<std::string>> pass_args;
   
 public:
+  PassList(const std::string &filename);
+  
   void run(DesignState &ds) const;
 };

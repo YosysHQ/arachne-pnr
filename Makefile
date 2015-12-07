@@ -4,8 +4,8 @@
 # CXX = clang++
 
 # build optimized without -DNDEBUG
-OPTDEBUGFLAGS = -O0 -fno-inline -g
-# OPTDEBUGFLAGS = -O2 # -DNDEBUG
+# OPTDEBUGFLAGS = -O0 -fno-inline -g
+OPTDEBUGFLAGS = -O2 # -DNDEBUG
 SRC = src
 
 # clang only: -Wglobal-constructors

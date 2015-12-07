@@ -655,17 +655,29 @@ Packer::pack()
         << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n\n";
 }
 
-class Pack : public Pass {
+static class PackPass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  Pack() : Pass("pack") {}
+  PackPass() : Pass("pack") {}
 } pack_pass;
 
 void
-Pack::run(DesignState &ds, const std::vector<std::string> &args) const
+PackPass::usage() const
 {
-  if (args.size() != 0)
-    fatal("pack: wrong number of arguments");
+  std::cout
+    << "  " << name() << "\n"
+    << "\n"
+    << "    Pack luts, carries and ffs into ICESTORM_LC instances.\n";
+}
+
+void
+PackPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  for (const auto &arg : args)
+    {
+      fatal(fmt("unexpected argument `" << arg << "'"));        
+    }
   
   Packer packer(ds);
   packer.pack();

@@ -18,6 +18,8 @@
 #include "passlist.hh"
 #include "line_parser.hh"
 
+#include <fstream>
+
 class PassListParser : public LineParser
 {
 public:
@@ -25,13 +27,12 @@ public:
     : LineParser(f, s_)
   {}
   
-  PassList *parse();
+  void parse(PassList &pl);
 };
 
-PassList *
-PassListParser::parse()
+void
+PassListParser::parse(PassList &pl)
 {
-  PassList *pl = new PassList;
   for (;;)
     {
       if (eof())
@@ -45,16 +46,29 @@ PassListParser::parse()
       if (!pass)
         fatal(fmt("unknown pass `" << words[0] << "'"));
       
-      pl->passes.push_back(pass);
-      pl->pass_args.push_back(std::vector<std::string>(words.begin() + 1,
-                                                       words.end()));
+      pl.passes.push_back(pass);
+      pl.pass_args.push_back(std::vector<std::string>(words.begin() + 1,
+                                                      words.end()));
     }
-  return pl;
+}
+
+PassList::PassList(const std::string &filename)
+{
+  std::string expanded = expand_filename(filename);
+  std::ifstream fs(expanded);
+  if (fs.fail())
+    fatal(fmt("read_passlist: failed to open `" << expanded << "': "
+              << strerror(errno)));
+  PassListParser parser(filename, fs);
+  parser.parse(*this);
 }
 
 void
 PassList::run(DesignState &ds) const
 {
   for (size_t i = 0; i < passes.size(); ++i)
-    passes[i]->run(ds, pass_args[i]);
+    {
+      *logs << passes[i]->name() << "...\n";
+      passes[i]->run(ds, pass_args[i]);
+    }
 }

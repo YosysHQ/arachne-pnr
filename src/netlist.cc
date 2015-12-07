@@ -230,6 +230,10 @@ Instance::merge_attrs(const Instance *inst)
       else
         m_attrs.insert(*i);
     }
+  
+  if (inst->has_attr("qwp_position")
+      && !has_attr("qwp_position"))
+    set_attr("qwp_position", inst->get_attr("qwp_position"));
 }
 
 bool
@@ -1332,50 +1336,88 @@ Models::Models(const Design *d)
   tbuf = d->find_model("$_TBUF_");
 }
 
-class WriteBlif : Pass {
+class WriteBlifPass : Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  WriteBlif() : Pass("write_blif") {}
+  WriteBlifPass() : Pass("write_blif") {}
 } read_blif_pass;
 
 void
-WriteBlif::run(DesignState &ds, const std::vector<std::string> &args) const
+WriteBlifPass::usage() const
 {
-  if (args.size() == 1)
-    {
-      std::string filename = args[0];
-      std::string expanded = expand_filename(filename);
-      std::ofstream fs(expanded);
-      if (fs.fail())
-        fatal(fmt("write_blif: failed to open `" << expanded << "': "
-                  << strerror(errno)));
-      fs << "# " << version_str << "\n";
-      ds.d->write_blif(fs);
-    }
-  else
-    fatal("read_blif: too few arguments");
+  std::cout
+    << "  " << name() << " <blif-file>\n"
+    << "\n"
+    << "    Write current design as BLIF to <blif-file>.\n";
 }
 
-class WriteVerilog : Pass {
+void
+WriteBlifPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  std::string filename;
+  bool saw_filename = false;
+  
+  for (const auto &arg : args)
+    {
+      if (saw_filename)
+        fatal(fmt("too many arguments: unexpected argument `" << arg << "'"));
+          
+      filename = arg;
+      saw_filename = true;
+    }
+  
+  if (!saw_filename)
+    fatal("too few arguments: expected <blif-file>");
+  
+  std::string expanded = expand_filename(filename);
+  std::ofstream fs(expanded);
+  if (fs.fail())
+    fatal(fmt("failed to open `" << expanded << "': "
+              << strerror(errno)));
+  fs << "# " << version_str << "\n";
+  ds.d->write_blif(fs);
+}
+
+static class WriteVerilogPass : Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  WriteVerilog() : Pass("write_verilog") {}
+  WriteVerilogPass() : Pass("write_verilog") {}
 } write_verilog_pass;
 
 void
-WriteVerilog::run(DesignState &ds, const std::vector<std::string> &args) const
+WriteVerilogPass::usage() const
 {
-  if (args.size() == 1)
+  std::cout
+    << "  " << name() << " <verilog-file>\n"
+    << "\n"
+    << "    Write current design as Verilog to <verilog-file>.\n";
+}
+
+void
+WriteVerilogPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  std::string filename;
+  bool saw_filename = false;
+  
+  for (const auto &arg : args)
     {
-      std::string filename = args[0];
-      std::string expanded = expand_filename(filename);
-      std::ofstream fs(expanded);
-      if (fs.fail())
-        fatal(fmt("write_verilog: failed to open `" << expanded << "': "
-                  << strerror(errno)));
-      fs << "/* " << version_str << " */\n";
-      ds.d->write_verilog(fs);
+      if (saw_filename)
+        fatal(fmt("too many arguments: unexpected argument `" << arg << "'"));
+          
+      filename = arg;
+      saw_filename = true;
     }
-  else
-    fatal("write_verilog: too few arguments");
+  
+  if (!saw_filename)
+    fatal("too few arguments: expected <verilog-file>");
+  
+  std::string expanded = expand_filename(filename);
+  std::ofstream fs(expanded);
+  if (fs.fail())
+    fatal(fmt("write_verilog: failed to open `" << expanded << "': "
+              << strerror(errno)));
+  fs << "/* " << version_str << " */\n";
+  ds.d->write_verilog(fs);
 }

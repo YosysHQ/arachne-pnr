@@ -68,6 +68,8 @@ public:
   BasedVector<Instance *, 1> gates;
   std::map<Instance *, int, IdLess> gate_idx;
   
+  BasedVector<double, 1> gate_qwp_x, gate_qwp_y;
+  
   BasedBitVector<1> locked;
   BasedBitVector<1> chained;
   
@@ -95,6 +97,11 @@ public:
   BasedVector<std::vector<int>, 1> gate_nets;
   
   int diameter;
+  
+  bool place_random;
+  bool qwp;
+  bool improve_only;
+
   double temp;
   bool improved;
   int n_move;
@@ -105,12 +112,15 @@ public:
   std::vector<std::pair<int, int>> restore_cell;
   std::vector<std::tuple<int, int, int>> restore_chain;
   std::vector<std::pair<int, int>> restore_net_length;
-  UllmanSet recompute;
+  std::vector<std::pair<int, double>> restore_gate_qwp_cost;
+  BasedUllmanSet<1> recompute_gate;
+  UllmanSet recompute_net;
   
   void save_set(int cell, int g);
   
   void save_set_chain(int c, int x, int start);
   int save_recompute_wire_length();
+  int save_recompute_qwp_cost();
   void restore();
   void discard();
   void accept_or_restore();
@@ -120,26 +130,26 @@ public:
   BasedVector<int, 1> gate_cell;
   BasedVector<int, 1> cell_gate;
   
+  BasedVector<double, 1> gate_qwp_cost;
   std::vector<int> net_length;
   
   bool valid(int t);
   
+  int qwp_cost() const;
   int wire_length() const;
-  int compute_net_length(int w);
+  double compute_gate_qwp_cost(int g) const;
+  int compute_net_length(int w) const;
   unsigned top_port_io_gate(const std::string &net_name);
   
   void place_initial();
-  void configure_io(const Location &loc,
-                    bool enable_input,
-                    bool pullup);
-  void configure();
   
 #ifndef NDEBUG
   void check();
 #endif
   
 public:
-  Placer(random_generator &rg_, DesignState &ds_);
+  Placer(random_generator &rg_, DesignState &ds_,
+         bool place_random_, bool qwp_, double init_temp, bool improve_only_);
   
   void place();
 };
@@ -302,8 +312,13 @@ Placer::save_set(int cell, int g)
   restore_cell.push_back(std::make_pair(cell, cell_gate[cell]));
   if (g)
     {
-      for (int w : gate_nets[g])
-        recompute.insert(w);
+      if (qwp)
+        recompute_gate.insert(g);
+      else
+        {
+          for (int w : gate_nets[g])
+            recompute_net.insert(w);
+        }
       gate_cell[g] = cell;
       
       int c = gate_chain[g];
@@ -331,12 +346,28 @@ Placer::save_set_chain(int c, int x, int start)
 }
 
 int
+Placer::save_recompute_qwp_cost()
+{
+  double delta = 0.0;
+  for (size_t i = 0; i < recompute_gate.size(); ++i)
+    {
+      int g = recompute_gate.ith(i);
+      double new_cost = compute_gate_qwp_cost(g),
+        old_cost = gate_qwp_cost[g];
+      restore_gate_qwp_cost.push_back(std::make_pair(g, old_cost));
+      gate_qwp_cost[g] = new_cost;
+      delta += (new_cost - old_cost);
+    }
+  return (int)(delta * 1000.0);
+}
+
+int
 Placer::save_recompute_wire_length()
 {
   int delta = 0;
-  for (int i = 0; i < (int)recompute.size(); ++i)
+  for (int i = 0; i < (int)recompute_net.size(); ++i)
     {
-      int w = recompute.ith(i);
+      int w = recompute_net.ith(i);
       int new_length = compute_net_length(w),
         old_length = net_length.at(w);
       restore_net_length.push_back(std::make_pair(w, old_length));
@@ -356,8 +387,16 @@ Placer::restore()
       if (p.second)
         gate_cell[p.second] = p.first;
     }
-  for (const auto &p : restore_net_length)
-    net_length[p.first] = p.second;
+  if (qwp)
+    {
+      for (const auto &p : restore_gate_qwp_cost)
+        gate_qwp_cost[p.first] = p.second;
+    }
+  else
+    {
+      for (const auto &p : restore_net_length)
+        net_length[p.first] = p.second;
+    }
   for (const auto &t : restore_chain)
     {
       int e, x, start;
@@ -373,8 +412,16 @@ Placer::discard()
   changed_tiles.clear();
   restore_cell.clear();
   restore_chain.clear();
-  restore_net_length.clear();
-  recompute.clear();
+  if (qwp)
+    {
+      restore_gate_qwp_cost.clear();
+      recompute_gate.clear();
+    }
+  else
+    {
+      restore_net_length.clear();
+      recompute_net.clear();
+    }
 }
 
 bool
@@ -552,7 +599,9 @@ Placer::valid(int t)
         }
     }
   else
-    assert(chipdb->tile_type[t] == TileType::RAMT);
+    assert(chipdb->tile_type[t] == TileType::RAMT
+           || chipdb->tile_type[t] == TileType::RAMB
+           || chipdb->tile_type[t] == TileType::EMPTY);
   
   return true;
 }
@@ -561,7 +610,7 @@ void
 Placer::accept_or_restore()
 {
   int delta;
-
+  
   if (move_failed)
     goto L;
   for (int i = 0; i < (int)changed_tiles.size(); ++i)
@@ -571,18 +620,22 @@ Placer::accept_or_restore()
         goto L;
     }
   
-  delta = save_recompute_wire_length();
+  if (qwp)
+    delta = save_recompute_qwp_cost();
+  else
+    delta = save_recompute_wire_length();
   
   // check();
   
   ++n_move;
   if (delta < 0
-      || (temp > 1e-6
+      || (!improve_only
+          && temp > 1e-6
           && rg.random_real(0.0, 1.0) <= exp(-delta/temp)))
     {
       if (delta < 0)
         {
-          // std::cout << "delta " << delta << "\n";
+          // *logs << "delta " << delta << "\n";
           improved = true;
         }
       ++n_accept;
@@ -590,6 +643,7 @@ Placer::accept_or_restore()
   else
     {
     L:
+      // *logs << "restore\n";
       restore();
     }
   discard();
@@ -615,6 +669,9 @@ Placer::top_port_io_gate(const std::string &net_name)
 void
 Placer::check()
 {
+  for (int t = 0; t < chipdb->n_tiles; ++t)
+    assert(valid(t));
+  
   for (Instance *inst : top->instances())
     {
       int g = gate_idx.at(inst);
@@ -645,13 +702,21 @@ Placer::check()
       int start = chain_start[c];
       assert(start + nt - 1 <= chipdb->height - 2);
     }
-  for (int w = 1; w < (int)nets.size(); ++w) // skip 0, nullptr
-    assert(net_length[w] == compute_net_length(w));
+  if (qwp)
+    {
+      for (int g = 1; g <= n_gates; ++g)
+        assert(std::abs(gate_qwp_cost[g] - compute_gate_qwp_cost(g)) < 1e-6);
+    }
+  else
+    {
+      for (int w = 0; w < (int)nets.size(); ++w)
+        assert(net_length[w] == compute_net_length(w));
+    }
 }
 #endif
 
 int
-Placer::compute_net_length(int w)
+Placer::compute_net_length(int w) const
 {
   if (net_global[w]
       || net_gates[w].empty())
@@ -686,16 +751,47 @@ Placer::compute_net_length(int w)
   return (x_max - x_min) + (y_max - y_min);
 }
 
+double
+Placer::compute_gate_qwp_cost(int g) const
+{
+  int c = gate_cell[g];
+  const Location &loc = chipdb->cell_location[c];
+  int t = loc.tile();
+  return (std::abs(chipdb->unit_x(t) - gate_qwp_x[g])
+          + std::abs(chipdb->unit_y(t) - gate_qwp_y[g]));
+}
+
+int
+Placer::qwp_cost() const
+{
+  assert(qwp);
+  
+  double cost = 0.0;
+  for (double gc : gate_qwp_cost)
+    cost += gc;
+  return (int)(cost * 1000.0);
+}
+
 int
 Placer::wire_length() const
 {
+  // FIXME
+  if (qwp)
+    {
+      int length = 0;
+      for (size_t i = 0; i < nets.size(); ++i)
+        length += compute_net_length(i);
+      return length;
+    }
+  
   int length = 0;
   for (int ell : net_length)
     length += ell;
   return length;
 }
 
-Placer::Placer(random_generator &rg_, DesignState &ds_)
+Placer::Placer(random_generator &rg_, DesignState &ds_,
+               bool place_random_, bool qwp_, double init_temp, bool improve_only_)
   : rg(rg_),
     ds(ds_),
     chipdb(ds.chipdb),
@@ -711,7 +807,10 @@ Placer::Placer(random_generator &rg_, DesignState &ds_)
     related_tiles(chipdb->n_tiles),
     diameter(std::max(chipdb->width,
                       chipdb->height)),
-    temp(10000.0),
+    place_random(place_random_),
+    qwp(qwp_),
+    improve_only(improve_only_),
+    temp(init_temp),
     move_failed(false),
     changed_tiles(chipdb->n_tiles),
     cell_gate(chipdb->n_cells, 0)
@@ -764,12 +863,13 @@ Placer::Placer(random_generator &rg_, DesignState &ds_)
   
   net_global.resize(n_nets);
   
-  net_length.resize(n_nets);
   net_gates.resize(n_nets);
-  recompute.resize(n_nets);
+  recompute_net.resize(n_nets);
   
   std::tie(gates, gate_idx) = top->index_instances();
   n_gates = gates.size();
+  
+  recompute_gate.resize(n_gates);
   
   gate_clk.resize(n_gates, 0);
   gate_sr.resize(n_gates, 0);
@@ -832,6 +932,32 @@ Placer::place_initial()
   locked.resize(n_gates);
   chained.resize(n_gates);
   
+  for (Instance *inst : ds.locked)
+    {
+      int g = gate_idx.at(inst);
+      locked[g] = true;
+    }
+  
+  std::vector<int> cell_type_n_placed(n_cell_types, 0);
+  
+  for (const auto &p : placement)
+    {
+      Instance *inst = p.first;
+      int g = gate_idx.at(inst);
+      int c = p.second;
+      
+      assert(cell_gate[c] == 0);
+      cell_gate[c] = g;
+      gate_cell[g] = c;
+      
+      CellType ct = gate_cell_type(g);
+      int ct_idx = cell_type_idx(ct);
+      ++cell_type_n_placed[ct_idx];
+      
+      // FIXME at end
+      assert(valid(chipdb->cell_location[c].tile()));
+    }
+  
   // place chains
   std::vector<int> logic_column_free(logic_columns.size(), 1);
   std::vector<int> logic_column_last(logic_columns.size(),
@@ -862,6 +988,43 @@ Placer::place_initial()
       gate_chain[gate0] = i;
       
       int nt = (v.size() + 7) / 8;
+      
+      for (unsigned j = 0; j < v.size(); ++j)
+        {
+          Instance *inst = v[j];
+          int g = gate_idx.at(inst);
+          chained[g] = true;
+        }
+      
+      int cell0 = gate_cell[gate0];
+      if (cell0)
+        {
+          const Location &loc = chipdb->cell_location[cell0];
+          int t = loc.tile();
+          assert(loc.pos() == 0);
+          
+          int x = chipdb->tile_x(t);
+          int y = chipdb->tile_y(t);
+          int k = -1;
+          for (int l = 0; l < (int)logic_columns.size(); ++l)
+            {
+              if (logic_columns[l] == x)
+                {
+                  k = l;
+                  break;
+                }
+            }
+          assert(k >= 0);
+          
+          chain_x.push_back(x);
+          chain_start.push_back(y);
+          
+          if (logic_column_free[k] < y + nt)
+            logic_column_free[k] = y + nt;
+          
+          goto placed_chain;
+        }
+      
       for (unsigned k = 0; k < logic_columns.size(); ++k)
         {
           if (logic_column_free[k] + nt - 1 <= logic_column_last[k])
@@ -880,7 +1043,6 @@ Placer::place_initial()
                   assert(cell_gate[cell] == 0);
                   cell_gate[cell] = g;
                   gate_cell[g] = cell;
-                  chained[g] = true;
                 }
               
               chain_x.push_back(x);
@@ -896,27 +1058,6 @@ Placer::place_initial()
                 << " carry chains"));
       
     placed_chain:;
-    }
-  
-  std::vector<int> cell_type_n_placed(n_cell_types, 0);
-  
-  for (const auto &p : placement)
-    {
-      Instance *inst = p.first;
-      int g = gate_idx.at(inst);
-      int c = p.second;
-      
-      assert(cell_gate[c] == 0);
-      cell_gate[c] = g;
-      gate_cell[g] = c;
-      
-      locked[g] = true;
-      
-      CellType ct = gate_cell_type(g);
-      int ct_idx = cell_type_idx(ct);
-      ++cell_type_n_placed[ct_idx];
-      
-      assert(valid(chipdb->cell_location[c].tile()));
     }
   
   std::vector<std::vector<int>> cell_type_empty_cells = chipdb->cell_type_cells;
@@ -944,6 +1085,14 @@ Placer::place_initial()
       
       free_gates.push_back(i);
       CellType ct = gate_cell_type(i);
+      
+      if (gate_cell[i])
+        {
+          int ct_idx = cell_type_idx(ct);
+          ++cell_type_n_placed[ct_idx];
+          goto placed_gate;
+        }
+      
       if (ct == CellType::GB)
         {
           Instance *inst = gates[i];
@@ -977,8 +1126,8 @@ Placer::place_initial()
                     << cell_type_n_placed[ct_idx]
                     << " " << cell_type_name(ct) << "s of " << cell_type_n_gates[ct_idx]
                     << " / " << chipdb->cell_type_cells[ct_idx].size()));
-        placed_gate:;
         }
+    placed_gate:;
     }
   
   // place gb
@@ -1031,558 +1180,56 @@ Placer::place_initial()
         }
     }
   
-  for (int w = 0; w < (int)nets.size(); ++w)
-    net_length[w] = compute_net_length(w);
-}
-
-void
-Placer::configure_io(const Location &loc,
-                     bool enable_input,
-                     bool pullup)
-{
-  const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
-  const CBit &ie_0 = func_cbits.at("IoCtrl.IE_0")[0],
-    &ie_1 = func_cbits.at("IoCtrl.IE_1")[0],
-    &ren_0 = func_cbits.at("IoCtrl.REN_0")[0],
-    &ren_1 = func_cbits.at("IoCtrl.REN_1")[0];
-  
-  if (loc.pos() == 0)
+  if (qwp)
     {
-      conf.set_cbit(CBit(loc.tile(),
-                         ren_0.row,
-                         ren_0.col),
-                    !pullup);  // active low
+      gate_qwp_x.resize(n_gates);
+      gate_qwp_y.resize(n_gates);
+      gate_qwp_cost.resize(n_gates);
+      for (int g = 1; g <= n_gates; ++g)
+        {
+          Instance *inst = gates[g];
+          
+          // FIXME
+          if (inst->has_attr("qwp_position"))
+            {
+              const std::string &qwp_position_attr = inst->get_attr("qwp_position").as_string();
+              double x, y;
+              if (sscanf(qwp_position_attr.c_str(), "%lf %lf", &x, &y) != 2)
+                fatal(fmt("parse error in qwp_position attribute: expected `<x> <y>', got `"
+                          << qwp_position_attr << "'"));
+              gate_qwp_x[g] = x;
+              gate_qwp_y[g] = y;
+            }
+          else
+            gate_qwp_x[g] = gate_qwp_y[g] = 0.5;
+          
+          gate_qwp_cost[g] = compute_gate_qwp_cost(g);
+        }
     }
   else
     {
-      assert(loc.pos() == 1);
-      conf.set_cbit(CBit(loc.tile(),
-                         ren_1.row,
-                         ren_1.col),
-                    !pullup);  // active low
+      int n_nets = nets.size();
+      net_length.resize(n_nets);
+      for (int w = 0; w < n_nets; ++w)
+        net_length[w] = compute_net_length(w);
     }
-  if (loc.pos() == 0)
-    {
-      conf.set_cbit(CBit(loc.tile(),
-                         ie_0.row,
-                         ie_0.col),
-                    // active low 1k, active high 8k
-                    (chipdb->device == "1k"
-                     ? !enable_input
-                     : enable_input));
-    }
-  else
-    {
-      assert(loc.pos() == 1);
-      conf.set_cbit(CBit(loc.tile(),
-                         ie_1.row,
-                         ie_1.col),
-                    // active low 1k, active high 8k
-                    (chipdb->device == "1k"
-                     ? !enable_input
-                     : enable_input));
-    }
-}
-
-void
-Placer::configure()
-{
-  for (int g = 1; g <= n_gates; g ++)
-    {
-      Instance *inst = gates[g];
-      int cell = gate_cell[g];
-      
-      if (g == 5)
-        *logs << "cell = " << cell << "\n";
-      
-      const Location &loc = chipdb->cell_location[cell];
-      
-      if (models.is_warmboot(inst)) {
-        placement[inst] = cell;
-        continue;
-      }
-
-      int t = loc.tile();
-      const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(chipdb->tile_type[t]);
-      
-      if (models.is_lc(inst))
-        {
-          BitVector lut_init = inst->get_param("LUT_INIT").as_bits();
-          lut_init.resize(16);
-          
-          static std::vector<int> lut_perm = {
-            4, 14, 15, 5, 6, 16, 17, 7, 3, 13, 12, 2, 1, 11, 10, 0,
-          };
-          
-          const auto &cbits = func_cbits.at(fmt("LC_" << loc.pos()));
-          for (int i = 0; i < 16; ++i)
-            conf.set_cbit(CBit(t,
-                               cbits[lut_perm[i]].row,
-                               cbits[lut_perm[i]].col),
-                          lut_init[i]);
-          
-          bool carry_enable = inst->get_param("CARRY_ENABLE").get_bit(0);
-          if (carry_enable)
-            {
-              conf.set_cbit(CBit(t,
-                                 cbits[8].row,
-                                 cbits[8].col), (bool)carry_enable);
-              if (loc.pos() == 0)
-                {
-                  Net *n = inst->find_port("CIN")->connection();
-                  if (n && n->is_constant())
-                    {
-                      const CBit &carryinset_cbit = func_cbits.at("CarryInSet")[0];
-                      conf.set_cbit(CBit(t,
-                                         carryinset_cbit.row,
-                                         carryinset_cbit.col), 
-                                    n->constant() == Value::ONE);
-                    }
-                }
-            }
-          
-          bool dff_enable = inst->get_param("DFF_ENABLE").get_bit(0);
-          conf.set_cbit(CBit(t,
-                             cbits[9].row,
-                             cbits[9].col), dff_enable);
-          
-          if (dff_enable)
-            {
-              bool neg_clk = inst->get_param("NEG_CLK").get_bit(0);
-              const CBit &neg_clk_cbit = func_cbits.at("NegClk")[0];
-              conf.set_cbit(CBit(t,
-                                 neg_clk_cbit.row,
-                                 neg_clk_cbit.col),
-                            (bool)neg_clk);
-              
-              bool set_noreset = inst->get_param("SET_NORESET").get_bit(0);
-              conf.set_cbit(CBit(t,
-                                 cbits[18].row,
-                                 cbits[18].col), (bool)set_noreset);
-              
-              bool async_sr = inst->get_param("ASYNC_SR").get_bit(0);
-              conf.set_cbit(CBit(t,
-                                 cbits[19].row,
-                                 cbits[19].col), (bool)async_sr);
-            }
-        }
-      else if (models.is_ioX(inst))
-        {
-          assert(contains(package.loc_pin, loc));
-          
-          const BitVector &pin_type = inst->get_param("PIN_TYPE").as_bits();
-          for (int i = 0; i < 6; ++i)
-            {
-              const CBit &cbit = func_cbits.at(fmt("IOB_" << loc.pos() << ".PINTYPE_" << i))[0];
-              conf.set_cbit(CBit(t, 
-                                 cbit.row, 
-                                 cbit.col),
-                            pin_type[i]);
-            }
-          
-          const auto &negclk_cbits = func_cbits.at("NegClk");
-          bool neg_trigger = inst->get_param("NEG_TRIGGER").get_bit(0);
-          for (int i = 0; i <= 1; ++i)
-            conf.set_cbit(CBit(t,
-                               negclk_cbits[i].row,
-                               negclk_cbits[i].col),
-                          neg_trigger);
-          
-          if (models.is_gb_io(inst)
-              && inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected())
-            {
-              int glb = chipdb->loc_pin_glb_num.at(loc);
-              
-              const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << glb));
-              conf.set_extra_cbit(ecb);
-            }
-        }
-      else if (models.is_gb(inst))
-        ;
-      else if (models.is_ramX(inst))
-        {
-          BitVector wm = inst->get_param("WRITE_MODE").as_bits(),
-            rm = inst->get_param("READ_MODE").as_bits();
-          wm.resize(2);
-          rm.resize(2);
-          
-          // powerup active low, don't set
-          const auto &ramb_func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::RAMB);
-          const CBit &cbit0 = func_cbits.at("RamConfig.CBIT_0")[0],
-            &cbit1 = func_cbits.at("RamConfig.CBIT_1")[0],
-            &cbit2 = func_cbits.at("RamConfig.CBIT_2")[0],
-            &cbit3 = func_cbits.at("RamConfig.CBIT_3")[0],
-            &negclk = func_cbits.at("NegClk")[0],
-            &ramb_negclk = ramb_func_cbits.at("NegClk")[0];
-          
-          conf.set_cbit(CBit(t,
-                             cbit0.row,
-                             cbit0.col),
-                        wm[0]);
-          conf.set_cbit(CBit(t,
-                             cbit1.row,
-                             cbit1.col),
-                        wm[1]);
-          conf.set_cbit(CBit(t,
-                             cbit2.row,
-                             cbit2.col),
-                        rm[0]);
-          conf.set_cbit(CBit(t,
-                             cbit3.row,
-                             cbit3.col),
-                        rm[1]);
-          
-          if (models.is_ramnr(inst)
-              || models.is_ramnrnw(inst))
-            conf.set_cbit(CBit(t,
-                               negclk.row,
-                               negclk.col),
-                          true);
-          
-          if (models.is_ramnw(inst)
-              || models.is_ramnrnw(inst))
-            conf.set_cbit(CBit(chipdb->ramt_ramb_tile(t),
-                               ramb_negclk.row,
-                               ramb_negclk.col),
-                          true);
-        }
-      else
-        {
-          assert(models.is_pllX(inst));
-          
-          bool found = false;
-          Location io_loc;
-          for (const auto &p2 : chipdb->loc_pin_glb_num)
-            {
-              if (p2.first.tile() == t)
-                {
-                  assert(!found);
-                  io_loc = p2.first;
-                  found = true;
-                }
-            }
-          assert(found);
-          
-          const CBit &cbit_pt0 = func_cbits.at(fmt("IOB_" << io_loc.pos() << ".PINTYPE_0"))[0],
-            &cbit_pt1 = func_cbits.at(fmt("IOB_" << io_loc.pos() << ".PINTYPE_1"))[0];
-          
-          conf.set_cbit(CBit(t, 
-                             cbit_pt0.row, 
-                             cbit_pt0.col),
-                        true);
-          conf.set_cbit(CBit(t, 
-                             cbit_pt1.row, 
-                             cbit_pt1.col),
-                        false);
-          
-          CBit delay_adjmode_fb_cb = chipdb->extra_cell_cbit(cell, "DELAY_ADJMODE_FB");
-          
-          std::string delay_adjmode_fb = inst->get_param("DELAY_ADJUSTMENT_MODE_FEEDBACK").as_string();
-          if (delay_adjmode_fb == "FIXED")
-            conf.set_cbit(delay_adjmode_fb_cb, false);
-          else if (delay_adjmode_fb == "DYNAMIC")
-            conf.set_cbit(delay_adjmode_fb_cb, true);
-          else
-            fatal(fmt("unknown DELAY_ADJUSTMENT_MODE_FEEDBACK value: " << delay_adjmode_fb));
-          
-          CBit delay_adjmode_rel_cb = chipdb->extra_cell_cbit(cell, "DELAY_ADJMODE_REL");
-          
-          std::string delay_adjmode_rel = inst->get_param("DELAY_ADJUSTMENT_MODE_RELATIVE").as_string();
-          if (delay_adjmode_rel == "FIXED")
-            conf.set_cbit(delay_adjmode_rel_cb, false);
-          else if (delay_adjmode_rel == "DYNAMIC")
-            conf.set_cbit(delay_adjmode_rel_cb, true);
-          else
-            fatal(fmt("unknown DELAY_ADJUSTMENT_MODE_RELATIVE value: " << delay_adjmode_rel));
-          
-          BitVector divf = inst->get_param("DIVF").as_bits();
-          divf.resize(7);
-          for (int i = 0; i < (int)divf.size(); ++i)
-            {
-              CBit divf_i_cb = chipdb->extra_cell_cbit(cell, fmt("DIVF_" << i));
-              conf.set_cbit(divf_i_cb, divf[i]);
-            }
-          
-          BitVector divq = inst->get_param("DIVQ").as_bits();
-          divq.resize(3);
-          for (int i = 0; i < (int)divq.size(); ++i)
-            {
-              CBit divq_i_cb = chipdb->extra_cell_cbit(cell, fmt("DIVQ_" << i));
-              conf.set_cbit(divq_i_cb, divq[i]);
-            }
-          
-          BitVector divr = inst->get_param("DIVR").as_bits();
-          divr.resize(4);
-          for (int i = 0; i < (int)divr.size(); ++i)
-            {
-              CBit divr_i_cb = chipdb->extra_cell_cbit(cell, fmt("DIVR_" << i));
-              conf.set_cbit(divr_i_cb, divr[i]);
-            }
-          
-          BitVector fda_feedback = inst->get_param("FDA_FEEDBACK").as_bits();
-          fda_feedback.resize(4);
-          for (int i = 0; i < (int)fda_feedback.size(); ++i)
-            {
-              CBit fda_feedback_i_cb = chipdb->extra_cell_cbit(cell, fmt("FDA_FEEDBACK_" << i));
-              conf.set_cbit(fda_feedback_i_cb, fda_feedback[i]);
-            }
-          
-          BitVector fda_relative = inst->get_param("FDA_RELATIVE").as_bits();
-          fda_relative.resize(4);
-          for (int i = 0; i < (int)fda_relative.size(); ++i)
-            {
-              CBit fda_relative_i_cb = chipdb->extra_cell_cbit(cell, fmt("FDA_RELATIVE_" << i));
-              conf.set_cbit(fda_relative_i_cb, fda_relative[i]);
-            }
-          
-          std::string feedback_path_str = inst->get_param("FEEDBACK_PATH").as_string();
-          
-          int feedback_path_value = 0;
-          if (feedback_path_str == "DELAY")
-            feedback_path_value = 0;
-          else if (feedback_path_str == "SIMPLE")
-            feedback_path_value = 1;
-          else if (feedback_path_str == "PHASE_AND_DELAY")
-            feedback_path_value = 2;
-          else
-            {
-              assert(feedback_path_str == "EXTERNAL");
-              feedback_path_value = 6;
-            }
-          
-          BitVector feedback_path(3, feedback_path_value);
-          for (int i = 0; i < (int)feedback_path.size(); ++i)
-            {
-              CBit feedback_path_i_cb = chipdb->extra_cell_cbit(cell, fmt("FEEDBACK_PATH_" << i));
-              conf.set_cbit(feedback_path_i_cb, feedback_path[i]);
-            }
-          
-          BitVector filter_range = inst->get_param("FILTER_RANGE").as_bits();
-          filter_range.resize(3);
-          for (int i = 0; i < (int)filter_range.size(); ++i)
-            {
-              CBit filter_range_i_cb = chipdb->extra_cell_cbit(cell, fmt("FILTER_RANGE_" << i));
-              conf.set_cbit(filter_range_i_cb, filter_range[i]);
-            }
-          
-          std::string pllout_select_porta_str;
-          if (inst->instance_of()->name() == "SB_PLL40_PAD"
-              || inst->instance_of()->name() == "SB_PLL40_CORE")
-            pllout_select_porta_str = inst->get_param("PLLOUT_SELECT").as_string();
-          else
-            pllout_select_porta_str = inst->get_param("PLLOUT_SELECT_PORTA").as_string();
-          
-          int pllout_select_porta_value = 0;
-          if (pllout_select_porta_str == "GENCLK")
-            pllout_select_porta_value = 0;
-          else if (pllout_select_porta_str == "GENCLK_HALF")
-            pllout_select_porta_value = 1;
-          else if (pllout_select_porta_str == "SHIFTREG_90deg")
-            pllout_select_porta_value = 2;
-          else
-            {
-              assert(pllout_select_porta_str == "SHIFTREG_0deg");
-              pllout_select_porta_value = 3;
-            }
-          
-          BitVector pllout_select_porta(2, pllout_select_porta_value);
-          for (int i = 0; i < (int)pllout_select_porta.size(); ++i)
-            {
-              CBit pllout_select_porta_i_cb = chipdb->extra_cell_cbit(cell, fmt("PLLOUT_SELECT_A_" << i));
-              conf.set_cbit(pllout_select_porta_i_cb, pllout_select_porta[i]);
-            }
-          
-          int pllout_select_portb_value = 0;
-          if (inst->instance_of()->name() == "SB_PLL40_2_PAD"
-              || inst->instance_of()->name() == "SB_PLL40_2F_PAD"
-              || inst->instance_of()->name() == "SB_PLL40_2F_CORE")
-            {
-              std::string pllout_select_portb_str = inst->get_param("PLLOUT_SELECT_PORTB").as_string();
-              
-              if (pllout_select_portb_str == "GENCLK")
-                pllout_select_portb_value = 0;
-              else if (pllout_select_portb_str == "GENCLK_HALF")
-                pllout_select_portb_value = 1;
-              else if (pllout_select_portb_str == "SHIFTREG_90deg")
-                pllout_select_portb_value = 2;
-              else
-                {
-                  assert(pllout_select_portb_str == "SHIFTREG_0deg");
-                  pllout_select_portb_value = 3;
-                }
-            }
-          
-          BitVector pllout_select_portb(2, pllout_select_portb_value);
-          for (int i = 0; i < (int)pllout_select_portb.size(); ++i)
-            {
-              CBit pllout_select_portb_i_cb = chipdb->extra_cell_cbit(cell, fmt("PLLOUT_SELECT_B_" << i));
-              conf.set_cbit(pllout_select_portb_i_cb, pllout_select_portb[i]);
-            }
-          
-          int pll_type_value = 0;
-          if (inst->instance_of()->name() == "SB_PLL40_PAD")
-            pll_type_value = 2;
-          else if (inst->instance_of()->name() == "SB_PLL40_2_PAD")
-            pll_type_value = 4;
-          else if (inst->instance_of()->name() == "SB_PLL40_2F_PAD")
-            pll_type_value = 6;
-          else if (inst->instance_of()->name() == "SB_PLL40_CORE")
-            pll_type_value = 3;
-          else 
-            {
-              assert(inst->instance_of()->name() == "SB_PLL40_2F_CORE");
-              pll_type_value = 7;
-            }
-          BitVector pll_type(3, pll_type_value);
-          for (int i = 0; i < (int)pll_type.size(); ++i)
-            {
-              CBit pll_type_i_cb = chipdb->extra_cell_cbit(cell, fmt("PLLTYPE_" << i));
-              conf.set_cbit(pll_type_i_cb, pll_type[i]);
-            }
-          
-          BitVector shiftreg_div_mode = inst->get_param("SHIFTREG_DIV_MODE").as_bits();
-          CBit shiftreg_div_mode_cb = chipdb->extra_cell_cbit(cell, "SHIFTREG_DIV_MODE");
-          conf.set_cbit(shiftreg_div_mode_cb, shiftreg_div_mode[0]);
-          
-          Port *a = inst->find_port("PLLOUTGLOBAL");
-          if (!a)
-            a = inst->find_port("PLLOUTGLOBALA");
-          assert(a);
-          if (a->connected())
-            {
-              const auto &p2 = chipdb->cell_mfvs.at(cell).at("PLLOUT_A");
-              Location glb_loc(p2.first, std::stoi(p2.second));
-              int glb = chipdb->loc_pin_glb_num.at(glb_loc);
-              
-              const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << glb));
-              conf.set_extra_cbit(ecb);
-            }
-          
-          Port *b = inst->find_port("PLLOUTGLOBALB");
-          if (b && b->connected())
-            {
-              const auto &p2 = chipdb->cell_mfvs.at(cell).at("PLLOUT_B");
-              Location glb_loc(p2.first, std::stoi(p2.second));
-              int glb = chipdb->loc_pin_glb_num.at(glb_loc);
-              
-              const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << glb));
-              conf.set_extra_cbit(ecb);
-            }
-        }
-      
-      placement[inst] = cell;
-    }
-  
-  // set IoCtrl configuration bits
-  {
-    const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
-    const CBit &lvds = func_cbits.at("IoCtrl.LVDS")[0];
-    
-    std::map<Location, int> loc_pll;
-    int pll_idx = cell_type_idx(CellType::PLL);
-    for (int cell : chipdb->cell_type_cells[pll_idx])
-      {
-        const auto &p2a = chipdb->cell_mfvs.at(cell).at("PLLOUT_A");
-        Location a_loc(p2a.first, std::stoi(p2a.second));
-        extend(loc_pll, a_loc, cell);
-        
-        const auto &p2b = chipdb->cell_mfvs.at(cell).at("PLLOUT_B");
-        Location b_loc(p2b.first, std::stoi(p2b.second));
-        extend(loc_pll, b_loc, cell);
-      }
-    
-    for (const auto &p : package.pin_loc)
-      {
-        // unused io
-        bool enable_input = false;
-        bool pullup = true;  // default pullup
-        
-        const Location &loc = p.second;
-        int pll_cell = lookup_or_default(loc_pll, loc, 0);
-        if (pll_cell)
-          {
-            // FIXME only enable if inputs present
-            enable_input = true;
-            pullup = false;
-          }
-        else
-          {
-            int cell = chipdb->loc_cell(loc);
-            int g = cell_gate[cell];
-            if (g)
-              {
-                Instance *inst = gates[g];
-                
-                if (inst->find_port("D_IN_0")->connected()
-                    || inst->find_port("D_IN_1")->connected()
-                    || (models.is_gb_io(inst)
-                        && inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected()))
-                  enable_input = true;
-                pullup = inst->get_param("PULLUP").get_bit(0);
-                conf.set_cbit(CBit(loc.tile(),
-                                   lvds.row,
-                                   lvds.col),
-                              inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT");
-              }
-          }
-        
-        const Location &ieren_loc = chipdb->ieren.at(loc);
-        configure_io(ieren_loc, enable_input, pullup);
-      }
-    
-    std::set<Location> ieren_image;
-    for (const auto &p : chipdb->ieren)
-      extend(ieren_image, p.second);
-    for (int t = 0; t < chipdb->n_tiles; ++t)
-      {
-        if (chipdb->tile_type[t] != TileType::IO)
-          continue;
-        for (int p = 0; p <= 1; ++p)
-          {
-            bool enable_input = false;
-            bool pullup = true;  // default pullup
-            
-            Location loc(t, p);
-            if (contains(ieren_image, loc))
-              continue;
-            
-            configure_io(loc, enable_input, pullup);
-          }
-      }
-  }
-  
-  // set RamConfig.PowerUp configuration bit
-  {
-    const CBit &powerup = (chipdb->tile_nonrouting_cbits.at(TileType::RAMB)
-                           .at("RamConfig.PowerUp")
-                           [0]);
-    for (int t : ramt_tiles)
-      {
-        Location loc(t,
-                     0);
-        int cell = chipdb->loc_cell(loc);
-        int g = cell_gate[cell];
-        assert(!g || models.is_ramX(gates[g]));
-        conf.set_cbit(CBit(chipdb->ramt_ramb_tile(loc.tile()), // PowerUp on ramb tile
-                           powerup.row,
-                           powerup.col),
-                      // active low
-                      (chipdb->device == "1k"
-                       ? !g
-                       : (bool)g));
-      }
-  }
 }
 
 void
 Placer::place()
 {
   place_initial();
+  
   // check();
   
   *logs << "  initial wire length = " << wire_length() << "\n";
+  if (qwp)
+    *logs << "  initial qwp cost = " << qwp_cost() << "\n";
   
   int n_no_progress = 0;
+  
+  if (place_random)
+    goto L;
   
   for (;;)
     {
@@ -1629,140 +1276,70 @@ Placer::place()
       else
         ++n_no_progress;
       
-      if (temp <= 1e-3
-          && n_no_progress >= 5)
-        break;
-      
-      double Raccept = (double)n_accept / (double)n_move;
-#if 0
-      std::cout << "Raccept " << Raccept
-                << ", diameter = " << diameter
-                << ", temp " << temp << "\n";
-#endif
-      
-      int M = std::max(chipdb->width,
-                       chipdb->height);
-      
-      double upper = 0.6,
-        lower = 0.4;
-      
-      if (Raccept >= 0.8)
-        temp *= 0.5;
-      else if (Raccept > upper)
+      if (improve_only)
         {
-          if (diameter < M)
-            ++diameter;
-          else
-            temp *= 0.9;
+          if (n_no_progress >= 5)
+            break;
         }
-      else if (Raccept > lower)
-        temp *= 0.95;
       else
         {
-          // Raccept < 0.3
-          if (diameter > 1)
-            --diameter;
-          else
-            temp *= 0.8;
-        }
-    }
-  
-  *logs << "  final wire length = " << wire_length() << "\n";
-  
-  configure();
-  
-#if 0
-  int max_demand = 0;
-  for (int t = 0; t < chipdb->n_tiles; ++t)
-    {
-      if (chipdb->tile_type[t] != TileType::LOGIC)
-        continue;
-      
-      std::set<std::pair<Net *, int>> demand;
-      for (int q = 0; q < 8; q ++)
-        {
-          Location loc(t, q);
-          int cell = chipdb->loc_cell(loc);
-          int g = cell_gate[cell];
-          if (g)
+          if (temp <= 1e-3
+              && n_no_progress >= 5)
+            break;
+          
+          double Raccept = (double)n_accept / (double)n_move;
+          int M = std::max(chipdb->width,
+                           chipdb->height);
+          
+          double upper = 0.6,
+            lower = 0.4;
+          
+          if (Raccept >= 0.8)
+            temp *= 0.5;
+          else if (Raccept > upper)
             {
-              Instance *inst = gates[g];
-              
-              for (int i = 0; i < 4; ++i)
-                {
-                  Net *n = inst->find_port(fmt("I" << i))->connection();
-                  if (n
-                      && !n->is_constant())
-                    {
-                      int parity = (q + i) & 1;
-                      demand.insert(std::make_pair(n, parity));
-                    }
-                }
-              
-              Net *clk = inst->find_port("CLK")->connection();
-              if (clk
-                  && !clk->is_constant())
-                {
-                  int n = net_idx.at(clk);
-                  if (!net_global[n])
-                    demand.insert(std::make_pair(clk, 0));
-                }
-
-              Net *cen = inst->find_port("CEN")->connection();
-              if (cen
-                  && !cen->is_constant())
-                {
-                  int n = net_idx.at(cen);
-                  if (!net_global[n])
-                    demand.insert(std::make_pair(cen, 0));
-                }
-              
-              Net *sr = inst->find_port("SR")->connection();
-              if (sr
-                  && !sr->is_constant())
-                {
-                  int n = net_idx.at(sr);
-                  if (!net_global[n])
-                    demand.insert(std::make_pair(sr, 0));
-                }
+              if (diameter < M)
+                ++diameter;
+              else
+                temp *= 0.9;
+            }
+          else if (Raccept > lower)
+            temp *= 0.95;
+          else
+            {
+              // Raccept < 0.3
+              if (diameter > 1)
+                --diameter;
+              else
+                temp *= 0.8;
             }
         }
-      *logs << t 
-            << " " << chipdb->tile_x(t)
-            << " " << chipdb->tile_y(t)
-            << " " << demand.size() << "\n";
-      if ((int)demand.size() > max_demand)
-        max_demand = demand.size();
     }
-  *logs << "max_demand " << max_demand << "\n";
-#endif
+  
+ L:
+  *logs << "  final wire length = " << wire_length() << "\n";
+  if (qwp)
+    *logs << "  final qwp cost = " << qwp_cost() << "\n";
+  
+  for (int g = 1; g <= n_gates; g ++)
+    {
+      Instance *inst = gates[g];
+      int cell = gate_cell[g];
       
-#if 0
-  {
-    int t = chipdb->tile(17, 16);
-    for (const auto &p : placement)
-      {
-        int cell = p.second;
-        const Location &loc = chipdb->cell_location[cell];
-        if (loc.tile() == t)
-          {
-            Instance *inst = p.first;
-            *logs << "LC " << inst << " " << loc.pos() << "\n";
-            *logs << "  I0 " << inst->find_port("I0")->connection()->name() << "\n";
-            *logs << "  I1 " << inst->find_port("I1")->connection()->name() << "\n";
-            *logs << "  I2 " << inst->find_port("I2")->connection()->name() << "\n";
-            *logs << "  I3 " << inst->find_port("I3")->connection()->name() << "\n";
-            if (inst->find_port("CIN")->connected())
-              *logs << "  CIN " << inst->find_port("CIN")->connection()->name() << "\n";
-            if (inst->find_port("CLK")->connected())
-              *logs << "  CLK " << inst->find_port("CLK")->connection()->name() << "\n";
-            if (inst->find_port("SR")->connected())
-              *logs << "  SR " << inst->find_port("SR")->connection()->name() << "\n";
-            if (inst->find_port("CEN")->connected())
-              *logs << "  CEN " << inst->find_port("CEN")->connection()->name() << "\n";
-          }
-      }
-  }
+      placement[inst] = cell;
+    }
+  
+#if 1
+  if (qwp)
+    {
+      for (int g = 1; g <= n_gates; ++g)
+        {
+          int c = gate_cell[g];
+          int t = chipdb->cell_location[c].tile();
+          *logs << g << ": " << gate_qwp_x[g] << " " << gate_qwp_y[g] << " vs "
+                << chipdb->unit_x(t) << " " << chipdb->unit_y(t) << "\n";
+        }
+    }
 #endif
   
   int n_pio = 0,
@@ -1792,19 +1369,68 @@ Placer::place()
         << "\n";
 }
 
-class Place : public Pass {
+static class PlacePass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  Place() : Pass("place") {}
+  PlacePass() : Pass("place") {}
 } place_pass;
 
 void
-Place::run(DesignState &ds, const std::vector<std::string> &args) const
+PlacePass::usage() const
 {
-  if (args.size() != 0)
-    fatal("instantiate_io: wrong number of arguments");
+  std::cout
+    << "  " << name() << "\n"
+    << "\n"
+    << "    Place design using simulated annealing with half-perimeter wire\n"
+    << "    length cost function.  Design must be packed.\n"
+    << "\n"
+    << "      -i, --improve-only\n"
+    << "        Only accept swaps that improve the cost function.\n"
+    << "\n"
+    << "      -r, --place-random\n"
+    << "        Find a random placement, don't attempt to improve.\n"
+    << "\n"
+    << "      -q, --optimize-qwp-position\n"
+    << "        Optimize qwp_position instead of wire length.\n"
+    << "\n"
+    << "      -t <temp>\n"
+    << "        Initial simulated annealing temperature.  Default: 10000.0.\n";
+}
+
+void
+PlacePass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  double init_temp = 10000.0;
+  bool improve_only = false;
+  bool place_random = false;
+  bool qwp = false;
   
-  Placer placer(ds.rg, ds);
+  for (size_t i = 0; i < args.size(); ++i)
+    {
+      const auto &arg = args[i];
+      if (arg == "-i"
+               || arg == "--improve-only")
+        improve_only = true;
+      else if (arg == "-q"
+               || arg == "--optimize-qwp-position")
+        qwp = true;
+      else if (arg == "-r"
+               || arg == "--place-random")
+        place_random = true;
+      else if (arg == "-t")
+        {
+          if (i + 1 >= args.size())
+            fatal(fmt(arg << ": expected argument"));
+          
+          ++i;
+          init_temp = std::stod(args[i]);
+        }
+      else
+        fatal(fmt("unexpected argument `" << arg << "'"));
+    }
+  
+  Placer placer(ds.rg, ds, place_random, qwp, init_temp, improve_only);
   
   clock_t start = clock();
   placer.place();
@@ -1813,4 +1439,95 @@ Place::run(DesignState &ds, const std::vector<std::string> &args) const
   *logs << "  place time "
         << std::fixed << std::setprecision(2)
         << (double)(end - start) / (double)CLOCKS_PER_SEC << "s\n";
+}
+
+class PlacementFromLocPass : public Pass {
+  void usage() const;
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+public:
+  PlacementFromLocPass()
+    : Pass("placement_from_loc",
+           "Set placement from .loc attribute") {}
+} placement_from_loc_pass;
+
+void
+PlacementFromLocPass::usage() const
+{
+  std::cout
+    << "  " << name() << " [options]\n"
+    << "\n"
+    << "    Set placement from .loc attribute.\n";
+}
+
+void
+PlacementFromLocPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  for (const auto &arg : args)
+    {
+      fatal(fmt("unexpected argument `" << arg << "'"));
+    }
+  
+  for (Instance *inst : ds.top->instances())
+    {
+      const std::string &loc_attr = inst->get_attr("loc").as_string();
+      int cell;
+      if (sscanf(loc_attr.c_str(), "%d", &cell) != 1)
+        fatal(fmt("parse error in loc attribute: expected int, got `"
+                  << loc_attr << "'"));
+      extend(ds.placement, inst, cell);
+    }
+}
+
+class LocFromPlacementPass : public Pass {
+  void run(DesignState &ds, const std::vector<std::string> &args) const;
+  void usage() const;
+public:
+  LocFromPlacementPass()
+    : Pass("loc_from_placement") {}
+} loc_from_placement_pass;
+
+
+void
+LocFromPlacementPass::usage() const
+{
+  std::cout
+    << "  " << name() << " [options]\n"
+    << "\n"
+    << "    Set .loc attribute from placement.\n"
+    << "\n"
+    << "    -r, --readble\n"
+    << "        Set .loc attribute to <x>,<y>/<pos> rather than internal cell\n"
+    << "        number.  Note: cannot be loaded by loc_from_placement.\n";
+}
+
+void
+LocFromPlacementPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  const ChipDB *chipdb = ds.chipdb;
+  
+  bool readable = false;
+  for (const auto &arg : args)
+    {
+      if (arg == "-r"
+          || arg == "--readable")
+        readable = true;
+      else
+        fatal(fmt("unexpected argument `" << arg << "'"));        
+    }
+  
+  for (const auto &p : ds.placement)
+    {
+      if (readable)
+        {
+          const Location &loc = chipdb->cell_location[p.second];
+          int t = loc.tile();
+          int pos = loc.pos();
+          p.first->set_attr("loc",
+                            fmt(chipdb->tile_x(t)
+                                << "," << chipdb->tile_y(t)
+                                << "/" << pos));
+        }
+      else
+        p.first->set_attr("loc", fmt(p.second));
+    }
 }

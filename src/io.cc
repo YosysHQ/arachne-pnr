@@ -20,17 +20,29 @@
 
 #include <cassert>
 
-class InstantiateIO : public Pass {
+class InstantiateIOPass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  InstantiateIO() : Pass("instantiate_io") {}
+  InstantiateIOPass() : Pass("instantiate_io") {}
 } instantiate_io_pass;
 
 void
-InstantiateIO::run(DesignState &ds, const std::vector<std::string> &args) const
+InstantiateIOPass::usage() const
 {
-  if (args.size() != 0)
-    fatal("instantiate_io: wrong number of arguments");
+  std::cout
+    << "  " << name() << "\n"
+    << "\n"
+    << "    Instantiate SB_IO gates for top-level ports.\n";
+}
+
+void
+InstantiateIOPass::run(DesignState &ds, const std::vector<std::string> &args) const
+{
+  for (const auto &arg : args)
+    {
+      fatal(fmt("unexpected argument `" << arg << "'"));        
+    }
   
   Design *d = ds.d;
   

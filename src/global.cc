@@ -177,9 +177,8 @@ Promoter::pll_pass_through(Instance *inst, int cell, const char *p_name)
   const auto &p2 = chipdb->cell_mfvs.at(cell).at(p_name);
   int pass_cell = chipdb->loc_cell(Location(p2.first, 0));
   
-  *logs << "pass_cell = " << pass_cell << "\n";
-  
   extend(ds.placement, pass_inst, pass_cell);
+  extend(ds.locked, pass_inst);
 }
 
 void
@@ -470,23 +469,36 @@ Promoter::promote(bool do_promote)
   d->prune();
 }
 
-class PromoteGlobals : public Pass {
+class PromoteGlobalsPass : public Pass {
+  void usage() const;
   void run(DesignState &ds, const std::vector<std::string> &args) const;
 public:
-  PromoteGlobals() : Pass("promote_globals") {}
+  PromoteGlobalsPass() : Pass("promote_globals") {}
 } promote_globals_pass;
 
 void
-PromoteGlobals::run(DesignState &ds, const std::vector<std::string> &args) const
+PromoteGlobalsPass::usage() const
+{
+  std::cout
+    << "  " << name() << " [options]\n"
+    << "\n"
+    << "    Assign nets in design to global chip nets.\n"
+    << "\n"
+    << "      -l, --no-promote-globals\n"
+    << "        Don't promote new nets to globals.\n";
+}
+
+void
+PromoteGlobalsPass::run(DesignState &ds, const std::vector<std::string> &args) const
 {
   bool do_promote = true;
-  for (size_t i = 0; i < args.size(); ++i)
+  for (const auto &arg : args)
     {
-      if (args[i] == "-l"
-          || args[i] == "--no-promote-globals")
+      if (arg == "-l"
+          || arg == "--no-promote-globals")
         do_promote = false;
       else
-        fatal(fmt("unexpected argument `" << args[i] << "'"));
+        fatal(fmt("unexpected argument `" << arg << "'"));
     }
   
   Promoter promoter(ds);
