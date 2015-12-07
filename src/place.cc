@@ -449,20 +449,29 @@ Placer::valid(int t)
                 sr = gate_sr[g],
                 cen = gate_cen[g];
               
-              if (!global_clk)
-                global_clk = clk;
-              else if (global_clk != clk)
-                return false;
+              if (clk)
+                {
+                  if (!global_clk)
+                    global_clk = clk;
+                  else if (global_clk != clk)
+                    return false;
+                }
               
-              if (!global_sr)
-                global_sr = sr;
-              else if (global_sr != sr)
-                return false;
+              if (sr)
+                {
+                  if (!global_sr)
+                    global_sr = sr;
+                  else if (global_sr != sr)
+                    return false;
+                }
               
-              if (!global_cen)
-                global_cen = cen;
-              else if (global_cen != cen)
-                return false;
+              if (cen)
+                {
+                  if (!global_cen)
+                    global_cen = cen;
+                  else if (global_cen != cen)
+                    return false;
+                }
               
               int g_neg_clk = (int)inst->get_param("NEG_CLK").get_bit(0);
               if (neg_clk == -1)
@@ -509,6 +518,8 @@ Placer::valid(int t)
             }
         }
       
+      int global_cen = 0;
+      
       Location loc0(t, 0),
         loc1(t, 1);
       int cell0 = chipdb->loc_cell(loc0),
@@ -528,15 +539,33 @@ Placer::valid(int t)
               if (g1)
                 return false;
             }
+          
+          int cen = gate_cen[g0];
+          if (cen)
+            {
+              if (!global_cen)
+                global_cen = cen;
+              else if (cen != global_cen)
+                return false;
+            }
         }
       if (g1)
         {
           if (!contains(package.loc_pin, loc1))
             return false;
           
-          Instance *inst0 = gates[g1];
-          if (inst0->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
+          Instance *inst1 = gates[g1];
+          if (inst1->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
             return false;
+          
+          int cen = gate_cen[g1];
+          if (cen)
+            {
+              if (!global_cen)
+                global_cen = cen;
+              else if (cen != global_cen)
+                return false;
+            }
         }
       
       if (g0 && g1)
@@ -916,6 +945,10 @@ Placer::Placer(random_generator &rg_, DesignState &ds_,
           Net *latch = inst->find_port("LATCH_INPUT_VALUE")->connection();
           if (latch)
             gate_cen[i] = net_idx.at(latch);
+          
+          Net *clock_enable = inst->find_port("CLOCK_ENABLE")->connection();
+          if (clock_enable)
+            gate_cen[i] = net_idx.at(clock_enable);
         }
       else if (models.is_gb(inst))
         {
@@ -955,7 +988,7 @@ Placer::place_initial()
       ++cell_type_n_placed[ct_idx];
       
       // FIXME at end
-      assert(valid(chipdb->cell_location[c].tile()));
+      // assert(valid(chipdb->cell_location[c].tile()));
     }
   
   // place chains
@@ -1043,6 +1076,12 @@ Placer::place_initial()
                   assert(cell_gate[cell] == 0);
                   cell_gate[cell] = g;
                   gate_cell[g] = cell;
+                }
+              
+              for (int j = 0; j < nt; ++j)
+                {
+                  int t = chipdb->tile(x + j, y);
+                  assert(valid(t));
                 }
               
               chain_x.push_back(x);
@@ -1213,6 +1252,9 @@ Placer::place_initial()
       for (int w = 0; w < n_nets; ++w)
         net_length[w] = compute_net_length(w);
     }
+  
+  // FIXME
+  check();
 }
 
 void
