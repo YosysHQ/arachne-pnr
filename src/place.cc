@@ -1078,12 +1078,6 @@ Placer::place_initial()
                   gate_cell[g] = cell;
                 }
               
-              for (int j = 0; j < nt; ++j)
-                {
-                  int t = chipdb->tile(x + j, y);
-                  assert(valid(t));
-                }
-              
               chain_x.push_back(x);
               chain_start.push_back(y);
               
