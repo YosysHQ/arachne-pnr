@@ -18,6 +18,7 @@
 #include "passlist.hh"
 #include "line_parser.hh"
 
+#include <cstring>
 #include <fstream>
 
 class PassListParser : public LineParser
