@@ -68,6 +68,8 @@ public:
   BasedVector<Instance *, 1> gates;
   std::map<Instance *, int, IdLess> gate_idx;
   
+  std::map<int, std::vector<int>> global_cells;
+  
   BasedBitVector<1> locked;
   BasedBitVector<1> chained;
   
@@ -122,6 +124,8 @@ public:
   
   std::vector<int> net_length;
   
+  bool inst_drives_global(Instance *inst, int c, int glb);
+  bool valid_global(int glb);
   bool valid(int t);
   
   int wire_length() const;
@@ -378,6 +382,74 @@ Placer::discard()
 }
 
 bool
+Placer::inst_drives_global(Instance *inst, int c, int glb)
+{
+  Location loc = chipdb->cell_location[c];
+  int t = loc.tile();
+  int x = chipdb->tile_x(t),
+    y = chipdb->tile_y(t);
+  if (models.is_gb_io(inst)
+      && inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected())
+    {
+      assert(chipdb->loc_pin_glb_num.at(loc) == glb);
+      return true;
+    }
+  
+  if (models.is_gb(inst)
+      && inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected())
+    {
+      assert(chipdb->gbufin.at(std::make_pair(x, y)) == glb);
+      return true;
+    }
+  
+  if (models.is_pllX(inst))
+    {
+      Port *a = inst->find_port("PLLOUTGLOBAL");
+      if (!a)
+        a = inst->find_port("PLLOUTGLOBALA");
+      assert(a);
+      if (a->connected())
+        {
+          const auto &p2 = chipdb->cell_mfvs.at(c).at("PLLOUT_A");
+          Location glb_loc(p2.first, std::stoi(p2.second));
+          if (chipdb->loc_pin_glb_num.at(glb_loc) == glb)
+            return true;
+        }
+      
+      Port *b = inst->find_port("PLLOUTGLOBALB");
+      if (b && b->connected())
+        {
+          const auto &p2 = chipdb->cell_mfvs.at(c).at("PLLOUT_B");
+          Location glb_loc(p2.first, std::stoi(p2.second));
+          if (chipdb->loc_pin_glb_num.at(glb_loc) == glb)
+            return true;
+        }
+    }
+  
+  return false;
+}
+
+bool
+Placer::valid_global(int glb)
+{
+  int n = 0;
+  for (int c : global_cells.at(glb))
+    {
+      int g = cell_gate[c];
+      if (!g)
+        continue;
+      Instance *inst = gates[g];
+      if (inst_drives_global(inst, c, glb))
+        {
+          if (n > 0)
+            return false;
+          ++n;
+        }
+    }
+  return true;
+}
+
+bool
 Placer::valid(int t)
 {
   int x = chipdb->tile_x(t),
@@ -481,15 +553,29 @@ Placer::valid(int t)
               if (g1)
                 return false;
             }
+          if (models.is_gb_io(inst0)
+              && inst0->find_port("GLOBAL_BUFFER_OUTPUT")->connected())
+            {
+              int glb = chipdb->loc_pin_glb_num.at(loc0);
+              if (!valid_global(glb))
+                return false;
+            }
         }
       if (g1)
         {
           if (!contains(package.loc_pin, loc1))
             return false;
           
-          Instance *inst0 = gates[g1];
-          if (inst0->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
+          Instance *inst1 = gates[g1];
+          if (inst1->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
             return false;
+          if (models.is_gb_io(inst1)
+              && inst1->find_port("GLOBAL_BUFFER_OUTPUT")->connected())
+            {
+              int glb = chipdb->loc_pin_glb_num.at(loc1);
+              if (!valid_global(glb))
+                return false;
+            }
         }
       
       if (g0 && g1)
@@ -512,8 +598,10 @@ Placer::valid(int t)
           
           Instance *inst = gates[g2];
           int gc = lookup_or_default(gb_inst_gc, inst, gc_clk);
-          int global = chipdb->gbufin.at(std::make_pair(x, y));
-          if (! (gc & (1 << global)))
+          int glb = chipdb->gbufin.at(std::make_pair(x, y));
+          if (! (gc & (1 << glb)))
+            return false;
+          if (!valid_global(glb))
             return false;
         }
       
@@ -523,6 +611,29 @@ Placer::valid(int t)
       Instance *inst3 = g3 ? gates[g3] : nullptr;
       if (inst3)
         {
+          Port *pa = inst3->find_port("PLLOUTGLOBAL");
+          if (!pa)
+            pa = inst3->find_port("PLLOUTGLOBALA");
+          assert(pa);
+          if (pa->connected())
+            {
+              const auto &p2 = chipdb->cell_mfvs.at(cell3).at("PLLOUT_A");
+              Location glb_loc(p2.first, std::stoi(p2.second));
+              int glb = chipdb->loc_pin_glb_num.at(glb_loc);
+              if (!valid_global(glb))
+                return false;
+            }
+          
+          Port *pb = inst3->find_port("PLLOUTGLOBALB");
+          if (pb && pb->connected())
+            {
+              const auto &p2 = chipdb->cell_mfvs.at(cell3).at("PLLOUT_B");
+              Location glb_loc(p2.first, std::stoi(p2.second));
+              int glb = chipdb->loc_pin_glb_num.at(glb_loc);
+              if (!valid_global(glb))
+                return false;
+            }
+          
           const auto &pA = chipdb->cell_mfvs.at(cell3).at("PLLOUT_A");
           int tA = pA.first;
           int iA = std::stoi(pA.second);
@@ -716,12 +827,43 @@ Placer::Placer(random_generator &rg_, DesignState &ds_)
     changed_tiles(chipdb->n_tiles),
     cell_gate(chipdb->n_cells, 0)
 {
+  for (const auto &p : chipdb->loc_pin_glb_num)
+    {
+      const Location &loc = p.first;
+      int c = chipdb->loc_cell(loc);
+      int glb = p.second;
+      global_cells[glb].push_back(c);
+    }
+  for (const auto &p : chipdb->gbufin)
+    {
+      int x = p.first.first,
+        y = p.first.second;
+      int glb = p.second;
+      int t = chipdb->tile(x, y);
+      Location loc(t, 2);
+      int c = chipdb->loc_cell(loc);
+      global_cells[glb].push_back(c);
+    }
+  
   for (int i = 1; i <= (int)chipdb->n_cells; ++i)
     {
+      // FIXME
       if (chipdb->cell_type[i] == CellType::PLL)
         {
           int t = chipdb->cell_location[i].tile();
           
+          // global_cells
+          const auto &p2a = chipdb->cell_mfvs.at(i).at("PLLOUT_A");
+          Location glb_loca(p2a.first, std::stoi(p2a.second));
+          int glba = chipdb->loc_pin_glb_num.at(glb_loca);
+          global_cells[glba].push_back(i);
+          
+          const auto &p2b = chipdb->cell_mfvs.at(i).at("PLLOUT_B");
+          Location glb_locb(p2b.first, std::stoi(p2b.second));
+          int glbb = chipdb->loc_pin_glb_num.at(glb_locb);
+          global_cells[glbb].push_back(i);
+          
+          // related tiles
           std::vector<int> t_related;
           t_related.push_back(t);
           
