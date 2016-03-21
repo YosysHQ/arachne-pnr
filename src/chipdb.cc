@@ -985,7 +985,7 @@ ChipDB *
 read_chipdb(const std::string &filename)
 {
   std::string expanded = expand_filename(filename);
-  std::ifstream ifs(expanded);
+  std::ifstream ifs(expanded, std::ifstream::in | std::ifstream::binary);
   if (ifs.fail())
     fatal(fmt("read_chipdb: failed to open `" << expanded << "': "
               << strerror(errno)));
