@@ -349,7 +349,7 @@ main(int argc, const char **argv)
       *logs << "write_binary_chipdb " << binary_chipdb << "\n";
       
       std::string expanded = expand_filename(binary_chipdb);
-      std::ofstream ofs(expanded);
+      std::ofstream ofs(expanded, std::ofstream::out | std::ofstream::binary);
       if (ofs.fail())
         fatal(fmt("write_binary_chidpb: failed to open `" << expanded << "': "
                   << strerror(errno)));
