@@ -96,6 +96,10 @@ usage()
     << "    -r\n"
     << "        Randomize seed.\n"
     << "\n"
+    << "    -m <int>, --max-passes <int>\n"
+    << "        Maximum number of routing passes.\n"
+    << "        Default: 50\n"
+    << "\n"
     << "    -s <int>, --seed <int>\n"
     << "        Set seed for random generator to <int>.\n"
     << "        Default: 1\n"
@@ -136,6 +140,7 @@ main(int argc, const char **argv)
     *place_blif = nullptr,
     *output_file = nullptr,
     *seed_str = nullptr,
+    *max_passes_str = nullptr,
     *binary_chipdb = nullptr;
   
   for (int i = 1; i < argc; ++i)
@@ -243,6 +248,15 @@ main(int argc, const char **argv)
               ++i;
               seed_str = argv[i];
             }
+          else if (!strcmp(argv[i], "-m")
+                   || !strcmp(argv[i], "--max-passes"))
+            {
+              if (i + 1 >= argc)
+                fatal(fmt(argv[i] << ": expected argument"));
+              
+              ++i;
+              max_passes_str = argv[i];
+            }
           else if (!strcmp(argv[i], "-o")
                    || !strcmp(argv[i], "--output-file"))
             {
@@ -318,6 +332,28 @@ main(int argc, const char **argv)
     }
   else
     seed = 1;
+
+  int max_passes = 0;
+  if (max_passes_str)
+    {
+      std::string max_passes_s = max_passes_str;
+      
+      if (max_passes_s.empty())
+        fatal("invalid empty max-passes value");
+      
+      for (char ch : max_passes_s)
+        {
+          if (ch >= '0'
+              && ch <= '9')
+            max_passes = max_passes * 10 + (unsigned)(ch - '0');
+          else
+            fatal(fmt("invalid character `" 
+                      << ch
+                      << "' in unsigned integer literal in max-passes value"));
+        }
+    }
+  else
+    max_passes = 50;
   
   if (randomize_seed)
     {
@@ -559,7 +595,7 @@ main(int argc, const char **argv)
     // d->dump();
     
     *logs << "route...\n";
-    route(ds);
+    route(ds, max_passes);
 #ifndef NDEBUG
     d->check();
 #endif
