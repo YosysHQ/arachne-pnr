@@ -98,7 +98,7 @@ usage()
     << "\n"
     << "    -m <int>, --max-passes <int>\n"
     << "        Maximum number of routing passes.\n"
-    << "        Default: 50\n"
+    << "        Default: 200\n"
     << "\n"
     << "    -s <int>, --seed <int>\n"
     << "        Set seed for random generator to <int>.\n"
@@ -353,7 +353,7 @@ main(int argc, const char **argv)
         }
     }
   else
-    max_passes = 50;
+    max_passes = 200;
   
   if (randomize_seed)
     {
