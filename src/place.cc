@@ -1725,11 +1725,15 @@ Placer::place()
   *logs << "  initial wire length = " << wire_length() << "\n";
   
   int n_no_progress = 0;
+  double avg_wire_length = wire_length();
   
-  for (;;)
+  for (int iter=1;; iter++)
     {
       n_move = n_accept = 0;
       improved = false;
+
+      if (iter % 50 == 0)
+        *logs << "  at iteration #" << iter << ": temp = " << temp << ", wire length = " << wire_length() << "\n";
       
       for (int m = 0; m < 15; ++m)
         {
@@ -1784,28 +1788,37 @@ Placer::place()
       
       int M = std::max(chipdb->width,
                        chipdb->height);
-      
+
       double upper = 0.6,
         lower = 0.4;
       
-      if (Raccept >= 0.8)
-        temp *= 0.5;
-      else if (Raccept > upper)
-        {
-          if (diameter < M)
-            ++diameter;
-          else
-            temp *= 0.9;
-        }
-      else if (Raccept > lower)
-        temp *= 0.95;
+      if (wire_length() < 0.95 * avg_wire_length)
+        avg_wire_length = 0.8*avg_wire_length + 0.2*wire_length();
       else
         {
-          // Raccept < 0.3
-          if (diameter > 1)
-            --diameter;
+          if (Raccept >= 0.8)
+            {
+              temp *= 0.7;
+            }
+          else if (Raccept > upper)
+            {
+              if (diameter < M)
+                ++diameter;
+              else
+                temp *= 0.9;
+            }
+          else if (Raccept > lower)
+            {
+              temp *= 0.95;
+            }
           else
-            temp *= 0.8;
+            {
+              // Raccept < 0.3
+              if (diameter > 1)
+                --diameter;
+              else
+                temp *= 0.8;
+            }
         }
     }
   
