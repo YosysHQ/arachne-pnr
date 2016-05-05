@@ -78,7 +78,7 @@ class Router
   std::vector<std::vector<int>> net_targets;
   std::vector<Net *> net_net;
   
-  static const int max_passes = 50;
+  int max_passes;
   int passes;
   
   int n_shared;
@@ -112,7 +112,7 @@ class Router
 #endif
   
 public:
-  Router(DesignState &ds);
+  Router(DesignState &ds, int max_passes_v);
   
   void route();
 };
@@ -279,7 +279,7 @@ Router::check()
 }
 #endif
 
-Router::Router(DesignState &ds)
+Router::Router(DesignState &ds, int max_passes_v)
   : chipdb(ds.chipdb),
     d(ds.d),
     models(ds.models),
@@ -295,6 +295,7 @@ Router::Router(DesignState &ds)
     cnet_ymin(chipdb->n_nets),
     cnet_ymax(chipdb->n_nets),
     n_nets(0),
+    max_passes(max_passes_v),
     n_shared(0),
     demand(chipdb->n_nets, 0),
     historical_demand(chipdb->n_nets, 0),
@@ -872,9 +873,9 @@ Router::route()
 }
 
 void
-route(DesignState &ds)
+route(DesignState &ds, int max_passes)
 {
-  Router router(ds);
+  Router router(ds, max_passes);
   
   clock_t start = clock();
   router.route();
