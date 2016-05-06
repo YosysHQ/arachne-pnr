@@ -1234,9 +1234,6 @@ Placer::configure()
       Instance *inst = gates[g];
       int cell = gate_cell[g];
       
-      if (g == 5)
-        *logs << "cell = " << cell << "\n";
-      
       const Location &loc = chipdb->cell_location[cell];
       
       if (models.is_warmboot(inst)) {
