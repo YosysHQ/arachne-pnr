@@ -766,6 +766,33 @@ Router::route()
         }
 
 #if 0
+      if (n_shared < 5)
+        {
+          std::map<int, std::set<int>> net_route_reverse;
+
+          for (int i = 0; i < n_nets; ++i)
+              for (const auto &p : net_route[i])
+                  if (demand[p.second] > 1)
+                    net_route_reverse[p.second].insert(i);
+
+          for (int i = 0; i < chipdb->n_nets; ++i)
+            if (demand[i] > 1)
+              {
+                if (chipdb->net_tile_name.empty())
+                  *logs << "    shared net #" << i << " (demand = " << demand[i] << ").\n";
+                else
+                  {
+                    auto &net_tile_name = chipdb->net_tile_name.at(i);
+                    int tile_x = chipdb->tile_x(net_tile_name.first), tile_y = chipdb->tile_y(net_tile_name.first);
+                    *logs << "    shared net #" << i << " (demand = " << demand[i] << ") in tile " << tile_x << "," << tile_y << ": " << net_tile_name.second << "\n";
+                  }
+                for (auto j : net_route_reverse.at(i))
+                  *logs << "      used by wire " << net_net[j]->name() << "\n";
+              }
+        }
+#endif
+
+#if 0
       for (int i = 0; i < n_nets; ++i)
         {
           for (const auto &p : net_route[i])
