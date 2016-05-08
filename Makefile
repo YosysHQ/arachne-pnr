@@ -5,7 +5,8 @@
 
 # build optimized without -DNDEBUG
 # OPTDEBUGFLAGS = -O0 -fno-inline -g
-OPTDEBUGFLAGS = -O2 # -DNDEBUG
+# OPTDEBUGFLAGS = -O3 -DNDEBUG
+OPTDEBUGFLAGS = -O2
 SRC = src
 
 # clang only: -Wglobal-constructors

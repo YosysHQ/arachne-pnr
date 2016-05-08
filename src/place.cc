@@ -384,10 +384,12 @@ Placer::discard()
 bool
 Placer::inst_drives_global(Instance *inst, int c, int glb)
 {
+#ifndef NDEBUG
   Location loc = chipdb->cell_location[c];
   int t = loc.tile();
   int x = chipdb->tile_x(t),
     y = chipdb->tile_y(t);
+#endif
   if (models.is_gb_io(inst)
       && inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected())
     {
@@ -1401,6 +1403,9 @@ Placer::configure()
                 }
             }
           assert(found);
+
+	  // avoid "variable ‘found’ set but not used" in NDEBUG builds
+	  if (found) { }
           
           const CBit &cbit_pt0 = func_cbits.at(fmt("IOB_" << io_loc.pos() << ".PINTYPE_0"))[0],
             &cbit_pt1 = func_cbits.at(fmt("IOB_" << io_loc.pos() << ".PINTYPE_1"))[0];
