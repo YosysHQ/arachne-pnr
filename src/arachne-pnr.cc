@@ -67,7 +67,11 @@ usage()
     << "\n"
     << "    -c <file>, --chipdb <chipdb-file>\n"
     << "        Read chip database from <chipdb-file>.\n"
+#ifdef _WIN32
+    << "        Default: +/chipdb-<device>.bin\n"
+#else
     << "        Default: +/share/arachne-pnr/chipdb-<device>.bin\n"
+#endif
     << "\n"
     << "    --write-binary-chipdb <file>\n"
     << "        Write binary chipdb to <file>.\n"
@@ -374,9 +378,15 @@ main(int argc, const char **argv)
   if (chipdb_file)
     chipdb_file_s = chipdb_file;
   else
+#ifdef _WIN32
+    chipdb_file_s = (std::string("+/chipdb-")
+                     + device
+                     + ".bin");
+#else
     chipdb_file_s = (std::string("+/share/arachne-pnr/chipdb-")
                      + device 
                      + ".bin");
+#endif
   *logs << "read_chipdb " << chipdb_file_s << "...\n";
   const ChipDB *chipdb = read_chipdb(chipdb_file_s);
   

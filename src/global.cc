@@ -176,8 +176,6 @@ Promoter::pll_pass_through(Instance *inst, int cell, const char *p_name)
   const auto &p2 = chipdb->cell_mfvs.at(cell).at(p_name);
   int pass_cell = chipdb->loc_cell(Location(p2.first, 0));
   
-  *logs << "pass_cell = " << pass_cell << "\n";
-  
   extend(ds.placement, pass_inst, pass_cell);
 }
 

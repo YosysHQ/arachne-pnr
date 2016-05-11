@@ -167,10 +167,16 @@ std::string
 expand_filename(const std::string &file)
 {
   if (file[0] == '+')
+#ifdef _WIN32
+    return (proc_self_dirname()
+            + std::string(file.begin() + 2,
+                          file.end()));
+#else
     return (proc_self_dirname()
             + ".."
             + std::string(file.begin() + 1,
                           file.end()));
+#endif
   else
     return file;
 }
