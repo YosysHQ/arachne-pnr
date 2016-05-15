@@ -733,6 +733,9 @@ ChipDBParser::parse_cmd_extra_cell()
           extend(chipdb->cell_mfvs, c, mfvs);
           return;
         }
+
+      if (words.size() > 0 && words[0] == "LOCKED")
+        continue;
       
       if (words.size() != 4)
         fatal("invalid .extra_cell entry");
