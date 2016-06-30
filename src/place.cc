@@ -1620,7 +1620,7 @@ Placer::configure()
   // set IoCtrl configuration bits
   {
     const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
-    const CBit &lvds = func_cbits.at("IoCtrl.LVDS")[0];
+    const CBit &lvds_cbit = func_cbits.at("IoCtrl.LVDS")[0];
     
     std::map<Location, int> loc_pll;
     int pll_idx = cell_type_idx(CellType::PLL);
@@ -1635,11 +1635,37 @@ Placer::configure()
         extend(loc_pll, b_loc, cell);
       }
     
+    std::set<Location> ieren_partner_image;
+    for (const auto &p : package.pin_loc)
+      {
+        bool is_lvds = false;
+        const Location &loc = p.second;
+        int pll_cell = lookup_or_default(loc_pll, loc, 0);
+
+        if (!pll_cell)
+          {
+            int cell = chipdb->loc_cell(loc);
+            int g = cell_gate[cell];
+            if (g)
+              {
+                Instance *inst = gates[g];
+                is_lvds = inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT";
+              }
+          }
+
+        if (is_lvds)
+          {
+            Location partner_loc(loc.tile(), !loc.pos());
+            extend(ieren_partner_image, partner_loc);
+          }
+      }
+
     for (const auto &p : package.pin_loc)
       {
         // unused io
         bool enable_input = false;
         bool pullup = true;  // default pullup
+        bool is_lvds = false;
         
         const Location &loc = p.second;
         int pll_cell = lookup_or_default(loc_pll, loc, 0);
@@ -1663,15 +1689,29 @@ Placer::configure()
                         && inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected()))
                   enable_input = true;
                 pullup = inst->get_param("PULLUP").get_bit(0);
-                conf.set_cbit(CBit(loc.tile(),
-                                   lvds.row,
-                                   lvds.col),
-                              inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT");
+                is_lvds = inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT";
+                conf.set_cbit(CBit(loc.tile(), lvds_cbit.row, lvds_cbit.col), is_lvds);
               }
           }
+
+        if (contains(ieren_partner_image, loc))
+          continue;
         
+        if (is_lvds)
+          {
+            enable_input = false;
+            pullup = false;
+          }
+
         const Location &ieren_loc = chipdb->ieren.at(loc);
         configure_io(ieren_loc, enable_input, pullup);
+
+        if (is_lvds)
+          {
+            Location partner_loc(loc.tile(), !loc.pos());
+            const Location &partner_ieren_loc = chipdb->ieren.at(partner_loc);
+            configure_io(partner_ieren_loc, enable_input, pullup);
+          }
       }
     
     std::set<Location> ieren_image;
