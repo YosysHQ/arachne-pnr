@@ -334,7 +334,9 @@ Packer::find_carry_lc(Instance *c)
 {
   Port *ci = c->find_port("CI");
   Net *ci_conn = ci->connection();
-  
+
+  /* FIXME if two connections (CO -> CI), could return a LUT that
+     matches I1/I2 */
   if (!ci_conn
       || ci_conn->is_constant()
       || ci_conn->connections().size() != 3)
@@ -494,22 +496,40 @@ Packer::pack_carries_from(Instance *f)
             }
         }
       
+      c->remove();
+      delete c;
+      
       if (!next_c
           && out_conn)
         {
           assert(chain.size() < max_chain_length);
           
-          Instance *lc2_inst = top->add_instance(models.lc);
-          
           Port *p = chain.back()->find_port("COUT");
           assert(p && p->connection() == out_conn);
-          carry_pass_through_lc(lc2_inst, p);
+          
+          Instance *lc2_inst = nullptr;
+          
+          // COUT might drive a LC I3
+          if (out_conn->connections().size() == 2)
+            {
+              Port *consumer = p->connection_other_port();
+              if (consumer->name() == "I3"
+                  && isa<Instance>(consumer->node()))
+                {
+                  Instance *inst = cast<Instance>(consumer->node());
+                  if (models.is_lc(inst))
+                    lc2_inst = inst;
+                }
+            }
+          
+          if (!lc2_inst)
+            {
+              lc2_inst = top->add_instance(models.lc);
+              carry_pass_through_lc(lc2_inst, p);
+            }
           
           chain.push_back(lc2_inst);
         }
-      
-      c->remove();
-      delete c;
       
       c = next_c;
     }
