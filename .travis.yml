@@ -39,7 +39,7 @@ before_install:
   - (cd iverilog && autoconf && ./configure --prefix=$HOME/extras && make && make install)
   - export PATH=$PATH:$HOME/extras/bin
   - git clone https://github.com/cliffordwolf/icestorm.git
-  - (cd icestorm && make && make DESTDIR=$HOME/extras install)
+  - (cd icestorm && make && make PREFIX=$HOME/extras install)
   - git clone https://github.com/cliffordwolf/yosys.git
   - (cd yosys && make && make test && make PREFIX=$HOME/extras install)
 compiler:
