@@ -587,6 +587,21 @@ Placer::valid(int t)
           if (inst0->get_param("NEG_TRIGGER").get_bit(0)
               != inst1->get_param("NEG_TRIGGER").get_bit(0))
             return false;
+          
+          Net *cen0 = inst0->find_port("CLOCK_ENABLE")->connection(),
+            *cen1 = inst1->find_port("CLOCK_ENABLE")->connection();
+          if (cen0 && cen1 && cen0 != cen1)
+            return false;
+          
+          Net *inclk0 = inst0->find_port("INPUT_CLK")->connection(),
+            *inclk1 = inst1->find_port("INPUT_CLK")->connection();
+          if (inclk0 && inclk1 && inclk0 != inclk1)
+            return false;
+          
+          Net *outclk0 = inst0->find_port("OUTPUT_CLK")->connection(),
+            *outclk1 = inst1->find_port("OUTPUT_CLK")->connection();
+          if (outclk0 && outclk1 && outclk0 != outclk1)
+            return false;
         }
       
       Location loc2(t, 2);

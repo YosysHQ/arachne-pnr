@@ -219,14 +219,31 @@ ConstraintsPlacer::place()
               Instance *inst_other = cell_gate[cell_other];
               if (inst_other)
                 {
+                  int x = chipdb->tile_x(t),
+                    y = chipdb->tile_y(t);
+                  
                   if (inst->get_param("NEG_TRIGGER").get_bit(0)
                       != inst_other->get_param("NEG_TRIGGER").get_bit(0))
-                    {
-                      int x = chipdb->tile_x(t),
-                        y = chipdb->tile_y(t);
-                      fatal(fmt("pcf error: incompatible NEG_TRIGGER parameters in PIO at (" 
-                                << x << ", " << y << ")"));
-                    }
+                    fatal(fmt("pcf error: incompatible NEG_TRIGGER parameters in PIO at (" 
+                              << x << ", " << y << ")"));
+                  
+                  Net *cen = inst->find_port("CLOCK_ENABLE")->connection(),
+                    *cen_other = inst_other->find_port("CLOCK_ENABLE")->connection();
+                  if (cen && cen_other && cen != cen_other)
+                    fatal(fmt("pcf error: multiple CLOCK_ENABLE drivers in PIO at ("
+                              << x << ", " << y << ")"));
+                  
+                  Net *inclk = inst->find_port("INPUT_CLK")->connection(),
+                    *inclk_other = inst_other->find_port("INPUT_CLK")->connection();
+                  if (inclk && inclk_other && inclk != inclk_other)
+                    fatal(fmt("pcf error: multiple INPUT_CLK drivers in PIO at ("
+                              << x << ", " << y << ")"));
+                  
+                  Net *outclk = inst->find_port("OUTPUT_CLK")->connection(),
+                    *outclk_other = inst_other->find_port("OUTPUT_CLK")->connection();
+                  if (outclk && outclk_other && outclk != outclk_other)
+                    fatal(fmt("pcf error: multiple OUTPUT_CLK drivers in PIO at ("
+                              << x << ", " << y << ")"));
                 }
             }
           
