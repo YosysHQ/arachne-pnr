@@ -32,8 +32,6 @@
 
 #include <cassert>
 
-extern const char *version_str;
-
 class random_generator
 {
   static const unsigned m = 2147483647;

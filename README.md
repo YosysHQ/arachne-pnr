@@ -54,7 +54,7 @@ should also install Yosys to synthesize designs.
 To install, just go to the arachne-pnr directory and run
 
 ```
-$ make && sudo make install
+$ ./autogen.sh && ./configure && make && sudo make install
 ```
 
 ## Invoking/Example

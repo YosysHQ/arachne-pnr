@@ -29,6 +29,8 @@
 #include "designstate.hh"
 #include "util.hh"
 
+#include "config.h"
+
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -273,7 +275,7 @@ main(int argc, const char **argv)
           else if (!strcmp(argv[i], "-v")
                    || !strcmp(argv[i], "--version"))
             {
-              std::cout << version_str << "\n";
+              std::cout << PACKAGE_NAME " " PNR_PACKAGE_VERSION_STRING << "\n";
               exit(EXIT_SUCCESS);
             }
           else
@@ -507,7 +509,7 @@ main(int argc, const char **argv)
             if (fs.fail())
               fatal(fmt("write_blif: failed to open `" << expanded << "': "
                         << strerror(errno)));
-            fs << "# " << version_str << "\n";
+            fs << "# " << PACKAGE_NAME " " PNR_PACKAGE_VERSION_STRING << "\n";
             d->write_blif(fs);
           }
         if (pack_verilog)
@@ -518,7 +520,7 @@ main(int argc, const char **argv)
             if (fs.fail())
               fatal(fmt("write_verilog: failed to open `" << expanded << "': "
                         << strerror(errno)));
-            fs << "/* " << version_str << " */\n";
+            fs << "/* " << PACKAGE_NAME " " PNR_PACKAGE_VERSION_STRING << " */\n";
             d->write_verilog(fs);
           }
         
@@ -559,7 +561,7 @@ main(int argc, const char **argv)
             if (fs.fail())
               fatal(fmt("write_pcf: failed to open `" << expanded << "': "
                         << strerror(errno)));
-            fs << "# " << version_str << "\n";
+            fs << "# " << PACKAGE_NAME " " PNR_PACKAGE_VERSION_STRING << "\n";
             for (const auto &p : ds.placement)
               {
                 if (ds.models.is_io(p.first))
@@ -597,7 +599,7 @@ main(int argc, const char **argv)
             if (fs.fail())
               fatal(fmt("write_blif: failed to open `" << expanded << "': "
                         << strerror(errno)));
-            fs << "# " << version_str << "\n";
+            fs << "# " << PACKAGE_NAME " " PNR_PACKAGE_VERSION_STRING << "\n";
             d->write_blif(fs);
           }
       }

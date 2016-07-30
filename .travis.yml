@@ -1,5 +1,8 @@
 sudo: false
-script: if [ "$TRAVIS_OS_NAME" = "osx" ]; then make ICEBOX=$HOME/extras/share/icebox simpletest; else make ICEBOX=$HOME/extras/share/icebox test; fi
+script:
+  - ./autogen.sh
+  - PATH=$HOME/extras/share/bin:$PATH ICEBOX_DIR=$HOME/extras/share/icebox ./configure
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then make simpletest; else make test; fi
 language: cpp
 addons:
   apt:

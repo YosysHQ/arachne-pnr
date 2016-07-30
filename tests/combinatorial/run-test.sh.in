@@ -1,0 +1,37 @@
+#!/bin/bash
+set -ex
+
+arachne_pnr=@abs_top_builddir@/bin/arachne-pnr
+
+rm -rf temp
+@MKDIR_P@ mkdir temp
+@PYTHON@ generate.py
+
+for d in 1k 8k; do
+    rm -rf ${d}
+    @MKDIR_P@ ${d}
+    for i in temp/uut_?????.v; do
+        pf=${i%.*}  # temp/uut_00000
+        base=${pf##*/} # uut_00000
+        dpf=${d}/${base} # 1k/uut_00000
+	@YOSYS@ -q -p "synth_ice40 -blif ${dpf}_gate.blif" ${pf}.v
+        rm -f ${dpf}_gate.chip.txt # don't pick up stale copy
+        $arachne_pnr -d ${d} -w ${dpf}_gate.pcf -V ${dpf}_pp.v -o ${dpf}_gate.chip.txt ${dpf}_gate.blif > ${dpf}.pnr-log 2>&1 \
+            || @GREP@ -q 'failed to route' ${dpf}.pnr-log
+        if [ -f ${dpf}_gate.chip.txt ]; then
+            # check pp
+	    @YOSYS@ -q -l ${dpf}_pp.log -p "read_verilog +/ice40/cells_sim.v ${dpf}_pp.v; script ${pf}_pp.ys"
+            @GREP@ -q 'SAT proof finished - no model found: SUCCESS!' ${dpf}_pp.log \
+                || @GREP@ -q 'Interrupted SAT solver: TIMEOUT!' ${dpf}_pp.log
+            
+            # check bitstream
+            @ICEPACK@ ${dpf}_gate.chip.txt ${dpf}_gate.bin
+            # icebox_explain ${dpf}_gate.chip.txt > ${dpf}_gate.ex
+	    @ICEBOX_VLOG@ -n ${base} -p ${dpf}_gate.pcf ${dpf}_gate.chip.txt > ${dpf}_gate.v
+	    @YOSYS@ -q -l ${dpf}.log -p "read_verilog ${dpf}_gate.v; script ${pf}.ys"
+            @GREP@ -q 'SAT proof finished - no model found: SUCCESS!' ${dpf}.log \
+                || @GREP@ -q 'Interrupted SAT solver: TIMEOUT!' ${dpf}.log
+        fi
+    done
+done
+echo OK.
