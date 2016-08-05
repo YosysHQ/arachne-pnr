@@ -18,6 +18,8 @@
 
 #include <vector>
 
+class Instance;
+
 class CarryChains
 {
 public:
