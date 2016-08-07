@@ -17,7 +17,6 @@
 #define PNR_CHIPDB_HH
 
 #include "location.hh"
-#include "util.hh"
 #include "hashmap.hh"
 #include "bstream.hh"
 #include "vector.hh"

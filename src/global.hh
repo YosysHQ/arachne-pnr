@@ -18,8 +18,6 @@
 
 class DesignState;
 
-#include "util.hh"
-
 static const uint8_t gc_clk = 0xff;
 static const uint8_t gc_cen = 0xaa; // 1357
 static const uint8_t gc_rclke = 0x8a; // 137, 5 missing

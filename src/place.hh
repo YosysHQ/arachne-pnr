@@ -16,7 +16,6 @@
 #ifndef PNR_PLACE_HH
 #define PNR_PLACE_HH
 
-#include "util.hh"
 #include <ostream>
 
 class Design;

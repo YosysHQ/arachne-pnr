@@ -17,7 +17,6 @@
 #define PNR_ROUTE_HH
 
 #include "location.hh"
-#include "util.hh"
 
 #include <map>
 

@@ -16,7 +16,6 @@
 #ifndef PNR_LOCATION_HH
 #define PNR_LOCATION_HH
 
-#include "util.hh"
 #include "bstream.hh"
 
 #include <ostream>

@@ -16,7 +16,6 @@
 #ifndef PNR_NETLIST_HH
 #define PNR_NETLIST_HH
 
-#include "util.hh"
 #include "bitvector.hh"
 #include "line_parser.hh"
 #include "vector.hh"
