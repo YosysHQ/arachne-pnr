@@ -2,6 +2,7 @@
 *~
 *.o
 /bin/arachne-pnr
+/bin/arachne-pnr.exe
 /tests/test_bv
 /tests/test_us
 /diff
