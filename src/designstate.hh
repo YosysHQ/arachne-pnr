@@ -13,6 +13,9 @@
    You should have received a copy of the GNU General Public License
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
+#ifndef PNR_DESIGNSTATE_HH
+#define PNR_DESIGNSTATE_HH
+
 #include "netlist.hh"
 #include "chipdb.hh"
 #include "pcf.hh"
@@ -41,3 +44,5 @@ public:
   bool is_dual_pll(Instance *inst) const;
   std::vector<int> pll_out_io_cells(Instance *inst, int cell) const;
 };
+
+#endif

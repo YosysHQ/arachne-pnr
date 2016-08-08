@@ -13,6 +13,9 @@
    You should have received a copy of the GNU General Public License
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
+#ifndef PNR_PRIORITYQQ_HH
+#define PNR_PRIORITYQQ_HH
+
 #include <functional>
 #include <vector>
 
@@ -55,3 +58,5 @@ public:
     return v[0];
   }
 };
+
+#endif
