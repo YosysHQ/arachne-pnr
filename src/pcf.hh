@@ -19,7 +19,6 @@
 #include <map>
 #include <string>
 
-class Design;
 class DesignState;
 
 class Constraints

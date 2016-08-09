@@ -20,11 +20,6 @@
 
 #include <map>
 
-class Design;
-class Instance;
-class ChipDB;
-class Configuration;
-
 extern void route(DesignState &ds, int max_passes);
 
 #endif
