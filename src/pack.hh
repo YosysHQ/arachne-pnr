@@ -18,6 +18,6 @@
 
 class DesignState;
 
-extern void pack(DesignState &ds);
+void pack(DesignState &ds);
 
 #endif

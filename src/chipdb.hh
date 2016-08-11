@@ -126,8 +126,8 @@ public:
   {}
 };
 
-extern obstream &operator<<(obstream &obs, const Switch &sw);
-extern ibstream &operator>>(ibstream &ibs, Switch &sw);
+obstream &operator<<(obstream &obs, const Switch &sw);
+ibstream &operator>>(ibstream &ibs, Switch &sw);
 
 enum class TileType : int {
   EMPTY, IO, LOGIC, RAMB, RAMT,
@@ -137,7 +137,7 @@ enum class CellType : int {
   LOGIC, IO, GB, RAM, WARMBOOT, PLL,
 };
 
-extern std::string cell_type_name(CellType ct);
+std::string cell_type_name(CellType ct);
 
 inline obstream &operator<<(obstream &obs, TileType t)
 {
@@ -187,7 +187,7 @@ public:
 
 }
 
-extern std::string tile_type_name(TileType t);
+std::string tile_type_name(TileType t);
 
 class Package
 {
@@ -320,6 +320,6 @@ public:
   void bread(ibstream &ibs);
 };
 
-extern ChipDB *read_chipdb(const std::string &filename);
+ChipDB *read_chipdb(const std::string &filename);
 
 #endif

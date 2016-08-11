@@ -19,6 +19,6 @@
 class random_generator;
 class DesignState;
 
-extern void place(random_generator &rg, DesignState &ds);
+void place(random_generator &rg, DesignState &ds);
 
 #endif

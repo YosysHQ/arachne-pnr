@@ -82,7 +82,7 @@ enum class Direction
   IN, OUT, INOUT,
 };
 
-extern Direction opposite_direction(Direction d);
+Direction opposite_direction(Direction d);
 
 enum class Value
 {

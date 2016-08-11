@@ -20,6 +20,6 @@
 
 #include <map>
 
-extern void route(DesignState &ds, int max_passes);
+void route(DesignState &ds, int max_passes);
 
 #endif
