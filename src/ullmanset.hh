@@ -13,6 +13,9 @@
    You should have received a copy of the GNU General Public License
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
+#ifndef PNR_ULLMANSET_HH
+#define PNR_ULLMANSET_HH
+
 #include "vector.hh"
 
 #include <cstddef>
@@ -94,3 +97,5 @@ public:
 
 using UllmanSet = BasedUllmanSet<0>;
 using UllmanSet1 = BasedUllmanSet<1>;
+
+#endif

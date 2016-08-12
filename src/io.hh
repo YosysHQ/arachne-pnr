@@ -18,6 +18,6 @@
 
 class Design;
 
-extern void instantiate_io(Design *d);
+void instantiate_io(Design *d);
 
 #endif

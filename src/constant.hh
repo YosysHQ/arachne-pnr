@@ -19,6 +19,6 @@
 class Design;
 class ChipDB;
 
-extern void realize_constants(const ChipDB *chipdb, Design *d);
+void realize_constants(const ChipDB *chipdb, Design *d);
 
 #endif

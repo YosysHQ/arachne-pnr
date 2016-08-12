@@ -18,8 +18,6 @@
 
 class DesignState;
 
-#include "util.hh"
-
 static const uint8_t gc_clk = 0xff;
 static const uint8_t gc_cen = 0xaa; // 1357
 static const uint8_t gc_rclke = 0x8a; // 137, 5 missing
@@ -29,7 +27,7 @@ static const uint8_t gc_re = 0x54; // 246, 0 missing
 static const uint8_t gc_wclke = gc_cen;
 static const uint8_t gc_we = gc_sr;
 
-extern const char *global_class_name(uint8_t gc);
+const char *global_class_name(uint8_t gc);
 
 extern std::vector<uint8_t> global_classes;
 

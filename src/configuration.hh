@@ -16,10 +16,9 @@
 #ifndef PNR_CONFIGURATION_HH
 #define PNR_CONFIGURATION_HH
 
-#include "util.hh"
+#include "chipdb.hh"
 #include <ostream>
 
-class ChipDB;
 class Design;
 class Instance;
 class Net;

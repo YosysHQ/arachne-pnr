@@ -16,7 +16,6 @@
 #ifndef PNR_NETLIST_HH
 #define PNR_NETLIST_HH
 
-#include "util.hh"
 #include "bitvector.hh"
 #include "line_parser.hh"
 #include "vector.hh"
@@ -83,7 +82,7 @@ enum class Direction
   IN, OUT, INOUT,
 };
 
-extern Direction opposite_direction(Direction d);
+Direction opposite_direction(Direction d);
 
 enum class Value
 {

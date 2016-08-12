@@ -16,19 +16,9 @@
 #ifndef PNR_PLACE_HH
 #define PNR_PLACE_HH
 
-#include "util.hh"
-#include <ostream>
-
-class Design;
-class Instance;
-class Configuration;
-class ChipDB;
-class Package;
-class Constraints;
-class CarryChains;
-class IdLess;
+class random_generator;
 class DesignState;
 
-extern void place(random_generator &rg, DesignState &ds);
+void place(random_generator &rg, DesignState &ds);
 
 #endif

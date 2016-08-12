@@ -16,16 +16,8 @@
 #ifndef PNR_ROUTE_HH
 #define PNR_ROUTE_HH
 
-#include "location.hh"
-#include "util.hh"
+class DesignState;
 
-#include <map>
-
-class Design;
-class Instance;
-class ChipDB;
-class Configuration;
-
-extern void route(DesignState &ds, int max_passes);
+void route(DesignState &ds, int max_passes);
 
 #endif

@@ -151,8 +151,8 @@ operator<<(std::ostream &s, const std::unordered_map<K, V> &M)
 
 #define fmt(x) (static_cast<const std::ostringstream&>(std::ostringstream() << x).str())
 
-extern void fatal(const std::string &msg);
-extern void warning(const std::string &msg);
+void fatal(const std::string &msg);
+void warning(const std::string &msg);
 
 template<typename S, typename T> void
 extend(S &s, const T &x)
@@ -190,7 +190,7 @@ keys(const M &m)
   return std::move(keys);
 }
 
-extern std::string unescape(const std::string &s);
+std::string unescape(const std::string &s);
 
 template<typename K, typename V> inline const V &
 lookup(const std::map<K, V> &M, const K &key)
@@ -246,7 +246,7 @@ is_suffix(const std::string &s, const std::string &suffix)
   return r.first == suffix.rend();
 }
 
-extern std::string proc_self_dirname();
+std::string proc_self_dirname();
 
 inline char
 hexdigit(int i, char a = 'a')
@@ -295,7 +295,7 @@ public:
 
 }
 
-extern std::string expand_filename(const std::string &file);
+std::string expand_filename(const std::string &file);
 
 template<typename T> void
 pop(std::vector<T> &v, int i)
