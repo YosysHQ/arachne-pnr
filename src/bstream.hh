@@ -149,6 +149,11 @@ inline obstream &operator<<(obstream &obs, unsigned long x)
   return bwrite_unsigned_integral_type<unsigned long>(obs, x);
 }
 
+inline obstream &operator<<(obstream &obs, unsigned long long x)
+{
+  return bwrite_unsigned_integral_type<unsigned long long>(obs, x);
+}
+
 inline obstream &operator<<(obstream &obs, const std::string &s)
 {
   obs << s.size();
@@ -306,6 +311,11 @@ inline ibstream &operator>>(ibstream &ibs, long &x)
 inline ibstream &operator>>(ibstream &ibs, unsigned long &x)
 {
   return bread_unsigned_integral_type<unsigned long>(ibs, x);
+}
+
+inline ibstream &operator>>(ibstream &ibs, unsigned long long &x)
+{
+  return bread_unsigned_integral_type<unsigned long long>(ibs, x);
 }
 
 inline ibstream &operator>>(ibstream &ibs, std::string &s)
