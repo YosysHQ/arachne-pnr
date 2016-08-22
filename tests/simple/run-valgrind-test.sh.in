@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -ex
+
+arachne_pnr=@abs_top_builddir@/bin/arachne-pnr
+
+@VALGRIND@ $arachne_pnr sb_up3down5.blif -o sb_up3down5_valgrind.txt
+@ICEPACK@ sb_up3down5_valgrind.txt sb_up3down5_valgrind.bin
