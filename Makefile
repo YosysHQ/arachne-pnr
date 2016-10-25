@@ -121,3 +121,8 @@ clean:
 	rm -f tests/test_bv tests/test_us
 	rm -f share/arachne-pnr/*.bin
 	rm -f src/version_*
+	$(MAKE) -C examples/rot clean
+	rm -rf tests/combinatorial/temp tests/combinatorial/1k tests/combinatorial/8k
+	rm -rf tests/fsm/temp tests/fsm/1k tests/fsm/8k
+	rm -rf tests/regression/1k tests/regression/8k
+	rm -rf tests/simple/txt.sum tests/simple/1k tests/simple/8k
