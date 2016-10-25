@@ -14,7 +14,7 @@ CXXFLAGS = -I$(SRC) -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compar
 LIBS = -lm
 
 DESTDIR = /usr/local
-ICEBOX = /usr/local/share/icebox
+ICEBOX ?= /usr/local/share/icebox
 
 .PHONY: all
 all: bin/arachne-pnr share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
