@@ -20,7 +20,7 @@ example.  It currently targets the Lattice Semiconductor
 output is a textual bitstream representation for assembly by the
 [IceStorm](http://www.clifford.at/icestorm/) [2] `icepack` command.
 The output of `icepack` is a binary bitstream which can be uploaded to
-a harware device.
+a hardware device.
 
 Together, Yosys, arachne-pnr and IceStorm provide an fully open-source
 Verilog-to-bistream tool chain for iCE40 1K and 8K FPGA development.
