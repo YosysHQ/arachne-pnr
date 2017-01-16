@@ -1,4 +1,5 @@
 sudo: false
+dist: trusty
 script: if [ "$TRAVIS_OS_NAME" = "osx" ]; then make ICEBOX=$HOME/extras/share/icebox simpletest; else make ICEBOX=$HOME/extras/share/icebox test; fi
 language: cpp
 addons:
@@ -44,16 +45,12 @@ before_install:
   - (cd icestorm && make && make PREFIX=$HOME/extras install)
   - git clone https://github.com/cliffordwolf/yosys.git
   - (cd yosys && make && make test && make PREFIX=$HOME/extras install)
+os:
+  - linux
+  - osx
 compiler:
-  - clang
   - gcc
-matrix:
-  include:
-    - os: linux
-      dist: trusty
-      sudo: false
-    - os: osx
-      osx_image: xcode7.3
+  - clang
 branches:
   except:
     - dummy
