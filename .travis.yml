@@ -11,7 +11,6 @@ addons:
     - gperf
     - libftdi-dev
     - build-essential
-    - clang
     - bison
     - flex
     - libreadline-dev
@@ -25,7 +24,8 @@ addons:
     - pkg-config
     - python
     - python3
-    - g++-4.8
+    - gcc-5
+    - g++-5
     - clang-3.6
 before_install:
   - pwd
