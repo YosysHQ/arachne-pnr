@@ -47,8 +47,8 @@ before_install:
 compiler:
   - clang
   - gcc
-include:
-  matrix:
+matrix:
+  include:
     - os: linux
       dist: trusty
       sudo: false
