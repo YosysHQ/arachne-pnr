@@ -45,9 +45,12 @@ before_install:
 compiler:
   - clang
   - gcc
-os:
-  - linux
-  - osx
+include:
+  matrix:
+    - os: linux
+      dist: trusty
+      sudo: false
+    - os: osx
 branches:
   except:
     - dummy
