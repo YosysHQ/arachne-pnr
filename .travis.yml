@@ -1,6 +1,6 @@
 sudo: required
 dist: trusty
-script: make test
+script: make ICEBOX=/usr/share/fpga-icestorm/chipdb test
 language: cpp
 addons:
   apt:
