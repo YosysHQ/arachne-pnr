@@ -7,6 +7,8 @@ import sys
 import random
 from contextlib import contextmanager
 
+random.seed(1)
+
 @contextmanager
 def redirect_stdout(new_target):
     old_target, sys.stdout = sys.stdout, new_target
