@@ -19,8 +19,8 @@ ICEBOX = /usr/local/share/icebox
 .PHONY: all
 all: bin/arachne-pnr share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
 
-VER = 0.1+$(shell echo `git log --oneline | wc -l`)+$(shell echo `git diff --name-only HEAD | wc -l`)
-GIT_REV = $(shell git rev-parse --verify --short HEAD)
+VER = 0.1+$(shell test -e .git && echo `git log --oneline | wc -l`+`git diff --name-only HEAD | wc -l`)
+GIT_REV = $(shell git rev-parse --verify --short HEAD 2>/dev/null || echo UNKNOWN)
 
 VER_HASH = $(shell echo "$(VER) $(GIT_REV)" | sum | cut -d ' ' -f -1)
 
