@@ -3,9 +3,12 @@
 # CC = clang
 # CXX = clang++
 
+ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
 # build optimized without -DNDEBUG
 # OPTDEBUGFLAGS = -O0 -fno-inline -g
 # OPTDEBUGFLAGS = -O3 -DNDEBUG
+
 OPTDEBUGFLAGS = -O2
 SRC = src
 
@@ -13,11 +16,24 @@ SRC = src
 CXXFLAGS = -I$(SRC) -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
 LIBS = -lm
 
+ifeq ($(CC),emcc)
+EMCCFLAGS = --memory-init-file 0 -s ALLOW_MEMORY_GROWTH=1
+CXXFLAGS += $(EMCCFLAGS)
+LDFLAGS += $(EMCCFLAGS)
+RUNROOTPREFIX = /root
+RUN = node
+EXE = .js
+else
+RUNROOTPREFIX =
+RUN =
+EXE =
+endif
+
 DESTDIR = /usr/local
 ICEBOX = /usr/local/share/icebox
 
 .PHONY: all
-all: bin/arachne-pnr share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
+all: bin/arachne-pnr$(EXE) share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
 
 VER = 0.1+$(shell echo `git log --oneline | wc -l`)+$(shell echo `git diff --name-only HEAD | wc -l`)
 GIT_REV = $(shell git rev-parse --verify --short HEAD)
@@ -27,16 +43,16 @@ VER_HASH = $(shell echo "$(VER) $(GIT_REV)" | sum | cut -d ' ' -f -1)
 src/version_$(VER_HASH).cc:
 	echo "const char *version_str = \"arachne-pnr $(VER) (git sha1 $(GIT_REV), $(notdir $(CXX)) `$(CXX) --version | tr ' ()' '\n' | grep '^[0-9]' | head -n1` $(filter -f% -m% -O% -DNDEBUG,$(CXXFLAGS)))\";" > src/version_$(VER_HASH).cc
 
-bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
+bin/arachne-pnr$(EXE): src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr $(ICEBOX)/chipdb-1k.txt
+share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr$(EXE) $(ICEBOX)/chipdb-1k.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 1k -c $(ICEBOX)/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
+	$(RUN) bin/arachne-pnr$(EXE) -d 1k -c $(RUNROOTPREFIX)$(ICEBOX)/chipdb-1k.txt --write-binary-chipdb $(RUNROOTPREFIX)$(ROOT_DIR)/share/arachne-pnr/chipdb-1k.bin
 
-share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr $(ICEBOX)/chipdb-8k.txt
+share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr$(EXE) $(ICEBOX)/chipdb-8k.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 8k -c $(ICEBOX)/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
+	$(RUN) bin/arachne-pnr$(EXE) -d 8k -c $(RUNROOTPREFIX)$(ICEBOX)/chipdb-8k.txt --write-binary-chipdb $(RUNROOTPREFIX)$(ROOT_DIR)/share/arachne-pnr/chipdb-8k.bin
 
 tests/test_bv: tests/test_bv.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
@@ -105,19 +121,19 @@ mxebin:
 .PHONY: install
 install: all
 	mkdir -p $(DESTDIR)/bin
-	cp bin/arachne-pnr $(DESTDIR)/bin/arachne-pnr
+	cp bin/arachne-pnr$(EXE) $(DESTDIR)/bin/arachne-pnr$(EXE)
 	mkdir -p $(DESTDIR)/share/arachne-pnr
 	cp share/arachne-pnr/chipdb-1k.bin $(DESTDIR)/share/arachne-pnr/chipdb-1k.bin
 	cp share/arachne-pnr/chipdb-8k.bin $(DESTDIR)/share/arachne-pnr/chipdb-8k.bin
 
 .PHONY: uninstall
 uninstall:
-	rm -f $(DESTDIR)/bin/arachne-pnr
+	rm -f $(DESTDIR)/bin/arachne-pnr$(EXE)
 	rm -f $(DESTDIR)/bin/share/arachne-pnr/*.bin
 
 .PHONY: clean
 clean:
-	rm -f src/*.o tests/*.o src/*.d tests/*.d bin/arachne-pnr
+	rm -f src/*.o tests/*.o src/*.d tests/*.d bin/arachne-pnr$(EXE)
 	rm -f tests/test_bv tests/test_us
 	rm -f share/arachne-pnr/*.bin
 	rm -f src/version_*

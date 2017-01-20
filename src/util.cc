@@ -163,8 +163,13 @@ std::string proc_self_dirname()
                 path += char(shortpath[i]);
         return path;
 }
+#elif defined(EMSCRIPTEN)
+std::string proc_self_dirname()
+{
+	return "/";
+}
 #else
-        #error Dont know how to determine process executable base path!
+#error Dont know how to determine process executable base path!
 #endif
 
 std::string
