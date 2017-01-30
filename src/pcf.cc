@@ -68,10 +68,10 @@ PCFParser::parse()
             {     
               if (words[i][0] == '-')
                 {
-                  if (words[1] == "--warn-no-port")
+                  if (words[i] == "--warn-no-port")
                     err_no_port = false;
                   else
-                    fatal(fmt("unknown option `" << words[1] << "'"));
+                    fatal(fmt("unknown option `" << words[i] << "'"));
                 }
               else
                 {
