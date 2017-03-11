@@ -372,9 +372,8 @@ Router::Router(DesignState &ds, int max_passes_v)
                fmt("MASK[" << i << "]"),
                std::make_pair(fmt("ram/MASK_" << i), false));
     }
-  else
+  else if (chipdb->device == "8k")
     {
-      assert(chipdb->device == "8k");
       for (int i = 0; i <= 7; ++i)
         extend(ram_gate_chip,
                fmt("MASK[" << i << "]"),
@@ -385,6 +384,8 @@ Router::Router(DesignState &ds, int max_passes_v)
                std::make_pair(fmt("ram/MASK_" << i), true));
 
     }
+  else
+    assert(chipdb->device == "384");
   
   for (int i = 0; i <= 7; ++i)
     extend(ram_gate_chip,
@@ -865,7 +866,7 @@ Router::route()
         const Switch &sw = chipdb->switches[s];
         
         assert(!contains(chipdb->net_global, p.second));
-        if (contains(chipdb->net_global, p.first))
+        if (contains(chipdb->net_global, p.first) && (chipdb->device != "384"))
           {
             int g = chipdb->net_global.at(p.first);
             

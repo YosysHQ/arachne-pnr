@@ -1751,26 +1751,27 @@ Placer::configure()
   }
   
   // set RamConfig.PowerUp configuration bit
-  {
-    const CBit &powerup = (chipdb->tile_nonrouting_cbits.at(TileType::RAMB)
-                           .at("RamConfig.PowerUp")
-                           [0]);
-    for (int t : ramt_tiles)
-      {
-        Location loc(t,
-                     0);
-        int cell = chipdb->loc_cell(loc);
-        int g = cell_gate[cell];
-        assert(!g || models.is_ramX(gates[g]));
-        conf.set_cbit(CBit(chipdb->ramt_ramb_tile(loc.tile()), // PowerUp on ramb tile
-                           powerup.row,
-                           powerup.col),
-                      // active low
-                      (chipdb->device == "1k"
-                       ? !g
-                       : (bool)g));
-      }
-  }
+  if (chipdb->tile_nonrouting_cbits.count(TileType::RAMB))
+    {
+      const CBit &powerup = (chipdb->tile_nonrouting_cbits.at(TileType::RAMB)
+                             .at("RamConfig.PowerUp")
+                             [0]);
+      for (int t : ramt_tiles)
+        {
+          Location loc(t,
+                       0);
+          int cell = chipdb->loc_cell(loc);
+          int g = cell_gate[cell];
+          assert(!g || models.is_ramX(gates[g]));
+          conf.set_cbit(CBit(chipdb->ramt_ramb_tile(loc.tile()), // PowerUp on ramb tile
+                             powerup.row,
+                             powerup.col),
+                        // active low
+                        (chipdb->device == "1k"
+                         ? !g
+                         : (bool)g));
+        }
+    }
 }
 
 void
