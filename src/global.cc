@@ -119,8 +119,8 @@ Promoter::port_gc(Port *conn, bool indirect)
     }
   else if (models.is_ioX(inst))
     {
-      if (conn->name() == "INPUT_CLOCK"
-          || conn->name() == "OUTPUT_CLOCK")
+      if (conn->name() == "INPUT_CLK"
+          || conn->name() == "OUTPUT_CLK")
         return gc_clk;
     }
   else if (models.is_gb(inst)
