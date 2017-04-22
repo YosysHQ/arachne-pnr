@@ -284,7 +284,7 @@ BlifParser::parse()
               goto M;
             }
           else
-            fatal("unknown directive");
+            fatal(fmt("unknown directive '" << cmd << "'"));
         }
       else
         fatal("expected directive");
