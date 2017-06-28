@@ -31,4 +31,4 @@ for d in 1k 8k; do
     icepack $d/c3demo.txt $d/c3demo.bin
 done
 
-$arachne_pnr -d 8k -p pin_type_fail.pcf pin_type_fail.blif
+$arachne_pnr -d 8k -p pin_type_fail.pcf pin_type_fail.blif -o /dev/null

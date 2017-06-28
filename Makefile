@@ -13,14 +13,15 @@ SRC = src
 CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
 LIBS = -lm
 
-DESTDIR = /usr/local
-ICEBOX ?= /usr/local/share/icebox
+DESTDIR ?=
+PREFIX ?= /usr/local
+ICEBOX ?= $(PREFIX)/share/icebox
 
 .PHONY: all
-all: bin/arachne-pnr share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
+all: bin/arachne-pnr share/arachne-pnr/chipdb-384.bin share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
 
-ARACHNE_VER := 0.1+$(shell echo `git log --oneline | wc -l`)+$(shell echo `git diff --name-only HEAD | wc -l`)
-GIT_REV := $(shell git rev-parse --verify --short HEAD)
+VER = 0.1+$(shell test -e .git && echo `git log --oneline | wc -l`+`git diff --name-only HEAD | wc -l`)
+GIT_REV = $(shell git rev-parse --verify --short HEAD 2>/dev/null || echo UNKNOWN)
 
 VER_HASH = $(shell echo "$(ARACHNE_VER) $(GIT_REV)" | sum | cut -d ' ' -f -1)
 
@@ -29,6 +30,10 @@ src/version_$(VER_HASH).cc:
 
 bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+share/arachne-pnr/chipdb-384.bin: bin/arachne-pnr $(ICEBOX)/chipdb-384.txt
+	mkdir -p share/arachne-pnr
+	bin/arachne-pnr -d 384 -c $(ICEBOX)/chipdb-384.txt --write-binary-chipdb share/arachne-pnr/chipdb-384.bin
 
 share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr $(ICEBOX)/chipdb-1k.txt
 	mkdir -p share/arachne-pnr
@@ -92,7 +97,8 @@ mxebin:
 	rm -rf arachne-pnr-win32
 	rm -f arachne-pnr-win32.zip
 	mkdir -p arachne-pnr-win32
-	$(MAKE) share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
+	$(MAKE) share/arachne-pnr/chipdb-384.bin share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
+	mv share/arachne-pnr/chipdb-384.bin arachne-pnr-win32/
 	mv share/arachne-pnr/chipdb-1k.bin arachne-pnr-win32/
 	mv share/arachne-pnr/chipdb-8k.bin arachne-pnr-win32/
 	$(MAKE) clean
@@ -107,6 +113,7 @@ install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp bin/arachne-pnr $(DESTDIR)$(PREFIX)/bin/arachne-pnr
 	mkdir -p $(DESTDIR)$(PREFIX)/share/arachne-pnr
+	cp share/arachne-pnr/chipdb-384.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-384.bin
 	cp share/arachne-pnr/chipdb-1k.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-1k.bin
 	cp share/arachne-pnr/chipdb-8k.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-8k.bin
 

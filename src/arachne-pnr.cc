@@ -61,8 +61,9 @@ usage()
     << "\n"
     << "    -d <device>, --device <device>\n"
     << "        Target device <device>.  Supported devices:\n"
-    << "          1k - Lattice Semiconductor iCE40LP/HX1K\n"
-    << "          8k - Lattice Semiconductor iCE40LP/HX8K\n"
+    << "          384 - Lattice Semiconductor iCE40LP384\n"
+    << "           1k - Lattice Semiconductor iCE40LP/HX1K\n"
+    << "           8k - Lattice Semiconductor iCE40LP/HX8K\n"
     << "        Default: 1k\n"
     << "\n"
     << "    -c <file>, --chipdb <chipdb-file>\n"
@@ -95,7 +96,7 @@ usage()
     << "\n"
     << "    -P <package>, --package <package>\n"
     << "        Target package <package>.\n"
-    << "        Default: tq144 for 1k, ct256 for 8k\n"
+    << "        Default: cm49 for 384, tq144 for 1k, ct256 for 8k\n"
     << "\n"
     << "    -r\n"
     << "        Randomize seed.\n"
@@ -294,13 +295,16 @@ main(int argc, const char **argv)
       exit(EXIT_SUCCESS);
     }
   
-  if (device != "1k"
+  if (device != "384"
+      && device != "1k"
       && device != "8k")
     fatal(fmt("unknown device: " << device));
   
   std::string package_name;
   if (package_name_cp)
     package_name = package_name_cp;
+  else if (device == "384")
+    package_name = "cm49";
   else if (device == "1k")
     package_name = "tq144";
   else
