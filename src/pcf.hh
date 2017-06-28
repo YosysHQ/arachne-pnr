@@ -25,6 +25,7 @@ class Constraints
 {
 public:
   std::map<std::string, Location> net_pin_loc;
+  std::map<std::string, bool> net_pin_pull_up;
   
 public:
   Constraints() {}

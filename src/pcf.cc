@@ -47,6 +47,7 @@ PCFParser::parse()
 {
   std::map<std::string, Location> net_pin_loc;
   std::map<Location, std::string> pin_loc_net;
+  std::map<std::string, bool> net_pin_pull_up;
   
   for (;;)
     {
@@ -61,6 +62,8 @@ PCFParser::parse()
       if (cmd == "set_io")
         {
           bool err_no_port = true;
+          bool pull_up = false;
+          bool pull_up_set = false;
           
           const char *net_name = nullptr,
             *pin_name = nullptr;
@@ -68,10 +71,25 @@ PCFParser::parse()
             {     
               if (words[i][0] == '-')
                 {
-                  if (words[1] == "--warn-no-port")
+                  if (words[i] == "--warn-no-port")
                     err_no_port = false;
+                  else if (words[i] == "-pullup")
+                    {
+                      if (i+1 == (int)words.size())
+                        fatal(fmt("-pullup needs yes/no"));
+                      i++;
+                      if (words[i] == "yes")
+                        {
+                          pull_up = true;
+                          pull_up_set = true;
+                        }
+                      else if (words[i] == "no")
+                        pull_up_set = true;
+                      else
+                        fatal(fmt("unknown pullup option `" << words[i] << "'"));
+                    }
                   else
-                    fatal(fmt("unknown option `" << words[1] << "'"));
+                    fatal(fmt("unknown option `" << words[i] << "'"));
                 }
               else
                 {
@@ -115,12 +133,15 @@ PCFParser::parse()
           
           extend(net_pin_loc, net_name, loc);
           extend(pin_loc_net, loc, net_name);
+          if (pull_up_set)
+            extend(net_pin_pull_up, net_name, pull_up);
         }
       else
         fatal(fmt("unknown command `" << cmd << "'"));
     }
   
   constraints.net_pin_loc = net_pin_loc;
+  constraints.net_pin_pull_up = net_pin_pull_up;
 }
 
 void
@@ -246,7 +267,16 @@ ConstraintsPlacer::place()
                               << x << ", " << y << ")"));
                 }
             }
-          
+
+          std::map<std::string, bool>::const_iterator it;
+          it = constraints.net_pin_pull_up.find(p.first);
+          if (it != constraints.net_pin_pull_up.end())
+            { // Pull-up constraint for this pin
+             inst->set_param("PULLUP", BitVector(1, it->second ? 1 : 0));
+             note(fmt("forcing pull-up for `" << it->first << "' to `"
+                      << it->second << "'"));
+            }
+
           c = chipdb->loc_cell(loc);
         }
       else
