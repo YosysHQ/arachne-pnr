@@ -6,11 +6,11 @@
 # build optimized without -DNDEBUG
 # OPTDEBUGFLAGS = -O0 -fno-inline -g
 # OPTDEBUGFLAGS = -O3 -DNDEBUG
-OPTDEBUGFLAGS = -O2
+OPTDEBUGFLAGS ?= -MD -O2
 SRC = src
 
 # clang only: -Wglobal-constructors
-CXXFLAGS = -I$(SRC) -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
+CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
 LIBS = -lm
 
 DESTDIR ?=
@@ -23,10 +23,10 @@ all: bin/arachne-pnr share/arachne-pnr/chipdb-384.bin share/arachne-pnr/chipdb-1
 VER = 0.1+$(shell test -e .git && echo `git log --oneline | wc -l`+`git diff --name-only HEAD | wc -l`)
 GIT_REV = $(shell git rev-parse --verify --short HEAD 2>/dev/null || echo UNKNOWN)
 
-VER_HASH = $(shell echo "$(VER) $(GIT_REV)" | sum | cut -d ' ' -f -1)
+VER_HASH = $(shell echo "$(ARACHNE_VER) $(GIT_REV)" | sum | cut -d ' ' -f -1)
 
 src/version_$(VER_HASH).cc:
-	echo "const char *version_str = \"arachne-pnr $(VER) (git sha1 $(GIT_REV), $(notdir $(CXX)) `$(CXX) --version | tr ' ()' '\n' | grep '^[0-9]' | head -n1` $(filter -f% -m% -O% -DNDEBUG,$(CXXFLAGS)))\";" > src/version_$(VER_HASH).cc
+	echo "const char *version_str = \"arachne-pnr $(ARACHNE_VER) (git sha1 $(GIT_REV), $(notdir $(CXX)) `$(CXX) --version | tr ' ()' '\n' | grep '^[0-9]' | head -n1` $(filter -f% -m% -O% -DNDEBUG,$(CXXFLAGS)))\";" > src/version_$(VER_HASH).cc
 
 bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -128,3 +128,8 @@ clean:
 	rm -f tests/test_bv tests/test_us
 	rm -f share/arachne-pnr/*.bin
 	rm -f src/version_*
+	$(MAKE) -C examples/rot clean
+	rm -rf tests/combinatorial/temp tests/combinatorial/1k tests/combinatorial/8k
+	rm -rf tests/fsm/temp tests/fsm/1k tests/fsm/8k
+	rm -rf tests/regression/1k tests/regression/8k
+	rm -rf tests/simple/txt.sum tests/simple/1k tests/simple/8k
