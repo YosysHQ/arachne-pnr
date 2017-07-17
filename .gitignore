@@ -1,7 +1,9 @@
 *.d
 *~
 *.o
+*.host-o
 /bin/arachne-pnr
+/bin/arachne-pnr-host
 /bin/arachne-pnr.exe
 /tests/test_bv
 /tests/test_us

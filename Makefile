@@ -17,6 +17,12 @@ DESTDIR ?=
 PREFIX ?= /usr/local
 ICEBOX ?= $(PREFIX)/share/icebox
 
+# Cross-compile logic
+HOST_CC ?= $(CC)
+HOST_CXX ?= $(CXX)
+HOST_CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
+HOST_LIBS ?= $(LIBS)
+
 .PHONY: all
 all: bin/arachne-pnr share/arachne-pnr/chipdb-384.bin share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
 
@@ -30,6 +36,12 @@ src/version_$(VER_HASH).cc:
 
 bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+bin/arachne-pnr-host: src/arachne-pnr.host-o src/netlist.host-o src/blif.host-o src/pack.host-o src/place.host-o src/util.host-o src/io.host-o src/route.host-o src/chipdb.host-o src/location.host-o src/configuration.host-o src/line_parser.host-o src/pcf.host-o src/global.host-o src/constant.host-o src/designstate.host-o src/version_$(VER_HASH).host-o
+	$(HOST_CXX) $(HOST_CXXFLAGS) $(HOST_LDFLAGS) -o $@ $^ $(HOST_LIBS)
+
+%.host-o: %.cc
+	$(HOST_CXX) -c $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $<
 
 share/arachne-pnr/chipdb-384.bin: bin/arachne-pnr $(ICEBOX)/chipdb-384.txt
 	mkdir -p share/arachne-pnr
@@ -124,7 +136,7 @@ uninstall:
 
 .PHONY: clean
 clean:
-	rm -f src/*.o tests/*.o src/*.d tests/*.d bin/arachne-pnr
+	rm -f src/*.o src/*.host-o tests/*.o src/*.d tests/*.d bin/arachne-pnr bin/arachne-pnr-host
 	rm -f tests/test_bv tests/test_us
 	rm -f share/arachne-pnr/*.bin
 	rm -f src/version_*
