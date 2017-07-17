@@ -23,6 +23,14 @@ HOST_CXX ?= $(CXX)
 HOST_CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
 HOST_LIBS ?= $(LIBS)
 
+IS_CROSS_COMPILING = no
+ifneq ($(CC),$(HOST_CC))
+	IS_CROSS_COMPILING = yes
+endif
+ifneq ($(CXX),$(HOST_CXX))
+	IS_CROSS_COMPILING = yes
+endif
+
 .PHONY: all
 all: bin/arachne-pnr share/arachne-pnr/chipdb-384.bin share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin
 
@@ -37,23 +45,28 @@ src/version_$(VER_HASH).cc:
 bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
+ifeq ($(IS_CROSS_COMPILING),yes)
 bin/arachne-pnr-host: src/arachne-pnr.host-o src/netlist.host-o src/blif.host-o src/pack.host-o src/place.host-o src/util.host-o src/io.host-o src/route.host-o src/chipdb.host-o src/location.host-o src/configuration.host-o src/line_parser.host-o src/pcf.host-o src/global.host-o src/constant.host-o src/designstate.host-o src/version_$(VER_HASH).host-o
 	$(HOST_CXX) $(HOST_CXXFLAGS) $(HOST_LDFLAGS) -o $@ $^ $(HOST_LIBS)
+else
+bin/arachne-pnr-host: bin/arachne-pnr
+	cp $< $@
+endif
 
 %.host-o: %.cc
 	$(HOST_CXX) -c $(HOST_CPPFLAGS) $(HOST_CXXFLAGS) -o $@ $<
 
-share/arachne-pnr/chipdb-384.bin: bin/arachne-pnr $(ICEBOX)/chipdb-384.txt
+share/arachne-pnr/chipdb-384.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-384.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 384 -c $(ICEBOX)/chipdb-384.txt --write-binary-chipdb share/arachne-pnr/chipdb-384.bin
+	bin/arachne-pnr-host -d 384 -c $(ICEBOX)/chipdb-384.txt --write-binary-chipdb share/arachne-pnr/chipdb-384.bin
 
-share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr $(ICEBOX)/chipdb-1k.txt
+share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-1k.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 1k -c $(ICEBOX)/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
+	bin/arachne-pnr-host -d 1k -c $(ICEBOX)/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
 
-share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr $(ICEBOX)/chipdb-8k.txt
+share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-8k.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 8k -c $(ICEBOX)/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
+	bin/arachne-pnr-host -d 8k -c $(ICEBOX)/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
 
 tests/test_bv: tests/test_bv.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
