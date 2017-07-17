@@ -136,7 +136,7 @@ mxebin:
 .PHONY: install
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp bin/arachne-pnr $(DESTDIR)$(PREFIX)/bin/arachne-pnr
+	cp bin/arachne-pnr $(DESTDIR)$(PREFIX)/bin/arachne-pnr$(EXE)
 	mkdir -p $(DESTDIR)$(PREFIX)/share/arachne-pnr
 	cp share/arachne-pnr/chipdb-384.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-384.bin
 	cp share/arachne-pnr/chipdb-1k.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-1k.bin
@@ -144,8 +144,8 @@ install: all
 
 .PHONY: uninstall
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/arachne-pnr
-	rm -f $(DESTDIR)$(PREFIX)/bin/share/arachne-pnr/*.bin
+	rm -f $(DESTDIR)$(PREFIX)/bin/arachne-pnr$(EXE)
+	rm -f $(DESTDIR)$(PREFIX)/share/arachne-pnr/*.bin
 
 .PHONY: clean
 clean:
