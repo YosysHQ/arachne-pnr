@@ -1,0 +1,8 @@
+# For the iCE40HX-8K Breakout Board
+
+set_io D1 B5
+set_io D2 B4
+set_io D3 A2
+set_io D4 A1
+set_io D5 C5
+set_io clk J3
