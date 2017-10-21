@@ -63,6 +63,7 @@ usage()
     << "        Target device <device>.  Supported devices:\n"
     << "          384 - Lattice Semiconductor iCE40LP384\n"
     << "           1k - Lattice Semiconductor iCE40LP/HX1K\n"
+    << "           5k - Lattice Semiconductor iCE40UP5K\n"
     << "           8k - Lattice Semiconductor iCE40LP/HX8K\n"
     << "        Default: 1k\n"
     << "\n"
@@ -297,6 +298,7 @@ main(int argc, const char **argv)
   
   if (device != "384"
       && device != "1k"
+      && device != "5k"
       && device != "8k")
     fatal(fmt("unknown device: " << device));
   
@@ -307,6 +309,8 @@ main(int argc, const char **argv)
     package_name = "cm49";
   else if (device == "1k")
     package_name = "tq144";
+  else if (device == "5k")
+    package_name = "sg48";
   else
     {
       assert(device == "8k");
