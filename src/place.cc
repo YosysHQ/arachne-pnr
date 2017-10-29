@@ -135,6 +135,7 @@ public:
   void place_initial();
   void configure_io(const Location &loc,
                     bool enable_input,
+                    bool enable_output,
                     bool pullup);
   void configure();
   
@@ -1204,6 +1205,7 @@ Placer::place_initial()
 void
 Placer::configure_io(const Location &loc,
                      bool enable_input,
+                     bool enable_output,
                      bool pullup)
 {
   const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
@@ -1248,6 +1250,48 @@ Placer::configure_io(const Location &loc,
                      ? !enable_input
                      : enable_input));
     }
+  
+  // The 5k series have extra IO configuration required
+  if(chipdb->device == "5k") {
+    const CBit &padeb_test_0 = func_cbits.at("IoCtrl.padeb_test_0")[0],
+      &padeb_test_1 = func_cbits.at("IoCtrl.padeb_test_1")[0],
+      &cf_bit_35 = func_cbits.at("IoCtrl.cf_bit_35")[0],
+      &cf_bit_39 = func_cbits.at("IoCtrl.cf_bit_39")[0];
+      
+      //padeb_test_x is set when a pin is not an output
+      if (loc.pos() == 0)
+        {
+          conf.set_cbit(CBit(loc.tile(),
+                             padeb_test_0.row,
+                             padeb_test_0.col),
+                        !enable_output);  // active low
+        }
+      else
+        {
+          assert(loc.pos() == 1);
+          conf.set_cbit(CBit(loc.tile(),
+                             padeb_test_1.row,
+                             padeb_test_1.col),
+                        !enable_output);  // active low
+        }
+        
+      //cf_bit_35 mirrors REN_1 and cf_bit_39 mirrors REN_0
+      if (loc.pos() == 0)
+        {
+          conf.set_cbit(CBit(loc.tile(),
+                             cf_bit_39.row,
+                             cf_bit_39.col),
+                        !pullup);  // active low
+        }
+      else
+        {
+          assert(loc.pos() == 1);
+          conf.set_cbit(CBit(loc.tile(),
+                             cf_bit_35.row,
+                             cf_bit_35.col),
+                        !pullup);  // active low
+        }
+  }
 }
 
 void
@@ -1686,6 +1730,7 @@ Placer::configure()
       {
         // unused io
         bool enable_input = false;
+        bool enable_output = false;
         bool pullup = true;  // default pullup
         bool is_lvds = false;
         
@@ -1695,6 +1740,8 @@ Placer::configure()
           {
             // FIXME only enable if inputs present
             enable_input = true;
+            // FIXME as above?
+            enable_output = true;
             pullup = false;
           }
         else
@@ -1710,6 +1757,9 @@ Placer::configure()
                     || (models.is_gb_io(inst)
                         && inst->find_port("GLOBAL_BUFFER_OUTPUT")->connected()))
                   enable_input = true;
+                const Const &pin_type = inst->get_param("PIN_TYPE");
+                enable_output = pin_type.get_bit(5) || pin_type.get_bit(4) || 
+                                pin_type.get_bit(3) || pin_type.get_bit(2);
                 pullup = inst->get_param("PULLUP").get_bit(0);
                 is_lvds = inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT";
                 conf.set_cbit(CBit(loc.tile(), lvds_cbit.row, lvds_cbit.col), is_lvds);
@@ -1726,13 +1776,13 @@ Placer::configure()
           }
 
         const Location &ieren_loc = chipdb->ieren.at(loc);
-        configure_io(ieren_loc, enable_input, pullup);
+        configure_io(ieren_loc, enable_input, enable_output, pullup);
 
         if (is_lvds)
           {
             Location partner_loc(loc.tile(), !loc.pos());
             const Location &partner_ieren_loc = chipdb->ieren.at(partner_loc);
-            configure_io(partner_ieren_loc, enable_input, pullup);
+            configure_io(partner_ieren_loc, enable_input, enable_output, pullup);
           }
       }
     
@@ -1746,13 +1796,14 @@ Placer::configure()
         for (int p = 0; p <= 1; ++p)
           {
             bool enable_input = false;
+            bool enable_output = false;
             bool pullup = true;  // default pullup
             
             Location loc(t, p);
             if (contains(ieren_image, loc))
               continue;
             
-            configure_io(loc, enable_input, pullup);
+            configure_io(loc, enable_input, enable_output, pullup);
           }
       }
   }
