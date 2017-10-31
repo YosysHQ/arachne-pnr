@@ -383,6 +383,18 @@ Router::Router(DesignState &ds, int max_passes_v)
                fmt("MASK[" << i << "]"),
                std::make_pair(fmt("ram/MASK_" << i), true));
 
+    }  
+  else if (chipdb->device == "5k")
+    {
+      for (int i = 0; i <= 7; ++i)
+        extend(ram_gate_chip,
+               fmt("MASK[" << i << "]"),
+               std::make_pair(fmt("ram/MASK_" << i), false));
+      for (int i = 8; i <= 15; ++i)
+        extend(ram_gate_chip,
+               fmt("MASK[" << i << "]"),
+               std::make_pair(fmt("ram/MASK_" << i), true));
+
     }
   else
     assert(chipdb->device == "384");
