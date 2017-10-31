@@ -1262,16 +1262,16 @@ Placer::configure_io(const Location &loc,
       if (loc.pos() == 0)
         {
           conf.set_cbit(CBit(loc.tile(),
-                             padeb_test_0.row,
-                             padeb_test_0.col),
+                             padeb_test_1.row,
+                             padeb_test_1.col),
                         !enable_output);  // active low
         }
       else
         {
           assert(loc.pos() == 1);
           conf.set_cbit(CBit(loc.tile(),
-                             padeb_test_1.row,
-                             padeb_test_1.col),
+                             padeb_test_0.row,
+                             padeb_test_0.col),
                         !enable_output);  // active low
         }
         
