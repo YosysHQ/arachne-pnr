@@ -163,3 +163,8 @@ clean:
 	rm -rf tests/fsm/temp tests/fsm/1k tests/fsm/8k
 	rm -rf tests/regression/1k tests/regression/8k
 	rm -rf tests/simple/txt.sum tests/simple/1k tests/simple/8k
+
+.PHONY: emcc
+emcc:
+	$(MAKE) EXE=.js clean
+	$(MAKE) CC=emcc CXX=emcc HOST_CC=gcc HOST_CXX=g++ PREFIX=/ LDFLAGS="--memory-init-file 0 --embed-file share -s TOTAL_MEMORY=256*1024*1024" EXE=.js
