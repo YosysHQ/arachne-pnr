@@ -605,6 +605,14 @@ Packer::pack()
     n_gb_io = 0,
     n_bram = 0,
     n_pll = 0,
+    n_mac16 = 0,
+    n_spram = 0,
+    n_lfosc = 0,
+    n_hfosc = 0,
+    n_rgba_drv = 0,
+    n_ledda_ip = 0,
+    n_i2c = 0,
+    n_spi = 0,
     n_warmboot = 0;
   for (Instance *inst : top->instances())
     {
@@ -637,6 +645,22 @@ Packer::pack()
         }
       else if (models.is_pllX(inst))
         ++n_pll;
+      else if (models.is_mac16(inst))
+        ++n_mac16;
+      else if (models.is_spram(inst))
+        ++n_spram;
+      else if (models.is_hfosc(inst))
+        ++n_hfosc;
+      else if (models.is_lfosc(inst))
+        ++n_lfosc;        
+      else if (models.is_rgba_drv(inst))
+        ++n_rgba_drv;
+      else if (models.is_ledda_ip(inst))
+        ++n_ledda_ip;
+      else if (models.is_spi(inst))
+        ++n_spi;
+      else if (models.is_i2c(inst))
+        ++n_i2c;          
       else
         { 
           assert(models.is_ramX(inst));
@@ -657,21 +681,54 @@ Packer::pack()
       if (chipdb->cell_type[i+1] == CellType::WARMBOOT)
         ++n_warmboot_cells;
     }
+  if(chipdb->device == "5k") {
+    *logs << "\nAfter packing:\n"
+          << "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
+          << "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
+          << "  GB_IOs     " << n_gb_io << " / " << chipdb->n_global_nets << "\n"
+          << "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
+          << "  DFF        " << n_lc_dff << "\n"
+          << "  CARRY      " << n_lc_carry << "\n"
+          << "  CARRY, DFF " << n_lc_carry_dff << "\n"
+          << "  DFF PASS   " << n_dff_pass_through << "\n"
+          << "  CARRY PASS " << n_carry_pass_through << "\n"
+          << "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
+          << "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
+          << "PLLs         " << n_pll << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n"
+          << "MAC16s       " << n_mac16 << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::MAC16)].size() << "\n"
+          << "SPRAM256KAs  " << n_spram << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::SPRAM)].size() << "\n"
+          << "HFOSCs       " << n_hfosc << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::HFOSC)].size() << "\n"
+          << "LFOSCs       " << n_lfosc << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::LFOSC)].size() << "\n"
+          << "RGBA_DRVs    " << n_rgba_drv << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::RGBA_DRV)].size() << "\n"
+          << "LEDDA_IPs    " << n_ledda_ip << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::LEDDA_IP)].size() << "\n"
+          << "I2Cs         " << n_i2c << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::I2C_IP)].size() << "\n"
+          << "SPIs         " << n_spi << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::SPI_IP)].size() << "\n\n";
+  } else {
+    *logs << "\nAfter packing:\n"
+          << "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
+          << "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
+          << "  GB_IOs     " << n_gb_io << " / " << chipdb->n_global_nets << "\n"
+          << "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
+          << "  DFF        " << n_lc_dff << "\n"
+          << "  CARRY      " << n_lc_carry << "\n"
+          << "  CARRY, DFF " << n_lc_carry_dff << "\n"
+          << "  DFF PASS   " << n_dff_pass_through << "\n"
+          << "  CARRY PASS " << n_carry_pass_through << "\n"
+          << "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
+          << "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
+          << "PLLs         " << n_pll << " / " 
+          << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n\n";
+  }
   
-  *logs << "\nAfter packing:\n"
-        << "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
-        << "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
-        << "  GB_IOs     " << n_gb_io << " / " << chipdb->n_global_nets << "\n"
-        << "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
-        << "  DFF        " << n_lc_dff << "\n"
-        << "  CARRY      " << n_lc_carry << "\n"
-        << "  CARRY, DFF " << n_lc_carry_dff << "\n"
-        << "  DFF PASS   " << n_dff_pass_through << "\n"
-        << "  CARRY PASS " << n_carry_pass_through << "\n"
-        << "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
-        << "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
-        << "PLLs         " << n_pll << " / " 
-        << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n\n";
 }
 
 void

@@ -130,11 +130,11 @@ obstream &operator<<(obstream &obs, const Switch &sw);
 ibstream &operator>>(ibstream &ibs, Switch &sw);
 
 enum class TileType : int {
-  EMPTY, IO, LOGIC, RAMB, RAMT,
+  EMPTY, IO, LOGIC, RAMB, RAMT, DSP0, DSP1, DSP2, DSP3, IPCON
 };
 
 enum class CellType : int {
-  LOGIC, IO, GB, RAM, WARMBOOT, PLL,
+  LOGIC, IO, GB, RAM, WARMBOOT, PLL, MAC16, SPRAM, LFOSC, HFOSC, RGBA_DRV, LEDDA_IP, I2C_IP, SPI_IP
 };
 
 std::string cell_type_name(CellType ct);
@@ -157,7 +157,7 @@ constexpr int cell_type_idx(CellType type)
   return static_cast<int>(type);
 }
 
-static const int n_cell_types = cell_type_idx(CellType::PLL) + 1;
+static const int n_cell_types = cell_type_idx(CellType::SPI_IP) + 1;
 
 inline obstream &operator<<(obstream &obs, CellType t)
 {
@@ -248,7 +248,7 @@ public:
     tile_nonrouting_cbits;
   
   CBit extra_cell_cbit(int ec, const std::string &name) const;
-  
+  std::string extra_cell_netname(int ec, const std::string &name) const;
   int n_cells;
   BasedVector<CellType, 1> cell_type;
   BasedVector<Location, 1> cell_location;

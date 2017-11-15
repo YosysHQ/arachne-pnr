@@ -87,6 +87,16 @@ tile_type_name(TileType t)
       return "ramb_tile";
     case TileType::RAMT:
       return "ramt_tile";
+    case TileType::DSP0:
+      return "dsp0_tile";
+    case TileType::DSP1:
+      return "dsp1_tile";
+    case TileType::DSP2:
+      return "dsp2_tile";
+    case TileType::DSP3:
+      return "dsp3_tile";
+    case TileType::IPCON:
+      return "ipcon_tile";
     case TileType::EMPTY:
       abort();
     }    
@@ -207,6 +217,21 @@ ChipDB::dump(std::ostream &s) const
             break;
           case TileType::RAMT:
             s << ".ramt_tile " << i << " " << j << "\n";
+            break;
+          case TileType::DSP0:
+            s << ".dsp0_tile " << i << " " << j << "\n";
+            break;
+          case TileType::DSP1:
+            s << ".dsp1_tile " << i << " " << j << "\n";
+            break;
+          case TileType::DSP2:
+            s << ".dsp2_tile " << i << " " << j << "\n";
+            break;
+          case TileType::DSP3:
+            s << ".dsp3_tile " << i << " " << j << "\n";
+            break;
+          case TileType::IPCON:
+            s << ".ipcon_tile " << i << " " << j << "\n";
             break;
           }
         
@@ -431,12 +456,26 @@ ChipDBParser::parse_cmd_tile()
     }
   else if (cmd == ".ramb_tile")
     chipdb->tile_type[t] = TileType::RAMB;
-  else
+  else if (cmd == ".ramt_tile")
     {
-      assert(cmd == ".ramt_tile");
       chipdb->tile_type[t] = TileType::RAMT;
                   
       chipdb->add_cell(CellType::RAM, Location(t, 0));
+    }
+  else if (cmd == ".dsp0_tile")
+    //could add a cell here, but do it using extra_cell because the CBITs differ depending on
+    //location, and extra_cell is a better way of specifying this
+    chipdb->tile_type[t] = TileType::DSP0; 
+  else if (cmd == ".dsp1_tile")
+    chipdb->tile_type[t] = TileType::DSP1; 
+  else if (cmd == ".dsp2_tile")
+    chipdb->tile_type[t] = TileType::DSP2; 
+  else if (cmd == ".dsp3_tile")
+    chipdb->tile_type[t] = TileType::DSP3; 
+  else
+    {
+      assert(cmd == ".ipcon_tile");
+      chipdb->tile_type[t] = TileType::IPCON; 
     }
   
   // next command
@@ -457,10 +496,20 @@ ChipDBParser::parse_cmd_tile_bits()
     ty = TileType::LOGIC;
   else if (cmd == ".ramb_tile_bits")
     ty = TileType::RAMB;
+  else if (cmd == ".ramt_tile_bits")
+    ty = TileType::RAMT;  
+  else if (cmd == ".dsp0_tile_bits")
+    ty = TileType::DSP0;
+  else if (cmd == ".dsp1_tile_bits")
+    ty = TileType::DSP1;
+  else if (cmd == ".dsp2_tile_bits")
+    ty = TileType::DSP2; 
+  else if (cmd == ".dsp3_tile_bits")
+    ty = TileType::DSP3;     
   else
     {
-      assert(cmd == ".ramt_tile_bits");
-      ty = TileType::RAMT;
+      assert(cmd == ".ipcon_tile_bits");
+      ty = TileType::IPCON;
     }
   
   int n_columns = std::stoi(words[1]),
@@ -707,12 +756,17 @@ ChipDBParser::parse_cmd_extra_bits()
 void
 ChipDBParser::parse_cmd_extra_cell()
 {
-  if (words.size() != 4)
+  if (words.size() < 4)
     fatal("wrong number of arguments to .extra_cell");
+  
+  
               
-  const std::string &cell_type = words[3];
+  const std::string &cell_type = words[(words.size() >= 5) ? 4 : 3];
   int x = std::stoi(words[1]),
     y = std::stoi(words[2]);
+  int z = 0;
+  if(words.size() >= 5)
+    z = std::stoi(words[3]);
   int t = chipdb->tile(x, y);
   
   int c = 0;
@@ -720,6 +774,23 @@ ChipDBParser::parse_cmd_extra_cell()
     c = chipdb->add_cell(CellType::WARMBOOT, Location(t, 0));
   else if (cell_type == "PLL")
     c = chipdb->add_cell(CellType::PLL, Location(t, 3));
+  else if (cell_type == "MAC16") //TODO: should this really be using extra_cell?
+    c = chipdb->add_cell(CellType::MAC16, Location(t, z));
+  else if (cell_type == "SPRAM") 
+    c = chipdb->add_cell(CellType::SPRAM, Location(t, z));
+  else if (cell_type == "LFOSC") 
+    c = chipdb->add_cell(CellType::LFOSC, Location(t, z));
+  else if (cell_type == "HFOSC") 
+    c = chipdb->add_cell(CellType::HFOSC, Location(t, z));
+  else if (cell_type == "RGBA_DRV") 
+    c = chipdb->add_cell(CellType::RGBA_DRV, Location(t, z));
+  else if (cell_type == "LEDDA_IP") 
+    c = chipdb->add_cell(CellType::LEDDA_IP, Location(t, z));
+  else if (cell_type == "I2C_IP") 
+    c = chipdb->add_cell(CellType::I2C_IP, Location(t, z));
+  else if (cell_type == "SPI_IP") 
+    c = chipdb->add_cell(CellType::SPI_IP, Location(t, z));
+
   else
     fatal(fmt("unknown extra cell type `" << cell_type << "'"));
   
@@ -771,12 +842,22 @@ ChipDBParser::parse()
       else if (cmd == ".io_tile"
                || cmd == ".logic_tile"
                || cmd == ".ramb_tile"
-               || cmd == ".ramt_tile")
+               || cmd == ".ramt_tile"
+               || cmd == ".dsp0_tile"
+               || cmd == ".dsp1_tile"
+               || cmd == ".dsp2_tile"
+               || cmd == ".dsp3_tile"
+               || cmd == ".ipcon_tile")
         parse_cmd_tile();
       else if (cmd == ".io_tile_bits"
                || cmd == ".logic_tile_bits"
                || cmd == ".ramb_tile_bits"
-               || cmd == ".ramt_tile_bits")
+               || cmd == ".ramt_tile_bits"
+               || cmd == ".dsp0_tile_bits"
+               || cmd == ".dsp1_tile_bits"
+               || cmd == ".dsp2_tile_bits"
+               || cmd == ".dsp3_tile_bits"
+               || cmd == ".ipcon_tile_bits")
         parse_cmd_tile_bits();
       else if (cmd == ".net")
         parse_cmd_net();
@@ -838,6 +919,12 @@ ChipDB::finalize()
           tile_pos_cell[i].resize(4, 0);
           break;
         case TileType::RAMT:
+          tile_pos_cell[i].resize(1, 0);
+          break;
+        case TileType::DSP0:
+          tile_pos_cell[i].resize(1, 0);
+          break;
+        case TileType::IPCON:
           tile_pos_cell[i].resize(1, 0);
           break;
         default:
@@ -1018,6 +1105,15 @@ cell_type_name(CellType ct)
     case CellType::RAM:  return "RAM";
     case CellType::WARMBOOT:  return "WARMBOOT";
     case CellType::PLL:  return "PLL";
+    case CellType::MAC16:  return "MAC16";
+    case CellType::SPRAM:  return "SPRAM";
+    case CellType::LFOSC:  return "LFOSC";
+    case CellType::HFOSC:  return "HFOSC";
+    case CellType::RGBA_DRV:  return "RGBA_DRV";
+    case CellType::LEDDA_IP:  return "LEDDA_IP";
+    case CellType::I2C_IP:  return "I2C_IP";
+    case CellType::SPI_IP:  return "SPI_IP";
+
     default:  abort();
     }
 }
@@ -1026,8 +1122,20 @@ CBit
 ChipDB::extra_cell_cbit(int c, const std::string &name) const
 {
   const auto &p = cell_mfvs.at(c).at(name);
-  const auto &cbits = tile_nonrouting_cbits.at(tile_type[p.first]).at(std::string("PLL.") + p.second);
+  std::string prefix = "PLL.";
+  if((tile_type[p.first] == TileType::DSP0) || (tile_type[p.first] == TileType::DSP1) ||
+     (tile_type[p.first] == TileType::DSP2) || (tile_type[p.first] == TileType::DSP3) ||
+     (tile_type[p.first] == TileType::IPCON))
+     prefix = "IpConfig.";
+  const auto &cbits = tile_nonrouting_cbits.at(tile_type[p.first]).at(prefix + p.second);
   assert(cbits.size() == 1);
   const CBit &cbit0 = cbits[0];
   return cbit0.with_tile(p.first);
+}
+
+std::string
+ChipDB::extra_cell_netname(int c, const std::string &name) const
+{
+  const auto &p = cell_mfvs.at(c).at(name);
+  return p.second;
 }

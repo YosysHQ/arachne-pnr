@@ -215,6 +215,14 @@ Router::port_cnet(Instance *inst, Port *p)
         t = chipdb->tile(chipdb->tile_x(loc.tile()),
                          chipdb->tile_y(loc.tile()) - 1);
     }
+  else if (models.is_mac16(inst) || models.is_spram(inst) || models.is_lfosc(inst) ||
+           models.is_hfosc(inst) || models.is_rgba_drv(inst) || models.is_ledda_ip(inst) || 
+           models.is_spi(inst) || models.is_i2c(inst))
+    {
+      const auto &p2 = chipdb->cell_mfvs.at(cell).at(p_name);
+      t = p2.first;
+      tile_net_name = p2.second;
+    }
   else
     {
       assert(models.is_pllX(inst));

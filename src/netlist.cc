@@ -483,7 +483,10 @@ Model::boundary_nets(const Design *d) const
               && ((models.is_ioX(cast<Instance>(q->node()))
                    && q->name() == "PACKAGE_PIN")
                   || (models.is_pllX(cast<Instance>(q->node()))
-                      && q->name() == "PACKAGEPIN")))
+                      && q->name() == "PACKAGEPIN")
+                  || (models.is_rgba_drv(cast<Instance>(q->node()))
+                      && (q->name() == "RGB0" || q->name() == "RGB1" || q->name() == "RGB2")
+                  )))
             extend(bnets, n);
         }
     }
@@ -1253,6 +1256,97 @@ Design::create_standard_models()
   tbuf->add_port("A", Direction::IN);
   tbuf->add_port("E", Direction::IN);
   tbuf->add_port("Y", Direction::OUT);
+
+  Model *mac16 = new Model(this, "SB_MAC16");
+  mac16->add_port("CLK", Direction::IN);
+  mac16->add_port("CE", Direction::IN, Value::ONE);
+  for(int i = 0; i < 16; i++) {
+    mac16->add_port("C[" + std::to_string(i) + "]", Direction::IN, Value::ZERO);
+    mac16->add_port("A[" + std::to_string(i) + "]", Direction::IN, Value::ZERO);
+    mac16->add_port("B[" + std::to_string(i) + "]", Direction::IN, Value::ZERO);
+    mac16->add_port("D[" + std::to_string(i) + "]", Direction::IN, Value::ZERO);
+  } 
+  mac16->add_port("AHOLD", Direction::IN, Value::ZERO);
+  mac16->add_port("BHOLD", Direction::IN, Value::ZERO);
+  mac16->add_port("CHOLD", Direction::IN, Value::ZERO);
+  mac16->add_port("DHOLD", Direction::IN, Value::ZERO);
+  mac16->add_port("IRSTTOP", Direction::IN, Value::ZERO);
+  mac16->add_port("IRSTBOT", Direction::IN, Value::ZERO);
+  mac16->add_port("ORSTTOP", Direction::IN, Value::ZERO);
+  mac16->add_port("ORSTBOT", Direction::IN, Value::ZERO);
+  mac16->add_port("OLOADTOP", Direction::IN, Value::ZERO);
+  mac16->add_port("OLOADBOT", Direction::IN, Value::ZERO);
+  mac16->add_port("ADDSUBTOP", Direction::IN, Value::ZERO);
+  mac16->add_port("ADDSUBBOT", Direction::IN, Value::ZERO);
+  mac16->add_port("OHOLDTOP", Direction::IN, Value::ZERO);
+  mac16->add_port("OHOLDBOT", Direction::IN, Value::ZERO); 
+  mac16->add_port("CI", Direction::IN, Value::ZERO);
+  mac16->add_port("ACCUMCI", Direction::IN);
+  mac16->add_port("SIGNEXTIN", Direction::IN);
+
+  for(int i = 0; i < 32; i++)
+    mac16->add_port("O[" + std::to_string(i) + "]", Direction::OUT);
+  
+  
+  mac16->add_port("CO", Direction::OUT);
+  mac16->add_port("ACCUMCO", Direction::OUT);
+  mac16->add_port("SIGNEXTOUT", Direction::OUT);
+  
+  const std::vector<std::pair<std::string, int> > mac16_params = 
+    {{"C_REG", 1}, {"A_REG", 1}, {"B_REG", 1}, {"D_REG", 1},
+     {"TOP_8x8_MULT_REG", 1}, {"BOT_8x8_MULT_REG", 1},
+     {"PIPELINE_16x16_MULT_REG1", 1}, {"PIPELINE_16x16_MULT_REG2", 1},
+     {"TOPOUTPUT_SELECT", 2}, {"TOPADDSUB_LOWERINPUT", 2},
+     {"TOPADDSUB_UPPERINPUT", 1}, {"TOPADDSUB_CARRYSELECT", 2},
+     {"BOTOUTPUT_SELECT", 2}, {"BOTADDSUB_LOWERINPUT", 2},
+     {"BOTADDSUB_UPPERINPUT", 1}, {"BOTADDSUB_CARRYSELECT", 2},
+     {"MODE_8x8", 1}, {"A_SIGNED", 1}, {"B_SIGNED", 1}};
+  for(auto p : mac16_params)
+    mac16->set_param(p.first, BitVector(p.second, 0));
+  
+  Model *hfosc = new Model(this, "SB_HFOSC");
+  hfosc->add_port("CLKHFPU", Direction::IN, Value::ZERO);
+  hfosc->add_port("CLKHFEN", Direction::IN, Value::ZERO);
+  hfosc->add_port("CLKHF", Direction::OUT);
+  hfosc->set_param("CLKHF_DIV", "0b00");
+  
+  Model *lfosc = new Model(this, "SB_LFOSC");
+  lfosc->add_port("CLKLFPU", Direction::IN, Value::ZERO);
+  lfosc->add_port("CLKLFEN", Direction::IN, Value::ZERO);
+  lfosc->add_port("CLKLF", Direction::OUT);
+  
+  Model *spram = new Model(this, "SB_SPRAM256KA");
+  for(int i = 0; i < 14; i++)
+    spram->add_port("ADDRESS[" + std::to_string(i) + "]", Direction::IN, Value::ZERO);
+  for(int i = 0; i < 16; i++)
+    spram->add_port("DATAIN[" + std::to_string(i) + "]", Direction::IN, Value::ZERO);
+  for(int i = 0; i < 4; i++)
+    spram->add_port("MASKWREN[" + std::to_string(i) + "]", Direction::IN, Value::ONE);
+  spram->add_port("WREN", Direction::IN, Value::ZERO);
+  spram->add_port("CHIPSELECT", Direction::IN, Value::ZERO);
+  spram->add_port("CLOCK", Direction::IN);
+  spram->add_port("STANDBY", Direction::IN, Value::ZERO);
+  spram->add_port("SLEEP", Direction::IN, Value::ZERO);
+  spram->add_port("POWEROFF", Direction::IN, Value::ONE);
+  for(int i = 0; i < 16; i++)
+    spram->add_port("DATAOUT[" + std::to_string(i) + "]", Direction::OUT);
+  
+  Model *rgba_drv = new Model(this, "SB_RGBA_DRV");
+  rgba_drv->add_port("CURREN", Direction::IN, Value::ZERO);
+  rgba_drv->add_port("RGBLEDEN", Direction::IN, Value::ZERO);
+  rgba_drv->add_port("RGB0PWM", Direction::IN, Value::ZERO);
+  rgba_drv->add_port("RGB1PWM", Direction::IN, Value::ZERO);
+  rgba_drv->add_port("RGB2PWM", Direction::IN, Value::ZERO);
+  rgba_drv->add_port("RGB0", Direction::OUT);
+  rgba_drv->add_port("RGB1", Direction::OUT);
+  rgba_drv->add_port("RGB2", Direction::OUT);
+  
+  rgba_drv->set_param("CURRENT_MODE", "0b0");
+  rgba_drv->set_param("RGB0_CURRENT", "0b000000");
+  rgba_drv->set_param("RGB1_CURRENT", "0b000000");
+  rgba_drv->set_param("RGB2_CURRENT", "0b000000");
+  
+  //TODO: LEDDA, I2C and SPI IPs
 }
 
 Model *
