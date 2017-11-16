@@ -271,6 +271,36 @@ Promoter::promote(bool do_promote)
               make_routable(out->connection(), 1 << g);
             }
         }
+      else if (models.is_hfosc(inst))
+       {
+         Port *out = inst->find_port("CLKHF");
+         if (out->connected())
+           {
+             int driven_glb = chipdb->get_oscillator_glb(c, "CLKHF");
+             
+             for (uint8_t gc : global_classes)
+               {
+                 if (gc & (1 << driven_glb))
+                   ++gc_used[gc];
+               }
+             make_routable(out->connection(), 1 << driven_glb);
+           }
+       }
+      else if (models.is_lfosc(inst))
+       {
+          Port *out = inst->find_port("CLKLF");
+          if (out->connected())
+            {
+              int driven_glb = chipdb->get_oscillator_glb(c, "CLKLF");
+              
+              for (uint8_t gc : global_classes)
+                {
+                  if (gc & (1 << driven_glb))
+                    ++gc_used[gc];
+                }
+              make_routable(out->connection(), 1 << driven_glb);
+            }
+        }
       else if (models.is_pllX(inst))
         {
           plls.push_back(std::make_pair(inst, c));
@@ -365,7 +395,11 @@ Promoter::promote(bool do_promote)
               || (models.is_pllX(cast<Instance>(driver->node()))
                   && (driver->name() == "PLLOUTGLOBAL"
                       || driver->name() == "PLLOUTGLOBALA"
-                      || driver->name() == "PLLOUTGLOBALB"))))
+                      || driver->name() == "PLLOUTGLOBALB"))
+              || (models.is_hfosc(cast<Instance>(driver->node())) 
+                    && driver->name() == "CLKHF")
+              || (models.is_lfosc(cast<Instance>(driver->node())) 
+                    && driver->name() == "CLKLF")))
         {
           Instance *gb_inst = cast<Instance>(driver->node());
           
@@ -374,7 +408,9 @@ Promoter::promote(bool do_promote)
           ++n_global;
           ++gc_global[gc];
           
-          if (models.is_gbX(gb_inst))
+          if (models.is_gbX(gb_inst) || 
+              models.is_hfosc(gb_inst) ||
+              models.is_lfosc(gb_inst))
             {
               if (driver->connected())
                 make_routable(driver->connection(), gc);

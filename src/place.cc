@@ -433,20 +433,14 @@ Placer::inst_drives_global(Instance *inst, int c, int glb)
   
   if (models.is_hfosc(inst)
     && inst->find_port("CLKHF")->connected()) {
-      std::string netname = chipdb->extra_cell_netname(c, "CLKHF");
-      const std::string prefix = "glb_netwk_";
-      assert(netname.substr(0, prefix.length()) == prefix);
-      int driven_glb = std::stoi(netname.substr(prefix.length()));
+      int driven_glb = chipdb->get_oscillator_glb(c, "CLKHF");
       if(glb == driven_glb)
         return true;
   }
   
   if (models.is_lfosc(inst)
     && inst->find_port("CLKLF")->connected()) {
-      std::string netname = chipdb->extra_cell_netname(c, "CLKLF");
-      const std::string prefix = "glb_netwk_";
-      assert(netname.substr(0, prefix.length()) == prefix);
-      int driven_glb = std::stoi(netname.substr(prefix.length()));
+      int driven_glb = chipdb->get_oscillator_glb(c, "CLKLF");
       if(glb == driven_glb)
         return true;
   }
@@ -729,7 +723,8 @@ Placer::valid(int t)
   else
     assert((chipdb->tile_type[t] == TileType::RAMT) ||
            (chipdb->tile_type[t] == TileType::DSP0) ||
-           (chipdb->tile_type[t] == TileType::IPCON));
+           (chipdb->tile_type[t] == TileType::IPCON) ||
+           (chipdb->tile_type[t] == TileType::EMPTY));
   
   return true;
 }
@@ -1396,9 +1391,32 @@ Placer::configure()
       
       const Location &loc = chipdb->cell_location[cell];
       
+      // These are located in an empty tile so must be handled differrently
       if (models.is_warmboot(inst)) {
         placement[inst] = cell;
         continue;
+      } else if(models.is_hfosc(inst)) {
+        placement[inst] = cell;
+        const std::vector<std::pair<std::string, int> > hfosc_params =
+          {{"CLKHF_DIV", 2}};
+        configure_extra_cell(cell, inst, hfosc_params, true);
+
+        if(inst->find_port("CLKHF")->connected()) {
+          int driven_glb = chipdb->get_oscillator_glb(cell, "CLKHF");
+          
+          const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << driven_glb));
+          conf.set_extra_cbit(ecb);
+        }
+        continue;      
+      } else if(models.is_lfosc(inst)) {
+        placement[inst] = cell;
+        if(inst->find_port("CLKLF")->connected()) {
+          int driven_glb = chipdb->get_oscillator_glb(cell, "CLKLF");
+          
+          const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << driven_glb));
+          conf.set_extra_cbit(ecb);
+        }
+        continue;      
       }
 
       int t = loc.tile();
@@ -1558,6 +1576,8 @@ Placer::configure()
         configure_extra_cell(cell, inst, mac16_params, false);
         int x = chipdb->tile_x(loc.tile()),
           y = chipdb->tile_y(loc.tile());
+        //Used DSP tiles must have LC and cascade bits set correctly to function, as these are
+        //used for an unknown internal purpose
         for(int dsp_idx = 0; dsp_idx < 4; dsp_idx++) {
           const auto &dspi_func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::DSP0);
           int dspt = chipdb->tile(x, y + dsp_idx);
@@ -1580,12 +1600,6 @@ Placer::configure()
           }
         }
         
-      } else if(models.is_hfosc(inst)) {
-        const std::vector<std::pair<std::string, int> > hfosc_params =
-          {{"CLKHF_DIV", 2}};
-        configure_extra_cell(cell, inst, hfosc_params, true);
-      } else if(models.is_lfosc(inst)) {
-        //nothing to configure
       } else if(models.is_spram(inst)) {
         CBit spramen_cb = chipdb->extra_cell_cbit(cell, "SPRAM_ENABLE");
         conf.set_cbit(spramen_cb, true);
@@ -1951,6 +1965,36 @@ Placer::configure()
           }
       }
   }
+  
+  // All but one IpCon tile has LC_ and Cascade bits set, like DSP tiles
+  for (int t = 0; t < chipdb->n_tiles; ++t)
+    {
+      if (chipdb->tile_type[t] != TileType::IPCON)
+        continue;
+      
+      assert(chipdb->device == "5k");
+      if(chipdb->tile_x(t) == 25 && chipdb->tile_y(t) == 14)
+        continue; //Bits not set on this tile only
+      
+      const auto &ipcon_func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IPCON);
+      for(int lc_idx = 0; lc_idx < 8; lc_idx++) {
+        const auto &cbits = ipcon_func_cbits.at(fmt("LC_" << lc_idx));
+        static std::vector<int> ipc_lut_perm = {
+          4, 14, 15, 5, 6, 16, 17, 7, 3, 13, 12, 2, 1, 11, 10, 0,
+        };
+        for (int i = 0; i < 16; ++i)
+          conf.set_cbit(CBit(t,
+                             cbits[ipc_lut_perm[i]].row,
+                             cbits[ipc_lut_perm[i]].col),
+                        ((i % 8) >= 4));
+        const auto &casc_cbit = ipcon_func_cbits.at("Cascade.IPCON_LC0" + std::to_string(lc_idx) + "_inmux02_5");
+        assert(casc_cbit.size() == 1);
+        conf.set_cbit(CBit(t,
+                           casc_cbit[0].row,
+                           casc_cbit[0].col),
+                      1);
+      }  
+    }
   
   // set RamConfig.PowerUp configuration bit
   if (chipdb->tile_nonrouting_cbits.count(TileType::RAMB))

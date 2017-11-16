@@ -1139,3 +1139,13 @@ ChipDB::extra_cell_netname(int c, const std::string &name) const
   const auto &p = cell_mfvs.at(c).at(name);
   return p.second;
 }
+
+int
+ChipDB::get_oscillator_glb(int cell, const std::string &net) const
+{
+  std::string netname = extra_cell_netname(cell, net);
+  const std::string prefix = "glb_netwk_";
+  assert(netname.substr(0, prefix.length()) == prefix);
+  int driven_glb = std::stoi(netname.substr(prefix.length()));
+  return driven_glb;
+}

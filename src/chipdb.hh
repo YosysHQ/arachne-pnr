@@ -249,6 +249,8 @@ public:
   
   CBit extra_cell_cbit(int ec, const std::string &name) const;
   std::string extra_cell_netname(int ec, const std::string &name) const;
+  int get_oscillator_glb(int cell, const std::string &net) const;
+  
   int n_cells;
   BasedVector<CellType, 1> cell_type;
   BasedVector<Location, 1> cell_location;
