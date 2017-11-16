@@ -127,6 +127,29 @@ Promoter::port_gc(Port *conn, bool indirect)
            || models.is_warmboot(inst)
            || models.is_pllX(inst))
     ;
+  else if(models.is_mac16(inst))
+    {
+      if(conn->name() == "CLK")
+        return gc_clk;
+      if(conn->name() == "CE")
+        return gc_cen;
+      if(conn->name() == "IRSTTOP" ||
+         conn->name() == "IRSTBOT" ||
+         conn->name() == "ORSTTOP" ||
+         conn->name() == "ORSTBOT")
+        return gc_sr;
+    }
+  else if(models.is_hfosc(inst))
+    ;
+  else if(models.is_lfosc(inst))
+    ;
+  else if(models.is_spram(inst))
+   {
+      if(conn->name() == "CLOCK")
+        return gc_clk;
+   }
+  else if(models.is_rgba_drv(inst))
+    ;
   else
     {
       assert(models.is_ramX(inst));

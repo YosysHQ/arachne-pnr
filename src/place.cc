@@ -1556,6 +1556,30 @@ Placer::configure()
            {"BOTADDSUB_UPPERINPUT", 1}, {"BOTADDSUB_CARRYSELECT", 2},
            {"MODE_8x8", 1}, {"A_SIGNED", 1}, {"B_SIGNED", 1}};
         configure_extra_cell(cell, inst, mac16_params, false);
+        int x = chipdb->tile_x(loc.tile()),
+          y = chipdb->tile_y(loc.tile());
+        for(int dsp_idx = 0; dsp_idx < 4; dsp_idx++) {
+          const auto &dspi_func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::DSP0);
+          int dspt = chipdb->tile(x, y + dsp_idx);
+          for(int lc_idx = 0; lc_idx < 8; lc_idx++) {
+            const auto &cbits = dspi_func_cbits.at(fmt("LC_" << lc_idx));
+            static std::vector<int> dsp_lut_perm = {
+              4, 14, 15, 5, 6, 16, 17, 7, 3, 13, 12, 2, 1, 11, 10, 0,
+            };
+            for (int i = 0; i < 16; ++i)
+              conf.set_cbit(CBit(dspt,
+                                 cbits[dsp_lut_perm[i]].row,
+                                 cbits[dsp_lut_perm[i]].col),
+                            ((i % 8) >= 4));
+            const auto &casc_cbit = dspi_func_cbits.at("Cascade.MULT0_LC0" + std::to_string(lc_idx) + "_inmux02_5");
+            assert(casc_cbit.size() == 1);
+            conf.set_cbit(CBit(dspt,
+                               casc_cbit[0].row,
+                               casc_cbit[0].col),
+                          1);
+          }
+        }
+        
       } else if(models.is_hfosc(inst)) {
         const std::vector<std::pair<std::string, int> > hfosc_params =
           {{"CLKHF_DIV", 2}};

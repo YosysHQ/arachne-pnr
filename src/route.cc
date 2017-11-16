@@ -219,7 +219,17 @@ Router::port_cnet(Instance *inst, Port *p)
            models.is_hfosc(inst) || models.is_rgba_drv(inst) || models.is_ledda_ip(inst) || 
            models.is_spi(inst) || models.is_i2c(inst))
     {
-      const auto &p2 = chipdb->cell_mfvs.at(cell).at(p_name);
+      //Convert [x] to _x
+      std::string db_name;
+      for(auto c : p_name) {
+        if(c == '[')
+          db_name += "_";
+        else if(c == ']')
+          ;
+        else
+          db_name += c;
+      }
+      const auto &p2 = chipdb->cell_mfvs.at(cell).at(db_name);
       t = p2.first;
       tile_net_name = p2.second;
     }
