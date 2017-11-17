@@ -1323,13 +1323,13 @@ Design::create_standard_models()
   for(int i = 0; i < 16; i++)
     spram->add_port("DATAIN[" + std::to_string(i) + "]", Direction::IN, Value::ZERO);
   for(int i = 0; i < 4; i++)
-    spram->add_port("MASKWREN[" + std::to_string(i) + "]", Direction::IN, Value::ONE);
+    spram->add_port("MASKWREN[" + std::to_string(i) + "]", Direction::IN, Value::ZERO);
   spram->add_port("WREN", Direction::IN, Value::ZERO);
   spram->add_port("CHIPSELECT", Direction::IN, Value::ZERO);
   spram->add_port("CLOCK", Direction::IN);
   spram->add_port("STANDBY", Direction::IN, Value::ZERO);
   spram->add_port("SLEEP", Direction::IN, Value::ZERO);
-  spram->add_port("POWEROFF", Direction::IN, Value::ONE);
+  spram->add_port("POWEROFF", Direction::IN, Value::ZERO);
   for(int i = 0; i < 16; i++)
     spram->add_port("DATAOUT[" + std::to_string(i) + "]", Direction::OUT);
   

@@ -1417,8 +1417,13 @@ Placer::configure()
           conf.set_extra_cbit(ecb);
         }
         continue;      
+     } else if(models.is_spram(inst)) {
+        placement[inst] = cell;
+        CBit spramen_cb = chipdb->extra_cell_cbit(cell, "SPRAM_EN");
+        conf.set_cbit(spramen_cb, true);
+        continue;
       }
-
+      
       int t = loc.tile();
       const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(chipdb->tile_type[t]);
       
@@ -1600,9 +1605,6 @@ Placer::configure()
           }
         }
         
-      } else if(models.is_spram(inst)) {
-        CBit spramen_cb = chipdb->extra_cell_cbit(cell, "SPRAM_ENABLE");
-        conf.set_cbit(spramen_cb, true);
       } else if(models.is_rgba_drv(inst)) {
         const std::vector<std::pair<std::string, int> > rgbadrv_params =
           {{"CURRENT_MODE", 1}, {"RGB0_CURRENT", 6},
