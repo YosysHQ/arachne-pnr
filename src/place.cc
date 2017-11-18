@@ -433,16 +433,20 @@ Placer::inst_drives_global(Instance *inst, int c, int glb)
   
   if (models.is_hfosc(inst)
     && inst->find_port("CLKHF")->connected()) {
-      int driven_glb = chipdb->get_oscillator_glb(c, "CLKHF");
-      if(glb == driven_glb)
-        return true;
+      if(!inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
+          int driven_glb = chipdb->get_oscillator_glb(c, "CLKHF");
+          if(glb == driven_glb)
+            return true;  
+      }
   }
   
   if (models.is_lfosc(inst)
     && inst->find_port("CLKLF")->connected()) {
-      int driven_glb = chipdb->get_oscillator_glb(c, "CLKLF");
-      if(glb == driven_glb)
-        return true;
+      if(!inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
+          int driven_glb = chipdb->get_oscillator_glb(c, "CLKLF");
+          if(glb == driven_glb)
+            return true;
+      }
   }
   
   if (models.is_pllX(inst))
@@ -1401,7 +1405,7 @@ Placer::configure()
           {{"CLKHF_DIV", 2}};
         configure_extra_cell(cell, inst, hfosc_params, true);
 
-        if(inst->find_port("CLKHF")->connected()) {
+        if(inst->find_port("CLKHF")->connected() && !inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
           int driven_glb = chipdb->get_oscillator_glb(cell, "CLKHF");
           
           const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << driven_glb));
@@ -1410,7 +1414,7 @@ Placer::configure()
         continue;      
       } else if(models.is_lfosc(inst)) {
         placement[inst] = cell;
-        if(inst->find_port("CLKLF")->connected()) {
+        if(inst->find_port("CLKLF")->connected() && !inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
           int driven_glb = chipdb->get_oscillator_glb(cell, "CLKLF");
           
           const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << driven_glb));

@@ -221,14 +221,24 @@ Router::port_cnet(Instance *inst, Port *p)
     {
       //Convert [x] to _x
       std::string db_name;
-      for(auto c : p_name) {
-        if(c == '[')
-          db_name += "_";
-        else if(c == ']')
-          ;
+      //Deal with ROUTE_THROUGH_FABRIC
+      if((models.is_hfosc(inst) || models.is_lfosc(inst)) &&
+          inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
+        if(p_name == "CLKHF" || p_name == "CLKLF")
+            db_name = std::string(p_name) + "_FABRIC";
         else
-          db_name += c;
+            db_name = p_name;
+      } else {
+        for(auto c : p_name) {
+          if(c == '[')
+            db_name += "_";
+          else if(c == ']')
+            ;
+          else
+            db_name += c;
+        }          
       }
+
       const auto &p2 = chipdb->cell_mfvs.at(cell).at(db_name);
       t = p2.first;
       tile_net_name = p2.second;
