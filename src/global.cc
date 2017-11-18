@@ -274,10 +274,9 @@ Promoter::promote(bool do_promote)
       else if (models.is_hfosc(inst))
        {
          Port *out = inst->find_port("CLKHF");
-         if (out->connected())
+         if (out->connected() && !inst->is_attr_set("ROUTE_THROUGH_FABRIC"))
            {
              int driven_glb = chipdb->get_oscillator_glb(c, "CLKHF");
-             
              for (uint8_t gc : global_classes)
                {
                  if (gc & (1 << driven_glb))
@@ -289,7 +288,7 @@ Promoter::promote(bool do_promote)
       else if (models.is_lfosc(inst))
        {
           Port *out = inst->find_port("CLKLF");
-          if (out->connected())
+          if (out->connected() && !inst->is_attr_set("ROUTE_THROUGH_FABRIC"))
             {
               int driven_glb = chipdb->get_oscillator_glb(c, "CLKLF");
               
@@ -397,9 +396,11 @@ Promoter::promote(bool do_promote)
                       || driver->name() == "PLLOUTGLOBALA"
                       || driver->name() == "PLLOUTGLOBALB"))
               || (models.is_hfosc(cast<Instance>(driver->node())) 
-                    && driver->name() == "CLKHF")
+                    && driver->name() == "CLKHF" && 
+                        !cast<Instance>(driver->node())->is_attr_set("ROUTE_THROUGH_FABRIC"))
               || (models.is_lfosc(cast<Instance>(driver->node())) 
-                    && driver->name() == "CLKLF")))
+                    && driver->name() == "CLKLF" && 
+                        !cast<Instance>(driver->node())->is_attr_set("ROUTE_THROUGH_FABRIC"))))
         {
           Instance *gb_inst = cast<Instance>(driver->node());
           
