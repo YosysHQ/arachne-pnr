@@ -136,7 +136,8 @@ public:
   void configure_io(const Location &loc,
                     bool enable_input,
                     bool enable_output,
-                    bool pullup);
+                    bool pullup,
+                    std::string pullup_strength = "100K");
   void configure();
   
   //Configure a specific extra cell, given a list of the
@@ -1253,7 +1254,8 @@ void
 Placer::configure_io(const Location &loc,
                      bool enable_input,
                      bool enable_output,
-                     bool pullup)
+                     bool pullup,
+                     std::string pullup_strength)
 {
   const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
   const CBit &ie_0 = func_cbits.at("IoCtrl.IE_0")[0],
@@ -1300,9 +1302,16 @@ Placer::configure_io(const Location &loc,
   
   // The 5k series have extra IO configuration required
   if(chipdb->device == "5k") {
+    pullup_strength = str_to_upper(pullup_strength);
     const CBit &padeb_test_0 = func_cbits.at("IoCtrl.padeb_test_0")[0],
       &padeb_test_1 = func_cbits.at("IoCtrl.padeb_test_1")[0],
+      &cf_bit_32 = func_cbits.at("IoCtrl.cf_bit_32")[0],
+      &cf_bit_33 = func_cbits.at("IoCtrl.cf_bit_33")[0],
+      &cf_bit_34 = func_cbits.at("IoCtrl.cf_bit_34")[0],
       &cf_bit_35 = func_cbits.at("IoCtrl.cf_bit_35")[0],
+      &cf_bit_36 = func_cbits.at("IoCtrl.cf_bit_36")[0],
+      &cf_bit_37 = func_cbits.at("IoCtrl.cf_bit_37")[0],
+      &cf_bit_38 = func_cbits.at("IoCtrl.cf_bit_38")[0],
       &cf_bit_39 = func_cbits.at("IoCtrl.cf_bit_39")[0];
       
       //padeb_test_x is set when a pin is not an output
@@ -1321,14 +1330,17 @@ Placer::configure_io(const Location &loc,
                              padeb_test_0.col),
                         !enable_output);  // active low
         }
-        
-      //cf_bit_35 mirrors REN_1 and cf_bit_39 mirrors REN_0
+      assert(pullup_strength == "100K" || pullup_strength == "10K" ||
+             pullup_strength == "6P8K" || pullup_strength == "3P3K");
+      //cf_bit_35 mirrors REN_1 and cf_bit_39 mirrors REN_0 (set low to
+      //enable 100k pullup)
+      bool enable_100k = pullup && (pullup_strength == "100K");
       if (loc.pos() == 0)
         {
           conf.set_cbit(CBit(loc.tile(),
                              cf_bit_39.row,
                              cf_bit_39.col),
-                        !pullup);  // active low
+                        !enable_100k);  // active low
         }
       else
         {
@@ -1336,8 +1348,21 @@ Placer::configure_io(const Location &loc,
           conf.set_cbit(CBit(loc.tile(),
                              cf_bit_35.row,
                              cf_bit_35.col),
-                        !pullup);  // active low
+                        !enable_100k);  // active low
         }
+      //Lookup bits other than 100k which is a special case
+      if((pullup_strength != "100K") && pullup) {
+          const std::map<std::string, std::pair<const CBit &, const CBit &> >
+           pullup_cbits = {{"3P3K", {cf_bit_36, cf_bit_32}},
+                           {"6P8K", {cf_bit_37, cf_bit_33}},
+                           {"10K",  {cf_bit_38, cf_bit_34}}};
+          const CBit &pullup_cbit = (loc.pos() == 1) ? pullup_cbits.at(pullup_strength).second : 
+                                                       pullup_cbits.at(pullup_strength).first;                                       
+          conf.set_cbit(CBit(loc.tile(),
+                          pullup_cbit.row,
+                          pullup_cbit.col),
+                        true);
+      }
   }
 }
 
@@ -1897,7 +1922,7 @@ Placer::configure()
         bool enable_output = false;
         bool pullup = true;  // default pullup
         bool is_lvds = false;
-        
+        std::string pullup_strength = "100K";
         const Location &loc = p.second;
         int pll_cell = lookup_or_default(loc_pll, loc, 0);
         if (pll_cell)
@@ -1925,8 +1950,13 @@ Placer::configure()
                 enable_output = pin_type.get_bit(5) || pin_type.get_bit(4) || 
                                 pin_type.get_bit(3) || pin_type.get_bit(2);
                 pullup = inst->get_param("PULLUP").get_bit(0);
+                if(chipdb->device == "5k") {
+                    if(inst->has_attr("PULLUP_RESISTOR"))
+                       pullup_strength = inst->get_attr("PULLUP_RESISTOR").as_string();
+                }
                 is_lvds = inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT";
                 conf.set_cbit(CBit(loc.tile(), lvds_cbit.row, lvds_cbit.col), is_lvds);
+
               }
           }
 
@@ -1940,13 +1970,13 @@ Placer::configure()
           }
 
         const Location &ieren_loc = chipdb->ieren.at(loc);
-        configure_io(ieren_loc, enable_input, enable_output, pullup);
+        configure_io(ieren_loc, enable_input, enable_output, pullup, pullup_strength);
 
         if (is_lvds)
           {
             Location partner_loc(loc.tile(), !loc.pos());
             const Location &partner_ieren_loc = chipdb->ieren.at(partner_loc);
-            configure_io(partner_ieren_loc, enable_input, enable_output, pullup);
+            configure_io(partner_ieren_loc, enable_input, enable_output, pullup, pullup_strength);
           }
       }
     
