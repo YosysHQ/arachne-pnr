@@ -136,8 +136,19 @@ public:
   void configure_io(const Location &loc,
                     bool enable_input,
                     bool enable_output,
-                    bool pullup);
+                    bool pullup,
+                    std::string pullup_strength = "100K");
   void configure();
+  
+  //Configure a specific extra cell, given a list of the
+  //parameters it takes in the form of a name and a size
+  //If string_style is true, then it uses the "alternative 
+  //Lattice style" where parameters are a string like "0b000111" 
+  //rather than a numeric constant
+  void configure_extra_cell(int c,
+                            Instance *inst,
+                            const std::vector<std::pair<std::string, int> > &params,
+                            bool string_style);
   
 #ifndef NDEBUG
   void check();
@@ -163,6 +174,22 @@ Placer::gate_cell_type(int g)
     return CellType::WARMBOOT;
   else if (models.is_pllX(inst))
     return CellType::PLL;
+  else if (models.is_mac16(inst))
+    return CellType::MAC16;
+  else if (models.is_spram(inst))
+    return CellType::SPRAM;
+  else if (models.is_hfosc(inst))
+    return CellType::HFOSC;
+  else if (models.is_lfosc(inst))
+    return CellType::LFOSC;
+  else if (models.is_rgba_drv(inst))
+    return CellType::RGBA_DRV;
+  else if (models.is_ledda_ip(inst))
+    return CellType::LEDDA_IP;
+  else if (models.is_i2c(inst))
+    return CellType::I2C_IP;
+  else if (models.is_spi(inst))
+    return CellType::SPI_IP;
   else
     {
       assert(models.is_ramX(inst));
@@ -404,6 +431,24 @@ Placer::inst_drives_global(Instance *inst, int c, int glb)
       assert(chipdb->gbufin.at(std::make_pair(x, y)) == glb);
       return true;
     }
+  
+  if (models.is_hfosc(inst)
+    && inst->find_port("CLKHF")->connected()) {
+      if(!inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
+          int driven_glb = chipdb->get_oscillator_glb(c, "CLKHF");
+          if(glb == driven_glb)
+            return true;  
+      }
+  }
+  
+  if (models.is_lfosc(inst)
+    && inst->find_port("CLKLF")->connected()) {
+      if(!inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
+          int driven_glb = chipdb->get_oscillator_glb(c, "CLKLF");
+          if(glb == driven_glb)
+            return true;
+      }
+  }
   
   if (models.is_pllX(inst))
     {
@@ -681,7 +726,10 @@ Placer::valid(int t)
         }
     }
   else
-    assert(chipdb->tile_type[t] == TileType::RAMT);
+    assert((chipdb->tile_type[t] == TileType::RAMT) ||
+           (chipdb->tile_type[t] == TileType::DSP0) ||
+           (chipdb->tile_type[t] == TileType::IPCON) ||
+           (chipdb->tile_type[t] == TileType::EMPTY));
   
   return true;
 }
@@ -1206,7 +1254,8 @@ void
 Placer::configure_io(const Location &loc,
                      bool enable_input,
                      bool enable_output,
-                     bool pullup)
+                     bool pullup,
+                     std::string pullup_strength)
 {
   const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
   const CBit &ie_0 = func_cbits.at("IoCtrl.IE_0")[0],
@@ -1253,9 +1302,16 @@ Placer::configure_io(const Location &loc,
   
   // The 5k series have extra IO configuration required
   if(chipdb->device == "5k") {
+    pullup_strength = str_to_upper(pullup_strength);
     const CBit &padeb_test_0 = func_cbits.at("IoCtrl.padeb_test_0")[0],
       &padeb_test_1 = func_cbits.at("IoCtrl.padeb_test_1")[0],
+      &cf_bit_32 = func_cbits.at("IoCtrl.cf_bit_32")[0],
+      &cf_bit_33 = func_cbits.at("IoCtrl.cf_bit_33")[0],
+      &cf_bit_34 = func_cbits.at("IoCtrl.cf_bit_34")[0],
       &cf_bit_35 = func_cbits.at("IoCtrl.cf_bit_35")[0],
+      &cf_bit_36 = func_cbits.at("IoCtrl.cf_bit_36")[0],
+      &cf_bit_37 = func_cbits.at("IoCtrl.cf_bit_37")[0],
+      &cf_bit_38 = func_cbits.at("IoCtrl.cf_bit_38")[0],
       &cf_bit_39 = func_cbits.at("IoCtrl.cf_bit_39")[0];
       
       //padeb_test_x is set when a pin is not an output
@@ -1274,14 +1330,17 @@ Placer::configure_io(const Location &loc,
                              padeb_test_0.col),
                         !enable_output);  // active low
         }
-        
-      //cf_bit_35 mirrors REN_1 and cf_bit_39 mirrors REN_0
+      assert(pullup_strength == "100K" || pullup_strength == "10K" ||
+             pullup_strength == "6P8K" || pullup_strength == "3P3K");
+      //cf_bit_35 mirrors REN_1 and cf_bit_39 mirrors REN_0 (set low to
+      //enable 100k pullup)
+      bool enable_100k = pullup && (pullup_strength == "100K");
       if (loc.pos() == 0)
         {
           conf.set_cbit(CBit(loc.tile(),
                              cf_bit_39.row,
                              cf_bit_39.col),
-                        !pullup);  // active low
+                        !enable_100k);  // active low
         }
       else
         {
@@ -1289,9 +1348,66 @@ Placer::configure_io(const Location &loc,
           conf.set_cbit(CBit(loc.tile(),
                              cf_bit_35.row,
                              cf_bit_35.col),
-                        !pullup);  // active low
+                        !enable_100k);  // active low
         }
+      //Lookup bits other than 100k which is a special case
+      if((pullup_strength != "100K") && pullup) {
+          const std::map<std::string, std::pair<const CBit &, const CBit &> >
+           pullup_cbits = {{"3P3K", {cf_bit_36, cf_bit_32}},
+                           {"6P8K", {cf_bit_37, cf_bit_33}},
+                           {"10K",  {cf_bit_38, cf_bit_34}}};
+          const CBit &pullup_cbit = (loc.pos() == 1) ? pullup_cbits.at(pullup_strength).second : 
+                                                       pullup_cbits.at(pullup_strength).first;                                       
+          conf.set_cbit(CBit(loc.tile(),
+                          pullup_cbit.row,
+                          pullup_cbit.col),
+                        true);
+      }
   }
+}
+
+void 
+Placer::configure_extra_cell(int c,
+                             Instance *inst,
+                             const std::vector<std::pair<std::string, int> > &params,
+                             bool string_style)
+{
+  for(auto p : params) {
+    //TODO: default value? or is this done in Verilog library?
+    BitVector value;
+    if(string_style) {
+      //Lattice's weird string style params (as of yet untested), not sure if
+      //prefixes other than 0b should be supported, only 0b features in docs
+      std::string raw = inst->get_param(p.first).as_string();
+      assert(raw.substr(0, 2) == "0b");
+      raw = raw.substr(2);
+      value.resize(raw.length());
+      for(int i = 0; i < (int)raw.length(); i++) {
+        if(raw[i] == '1') {
+          value[(raw.length() - 1) - i] = 1;
+        } else {
+          assert(raw[i] == '0');
+          value[(raw.length() - 1) - i] = 0;
+        }
+      }
+    } else {
+      value = inst->get_param(p.first).as_bits();
+    }
+    
+    value.resize(p.second);
+    if(p.second == 1) {
+      CBit cb = chipdb->extra_cell_cbit(c, p.first);
+      conf.set_cbit(cb, value[0]);
+    } else {
+      for (int i = 0; i < (int)p.second; ++i)
+        {
+          CBit cb = chipdb->extra_cell_cbit(c, fmt((p.first + std::string("_")) << i));
+          conf.set_cbit(cb, value[i]);
+        }
+    }
+
+  }
+
 }
 
 void
@@ -1304,11 +1420,39 @@ Placer::configure()
       
       const Location &loc = chipdb->cell_location[cell];
       
+      // These are located in an empty tile so must be handled differrently
       if (models.is_warmboot(inst)) {
         placement[inst] = cell;
         continue;
-      }
+      } else if(models.is_hfosc(inst)) {
+        placement[inst] = cell;
+        const std::vector<std::pair<std::string, int> > hfosc_params =
+          {{"CLKHF_DIV", 2}};
+        configure_extra_cell(cell, inst, hfosc_params, true);
 
+        if(inst->find_port("CLKHF")->connected() && !inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
+          int driven_glb = chipdb->get_oscillator_glb(cell, "CLKHF");
+          
+          const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << driven_glb));
+          conf.set_extra_cbit(ecb);
+        }
+        continue;      
+      } else if(models.is_lfosc(inst)) {
+        placement[inst] = cell;
+        if(inst->find_port("CLKLF")->connected() && !inst->is_attr_set("ROUTE_THROUGH_FABRIC")) {
+          int driven_glb = chipdb->get_oscillator_glb(cell, "CLKLF");
+          
+          const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << driven_glb));
+          conf.set_extra_cbit(ecb);
+        }
+        continue;      
+     } else if(models.is_spram(inst)) {
+        placement[inst] = cell;
+        CBit spramen_cb = chipdb->extra_cell_cbit(cell, "SPRAM_EN");
+        conf.set_cbit(spramen_cb, true);
+        continue;
+      }
+      
       int t = loc.tile();
       const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(chipdb->tile_type[t]);
       
@@ -1453,7 +1597,52 @@ Placer::configure()
                                ramb_negclk.col),
                           true);
         }
-      else
+      else if (models.is_mac16(inst)) {
+        const std::vector<std::pair<std::string, int> > mac16_params = 
+          {{"C_REG", 1}, {"A_REG", 1}, {"B_REG", 1}, {"D_REG", 1},
+           {"TOP_8x8_MULT_REG", 1}, {"BOT_8x8_MULT_REG", 1},
+           {"PIPELINE_16x16_MULT_REG1", 1}, {"PIPELINE_16x16_MULT_REG2", 1},
+           {"TOPOUTPUT_SELECT", 2}, {"TOPADDSUB_LOWERINPUT", 2},
+           {"TOPADDSUB_UPPERINPUT", 1}, {"TOPADDSUB_CARRYSELECT", 2},
+           {"BOTOUTPUT_SELECT", 2}, {"BOTADDSUB_LOWERINPUT", 2},
+           {"BOTADDSUB_UPPERINPUT", 1}, {"BOTADDSUB_CARRYSELECT", 2},
+           {"MODE_8x8", 1}, {"A_SIGNED", 1}, {"B_SIGNED", 1}};
+        configure_extra_cell(cell, inst, mac16_params, false);
+        int x = chipdb->tile_x(loc.tile()),
+          y = chipdb->tile_y(loc.tile());
+        //Used DSP tiles must have LC and cascade bits set correctly to function, as these are
+        //used for an unknown internal purpose
+        for(int dsp_idx = 0; dsp_idx < 4; dsp_idx++) {
+          const auto &dspi_func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::DSP0);
+          int dspt = chipdb->tile(x, y + dsp_idx);
+          for(int lc_idx = 0; lc_idx < 8; lc_idx++) {
+            const auto &cbits = dspi_func_cbits.at(fmt("LC_" << lc_idx));
+            static std::vector<int> dsp_lut_perm = {
+              4, 14, 15, 5, 6, 16, 17, 7, 3, 13, 12, 2, 1, 11, 10, 0,
+            };
+            for (int i = 0; i < 16; ++i)
+              conf.set_cbit(CBit(dspt,
+                                 cbits[dsp_lut_perm[i]].row,
+                                 cbits[dsp_lut_perm[i]].col),
+                            ((i % 8) >= 4));
+            const auto &casc_cbit = dspi_func_cbits.at("Cascade.MULT0_LC0" + std::to_string(lc_idx) + "_inmux02_5");
+            assert(casc_cbit.size() == 1);
+            conf.set_cbit(CBit(dspt,
+                               casc_cbit[0].row,
+                               casc_cbit[0].col),
+                          1);
+          }
+        }
+        
+      } else if(models.is_rgba_drv(inst)) {
+        const std::vector<std::pair<std::string, int> > rgbadrv_params =
+          {{"CURRENT_MODE", 1}, {"RGB0_CURRENT", 6},
+           {"RGB1_CURRENT", 6}, {"RGB2_CURRENT", 6}};
+        configure_extra_cell(cell, inst, rgbadrv_params, true);     
+        
+        CBit rgben_cb = chipdb->extra_cell_cbit(cell, "RGBA_DRV_EN");
+        conf.set_cbit(rgben_cb, true);
+      } else
         {
           assert(models.is_pllX(inst));
           
@@ -1733,7 +1922,7 @@ Placer::configure()
         bool enable_output = false;
         bool pullup = true;  // default pullup
         bool is_lvds = false;
-        
+        std::string pullup_strength = "100K";
         const Location &loc = p.second;
         int pll_cell = lookup_or_default(loc_pll, loc, 0);
         if (pll_cell)
@@ -1761,8 +1950,13 @@ Placer::configure()
                 enable_output = pin_type.get_bit(5) || pin_type.get_bit(4) || 
                                 pin_type.get_bit(3) || pin_type.get_bit(2);
                 pullup = inst->get_param("PULLUP").get_bit(0);
+                if(chipdb->device == "5k") {
+                    if(inst->has_attr("PULLUP_RESISTOR"))
+                       pullup_strength = inst->get_attr("PULLUP_RESISTOR").as_string();
+                }
                 is_lvds = inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT";
                 conf.set_cbit(CBit(loc.tile(), lvds_cbit.row, lvds_cbit.col), is_lvds);
+
               }
           }
 
@@ -1776,13 +1970,13 @@ Placer::configure()
           }
 
         const Location &ieren_loc = chipdb->ieren.at(loc);
-        configure_io(ieren_loc, enable_input, enable_output, pullup);
+        configure_io(ieren_loc, enable_input, enable_output, pullup, pullup_strength);
 
         if (is_lvds)
           {
             Location partner_loc(loc.tile(), !loc.pos());
             const Location &partner_ieren_loc = chipdb->ieren.at(partner_loc);
-            configure_io(partner_ieren_loc, enable_input, enable_output, pullup);
+            configure_io(partner_ieren_loc, enable_input, enable_output, pullup, pullup_strength);
           }
       }
     
@@ -1807,6 +2001,36 @@ Placer::configure()
           }
       }
   }
+  
+  // All but one IpCon tile has LC_ and Cascade bits set, like DSP tiles
+  for (int t = 0; t < chipdb->n_tiles; ++t)
+    {
+      if (chipdb->tile_type[t] != TileType::IPCON)
+        continue;
+      
+      assert(chipdb->device == "5k");
+      if(chipdb->tile_x(t) == 25 && chipdb->tile_y(t) == 14)
+        continue; //Bits not set on this tile only
+      
+      const auto &ipcon_func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IPCON);
+      for(int lc_idx = 0; lc_idx < 8; lc_idx++) {
+        const auto &cbits = ipcon_func_cbits.at(fmt("LC_" << lc_idx));
+        static std::vector<int> ipc_lut_perm = {
+          4, 14, 15, 5, 6, 16, 17, 7, 3, 13, 12, 2, 1, 11, 10, 0,
+        };
+        for (int i = 0; i < 16; ++i)
+          conf.set_cbit(CBit(t,
+                             cbits[ipc_lut_perm[i]].row,
+                             cbits[ipc_lut_perm[i]].col),
+                        ((i % 8) >= 4));
+        const auto &casc_cbit = ipcon_func_cbits.at("Cascade.IPCON_LC0" + std::to_string(lc_idx) + "_inmux02_5");
+        assert(casc_cbit.size() == 1);
+        conf.set_cbit(CBit(t,
+                           casc_cbit[0].row,
+                           casc_cbit[0].col),
+                      1);
+      }  
+    }
   
   // set RamConfig.PowerUp configuration bit
   if (chipdb->tile_nonrouting_cbits.count(TileType::RAMB))

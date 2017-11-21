@@ -306,4 +306,12 @@ pop(std::vector<T> &v, int i)
   v.pop_back();
 }
 
+inline
+std::string str_to_upper(const std::string &s) {
+    std::string res;
+    for(auto c : s)
+        res += toupper(c);
+    return res;
+}
+
 #endif

@@ -52,7 +52,10 @@ instantiate_io(Design *d)
           && ((models.is_ioX(cast<Instance>(q->node()))
                && q->name() == "PACKAGE_PIN")
               || (models.is_pllX(cast<Instance>(q->node()))
-                  && q->name() == "PACKAGEPIN")))
+                  && q->name() == "PACKAGEPIN") 
+              ||   (models.is_rgba_drv(cast<Instance>(q->node()))
+                      && (q->name() == "RGB0" || q->name() == "RGB1" || q->name() == "RGB2")
+                  )))
         continue;
       
 #ifndef NDEBUG

@@ -163,7 +163,8 @@ ConstraintsPlacer::top_port_io_gate(const std::string &net_name)
   
   Instance *inst = cast<Instance>(p2->node());
   assert(models.is_ioX(inst)
-         || models.is_pllX(inst));
+         || models.is_pllX(inst)
+         || models.is_rgba_drv(inst));
   
   return inst;
 }
@@ -248,6 +249,11 @@ ConstraintsPlacer::place()
             }
           
           c = chipdb->loc_cell(loc);
+        }
+      else if(models.is_rgba_drv(inst))
+        {
+          //TODO: check RGBx pins
+          continue;
         }
       else
         {

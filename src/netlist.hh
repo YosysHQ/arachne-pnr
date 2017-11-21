@@ -283,6 +283,15 @@ public:
   {
     return m_attrs.at(an);
   }
+  // Return true if an attr exists and is set to 1, false otherwise
+  // (for binary attributes like ROUTE_THROUGH_FABRIC)
+  bool is_attr_set(const std::string &an) const
+  {
+    if(!has_attr(an))
+      return false;
+    else
+      return get_attr(an).get_bit(0);
+  }
   
   void merge_attrs(const Instance *inst);
   
@@ -466,6 +475,15 @@ public:
   {
     return is_prefix("SB_PLL40_", inst->instance_of()->name());
   }
+  bool is_mac16(const Instance *inst) const {return inst->instance_of()->name() == "SB_MAC16";}
+  bool is_spram(const Instance *inst) const {return inst->instance_of()->name() == "SB_SPRAM256KA";}
+  bool is_hfosc(const Instance *inst) const {return inst->instance_of()->name() == "SB_HFOSC";}
+  bool is_lfosc(const Instance *inst) const {return inst->instance_of()->name() == "SB_LFOSC";}
+  bool is_rgba_drv(const Instance *inst) const {return inst->instance_of()->name() == "SB_RGBA_DRV";}
+  bool is_ledda_ip(const Instance *inst) const {return inst->instance_of()->name() == "SB_LEDDA_IP";}
+  bool is_i2c(const Instance *inst) const {return inst->instance_of()->name() == "SB_I2C";}
+  bool is_spi(const Instance *inst) const {return inst->instance_of()->name() == "SB_SPI";}
+
 };
 
 
