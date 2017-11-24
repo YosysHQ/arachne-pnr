@@ -1348,7 +1348,77 @@ Design::create_standard_models()
   rgba_drv->set_param("RGB1_CURRENT", "0b000000");
   rgba_drv->set_param("RGB2_CURRENT", "0b000000");
   
-  //TODO: LEDDA, I2C and SPI IPs
+  //TODO: LEDDA and SPI IPs
+  Model *i2c = new Model(this, "SB_I2C");
+  i2c->add_port("SBCLKI", Direction::IN);
+  i2c->add_port("SBRWI", Direction::IN, Value::ZERO);
+  i2c->add_port("SBSTBI", Direction::IN, Value::ZERO);
+  for(int i = 0; i < 8; i++)
+    i2c->add_port("SBADRI" + std::to_string(i), Direction::IN, Value::ZERO);
+  for(int i = 0; i < 8; i++)
+    i2c->add_port("SBDATI" + std::to_string(i), Direction::IN, Value::ZERO);
+  for(int i = 0; i < 8; i++)
+    i2c->add_port("SBDATO" + std::to_string(i), Direction::OUT);
+  i2c->add_port("SBACKO", Direction::OUT);
+  i2c->add_port("I2CIRQ", Direction::OUT);
+  i2c->add_port("I2CWKUP", Direction::OUT);
+  i2c->add_port("SCLI", Direction::IN);
+  i2c->add_port("SCLO", Direction::OUT);
+  i2c->add_port("SCLOE", Direction::OUT);
+  i2c->add_port("SDAI", Direction::IN);
+  i2c->add_port("SDAO", Direction::OUT);
+  i2c->add_port("SDAOE", Direction::OUT);
+  
+  //Default to upper left?
+  i2c->set_param("BUS_ADDR74", "0b0001");
+  i2c->set_param("0b1111100001", "0b1111100001");
+  
+  Model *spi = new Model(this, "SB_SPI");
+  spi->add_port("SBCLKI", Direction::IN);
+  spi->add_port("SBRWI", Direction::IN, Value::ZERO);
+  spi->add_port("SBSTBI", Direction::IN, Value::ZERO);
+  for(int i = 0; i < 8; i++)
+    spi->add_port("SBADRI" + std::to_string(i), Direction::IN, Value::ZERO);
+  for(int i = 0; i < 8; i++)
+    spi->add_port("SBDATI" + std::to_string(i), Direction::IN, Value::ZERO);
+  for(int i = 0; i < 8; i++)
+    spi->add_port("SBDATO" + std::to_string(i), Direction::OUT);
+  spi->add_port("SBACKO", Direction::OUT);
+  spi->add_port("SPIIRQ", Direction::OUT);
+  spi->add_port("SPIWKUP", Direction::OUT);
+  spi->add_port("MI", Direction::IN);
+  spi->add_port("SO", Direction::OUT);
+  spi->add_port("SOE", Direction::OUT);
+  spi->add_port("SI", Direction::IN);
+  spi->add_port("MO", Direction::OUT);
+  spi->add_port("MOE", Direction::OUT);
+  spi->add_port("SCKI", Direction::IN);
+  spi->add_port("SCKO", Direction::OUT);
+  spi->add_port("SCKOE", Direction::OUT);
+  spi->add_port("SCSNI", Direction::IN);
+  for(int i = 0; i < 4; i++)
+    spi->add_port("MCSNO" + std::to_string(i), Direction::OUT);
+  for(int i = 0; i < 4; i++)
+    spi->add_port("MCSNOE" + std::to_string(i), Direction::OUT);
+
+  spi->set_param("BUS_ADDR74", "0b0000");
+  
+  Model *ledda = new Model(this, "SB_LEDDA_IP");
+  ledda->add_port("LEDDCS", Direction::IN, Value::ZERO);
+  ledda->add_port("LEDDCLK", Direction::IN);
+  for(int i = 7; i >= 0; i--)
+    ledda->add_port("LEDDDAT" + std::to_string(i), Direction::IN, Value::ZERO);
+  for(int i = 3; i >= 0; i--)
+    ledda->add_port("LEDDADDR" + std::to_string(i), Direction::IN, Value::ZERO);  
+  ledda->add_port("LEDDDEN", Direction::IN, Value::ZERO);
+  ledda->add_port("LEDDEXE", Direction::IN, Value::ZERO);
+  ledda->add_port("LEDDRST", Direction::IN, Value::ZERO); //doesn't actually exist, for icecube code compatibility only
+  ledda->add_port("PWMOUT0", Direction::OUT);
+  ledda->add_port("PWMOUT1", Direction::OUT);
+  ledda->add_port("PWMOUT2", Direction::OUT);
+  ledda->add_port("LEDDON", Direction::OUT);
+
+
 }
 
 Model *

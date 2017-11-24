@@ -725,11 +725,61 @@ Placer::valid(int t)
             }
         }
     }
+  else if(chipdb->tile_type[t] == TileType::EMPTY)
+    {
+      for(auto cell : chipdb->cell_type_cells[cell_type_idx(CellType::I2C_IP)])
+        {
+          if(chipdb->cell_location[cell].tile() == t)
+           {
+             int g = cell_gate[cell];
+             if (g)
+               {
+                 Instance *inst = gates[g];
+                 if(models.is_i2c(inst))
+                   {
+                     if((x == 0) && (y == chipdb->height-1)
+                       && (inst->get_param("BUS_ADDR74").as_string() == "0b0001"))
+                       return true;
+                     if((x == chipdb->width-1) && (y == chipdb->height-1)
+                       && (inst->get_param("BUS_ADDR74").as_string() == "0b0011"))
+                       return true;
+                     return false;
+                   }
+               }
+           }
+        }
+        for(auto cell : chipdb->cell_type_cells[cell_type_idx(CellType::SPI_IP)])
+          {
+            if(chipdb->cell_location[cell].tile() == t)
+             {
+               int g = cell_gate[cell];
+               if (g)
+                 {
+                   Instance *inst = gates[g];
+                   if(models.is_spi(inst))
+                     {
+                       if((x == 0) && (y == 0)
+                         && (inst->get_param("BUS_ADDR74").as_string() == "0b0000"))
+                         return true;
+                       // NOTE: the bus address of 0b0010 is not a typo, it appears the Technology Library (latest v3.0)
+                       // document is incorrect here
+                       if((x == chipdb->width-1) && (y == 0)
+                         && (inst->get_param("BUS_ADDR74").as_string() == "0b0010")) 
+                         return true;
+                       return false;
+                     }
+                 }
+             }
+          }
+            
+
+            
+      
+    }
   else
     assert((chipdb->tile_type[t] == TileType::RAMT) ||
            (chipdb->tile_type[t] == TileType::DSP0) ||
-           (chipdb->tile_type[t] == TileType::IPCON) ||
-           (chipdb->tile_type[t] == TileType::EMPTY));
+           (chipdb->tile_type[t] == TileType::IPCON));
   
   return true;
 }

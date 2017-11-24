@@ -786,9 +786,9 @@ ChipDBParser::parse_cmd_extra_cell()
     c = chipdb->add_cell(CellType::RGBA_DRV, Location(t, z));
   else if (cell_type == "LEDDA_IP") 
     c = chipdb->add_cell(CellType::LEDDA_IP, Location(t, z));
-  else if (cell_type == "I2C_IP") 
+  else if (cell_type == "I2C") 
     c = chipdb->add_cell(CellType::I2C_IP, Location(t, z));
-  else if (cell_type == "SPI_IP") 
+  else if (cell_type == "SPI") 
     c = chipdb->add_cell(CellType::SPI_IP, Location(t, z));
 
   else
@@ -1111,8 +1111,8 @@ cell_type_name(CellType ct)
     case CellType::HFOSC:  return "HFOSC";
     case CellType::RGBA_DRV:  return "RGBA_DRV";
     case CellType::LEDDA_IP:  return "LEDDA_IP";
-    case CellType::I2C_IP:  return "I2C_IP";
-    case CellType::SPI_IP:  return "SPI_IP";
+    case CellType::I2C_IP:  return "I2C";
+    case CellType::SPI_IP:  return "SPI";
 
     default:  abort();
     }
