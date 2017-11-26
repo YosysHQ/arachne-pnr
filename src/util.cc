@@ -168,6 +168,12 @@ std::string proc_self_dirname()
                 path += char(shortpath[i]);
         return path;
 }
+#elif defined(__EMSCRIPTEN__)
+std::string proc_self_dirname()
+{
+        // This is a fake path, but ../ will always be appended and this will still work.
+        return "/bin/";
+}
 #else
         #error Dont know how to determine process executable base path!
 #endif
