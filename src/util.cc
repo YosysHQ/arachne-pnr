@@ -48,6 +48,11 @@ void warning(const std::string &msg)
   std::cerr << "warning: " << msg << "\n";
 }
 
+void note(const std::string &msg)
+{
+  std::cerr << "note: " << msg << "\n";
+}
+
 std::string
 unescape(const std::string &s)
 {

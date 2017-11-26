@@ -153,6 +153,7 @@ operator<<(std::ostream &s, const std::unordered_map<K, V> &M)
 
 void fatal(const std::string &msg);
 void warning(const std::string &msg);
+void note(const std::string &msg);
 
 template<typename S, typename T> void
 extend(S &s, const T &x)
