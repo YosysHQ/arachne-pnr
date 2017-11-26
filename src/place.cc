@@ -1522,6 +1522,10 @@ Placer::configure()
           assert(contains(package.loc_pin, loc));
           
           const BitVector &pin_type = inst->get_param("PIN_TYPE").as_bits();
+          if (pin_type.size()<6)
+          {
+            fatal(fmt("Wrong width of PIN_TYPE, should be 6 instead of " << pin_type.size()));
+          }
           for (int i = 0; i < 6; ++i)
             {
               const CBit &cbit = func_cbits.at(fmt("IOB_" << loc.pos() << ".PINTYPE_" << i))[0];
