@@ -1501,6 +1501,27 @@ Placer::configure()
         CBit spramen_cb = chipdb->extra_cell_cbit(cell, "SPRAM_EN");
         conf.set_cbit(spramen_cb, true);
         continue;
+      } else if(models.is_i2c(inst)) {
+        placement[inst] = cell;
+        for(auto bits : chipdb->cell_mfvs.at(cell)) {
+          if(startswith(bits.first, "I2C_ENABLE_")) {
+            CBit i2cen_cb = chipdb->extra_cell_cbit(cell, bits.first, true);
+            conf.set_cbit(i2cen_cb, true);
+          }
+        }
+        if(inst->is_attr_set("SDA_INPUT_DELAYED", true)) { //NB INPUT_DELAYED is default on in icecube
+          CBit i2cen_cb = chipdb->extra_cell_cbit(cell, "SDA_INPUT_DELAYED", true);
+          conf.set_cbit(i2cen_cb, true);
+        }
+        if(inst->is_attr_set("SDA_OUTPUT_DELAYED", false)) { 
+          CBit i2cen_cb = chipdb->extra_cell_cbit(cell, "SDA_OUTPUT_DELAYED", true);
+          conf.set_cbit(i2cen_cb, true);
+        }
+        
+        continue; 
+      } else if(models.is_spi(inst) || models.is_ledda_ip(inst)) {
+        placement[inst] = cell;
+        continue;
       }
       
       int t = loc.tile();

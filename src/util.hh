@@ -314,4 +314,9 @@ std::string str_to_upper(const std::string &s) {
     return res;
 }
 
+inline
+bool startswith(const std::string &s, const std::string & pattern) {
+  return (s.substr(0, pattern.length()) == pattern);
+}
+
 #endif

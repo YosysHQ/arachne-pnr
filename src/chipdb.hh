@@ -247,7 +247,7 @@ public:
           std::map<std::string, std::vector<CBit>>>
     tile_nonrouting_cbits;
   
-  CBit extra_cell_cbit(int ec, const std::string &name) const;
+  CBit extra_cell_cbit(int ec, const std::string &name, bool is_ip = false) const;
   std::string extra_cell_netname(int ec, const std::string &name) const;
   int get_oscillator_glb(int cell, const std::string &net) const;
   

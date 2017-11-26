@@ -1119,13 +1119,13 @@ cell_type_name(CellType ct)
 }
 
 CBit
-ChipDB::extra_cell_cbit(int c, const std::string &name) const
+ChipDB::extra_cell_cbit(int c, const std::string &name, bool is_ip) const
 {
   const auto &p = cell_mfvs.at(c).at(name);
   std::string prefix = "PLL.";
   if((tile_type[p.first] == TileType::DSP0) || (tile_type[p.first] == TileType::DSP1) ||
      (tile_type[p.first] == TileType::DSP2) || (tile_type[p.first] == TileType::DSP3) ||
-     (tile_type[p.first] == TileType::IPCON))
+     (tile_type[p.first] == TileType::IPCON) || is_ip)
      prefix = "IpConfig.";
   const auto &cbits = tile_nonrouting_cbits.at(tile_type[p.first]).at(prefix + p.second);
   assert(cbits.size() == 1);

@@ -283,12 +283,12 @@ public:
   {
     return m_attrs.at(an);
   }
-  // Return true if an attr exists and is set to 1, false otherwise
+  // Return true if an attr exists and is set to 1, defval otherwise
   // (for binary attributes like ROUTE_THROUGH_FABRIC)
-  bool is_attr_set(const std::string &an) const
+  bool is_attr_set(const std::string &an, bool defval = false) const
   {
     if(!has_attr(an))
-      return false;
+      return defval;
     else
       return get_attr(an).get_bit(0);
   }
