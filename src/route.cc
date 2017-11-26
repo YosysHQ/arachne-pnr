@@ -158,6 +158,10 @@ Router::port_cnet(Instance *inst, Port *p)
           assert(p_name == "O");
           tile_net_name = fmt("lutff_" << loc.pos() << "/out");
         }
+      if (chipdb->tile_nets[t].find(tile_net_name) == chipdb->tile_nets[t].end())
+      {
+        fatal(fmt("failed to rote:  " << p->name() << " to " << tile_net_name));
+      }
     }
   else if (models.is_ioX(inst))
     {
