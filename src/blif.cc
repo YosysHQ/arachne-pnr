@@ -76,12 +76,14 @@ BlifParser::parse()
     {
       if (eof())
         goto M;
-      
+
+      // parse current line into words
       read_line();
       
       if (line.empty())
         continue;
-      
+
+      // all directives begin with a dot
       if (line[0] == '.')
         {
         L:
@@ -89,7 +91,7 @@ BlifParser::parse()
           if (cmd == ".model")
             {
               if (words.size() != 2)
-                fatal("invalid .model directive");
+                fatal(fmt("invalid .model directive: expected exactly 1 argument, got " << words.size()-1));
               if (top)
                 fatal("definition of multiple models is not supported");
 
@@ -143,20 +145,25 @@ BlifParser::parse()
               
               Net *names_net = nullptr;
               unsigned n = words.size();
+
+              // output is assigned no value; set to zero
               if (n == 2)
                 {
                   names_net = top->find_or_add_net(words[1]);
                   names_net->set_is_constant(true);
                   names_net->set_constant(Value::ZERO);
                 }
+
+              // output is assigned input; unify nets
               else if (n == 3)
                 {
                   unify.push_back(std::make_pair(top->find_or_add_net(words[1]),
                                                  top->find_or_add_net(words[2])));
                 }
               else
-                fatal("invalid .names directive");
-              
+                fatal(fmt("invalid .names directive: expected 1 or 2 arguments, got " << n-1));
+
+              // parse PLA-style configuration
               bool saw11 = false;
               for (;;)
                 {
@@ -164,7 +171,7 @@ BlifParser::parse()
                     {
                       if (n == 3
                           && !saw11)
-                        names_lp.fatal("invalid .names directive");
+                        names_lp.fatal("invalid .names directive: unexpected end of file");
                       goto M;
                     }
                   
@@ -177,27 +184,28 @@ BlifParser::parse()
                     {
                       if (n == 3
                           && !saw11)
-                        names_lp.fatal("invalid .names directive");
+                        names_lp.fatal("invalid .names directive: .names entry expected");
                       goto L;
                     }
                   
                   if (words.size() != n - 1)
-                    fatal("invalid .names entry");
+                    fatal("invalid .names entry: number of gates does not match specified number of nets");
                   
+                  // .names + 1 argument
                   if (n == 2)
                     {
                       const std::string &output = words[0];
                       if (output == "1")
                         names_net->set_constant(Value::ONE);
                       else if (output != "0")
-                        fatal("invalid .names entry");
+                        fatal("invalid .names entry: gate must be either 1 or 0");
                     }
                   else
                     {
                       assert(n == 3);
                       if (words[0] != "1"
                           || words[1] != "1")
-                        fatal("invalid .names entry");
+                        fatal("invalid .names entry: both gates must be 1 here");
                       saw11 = true;
                     }
                 }
@@ -208,7 +216,7 @@ BlifParser::parse()
                 fatal(".gate directive outside of model definition");
 
               if (words.size() < 2)
-                fatal("invalid .gate directive, missing name");
+                fatal("invalid .gate directive: missing name");
               
               const std::string &n = words[1];
               Model *inst_of = d->find_model(n);
@@ -241,7 +249,7 @@ BlifParser::parse()
           else if (cmd == ".attr")
             {
               if (words.size() != 3)
-                fatal("invalid .attr directive");
+                fatal(fmt("invalid .attr directive: expected exactly 2 arguments, got " << words.size()-1));
               if (!inst)
                 fatal("no gate for .attr directive");
               
@@ -260,7 +268,7 @@ BlifParser::parse()
           else if (cmd == ".param")
             {
               if (words.size() != 3)
-                fatal("invalid .param directive");
+                fatal(fmt("invalid .param directive: expected exactly 2 arguments, got " << words.size()-1));
               if (!inst)
                 fatal("no gate for .param directive");
               
@@ -284,7 +292,7 @@ BlifParser::parse()
               goto M;
             }
           else
-            fatal("unknown directive");
+            fatal(fmt("unknown directive '" << cmd << "'"));
         }
       else
         fatal("expected directive");

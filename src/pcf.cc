@@ -68,10 +68,21 @@ PCFParser::parse()
             {     
               if (words[i][0] == '-')
                 {
-                  if (words[1] == "--warn-no-port")
+                  if (words[i] == "--warn-no-port")
                     err_no_port = false;
+                  else if (words[i] == "-pullup")
+                  {
+                      warning("ignoring unsupported -pullup option");
+                      if (((int)words.size() < i+1)
+                       || ((words[i+1] != "yes") && (words[i+1] != "no")))
+                      {
+                          warning("-pullup option should have a 'yes' or 'no' argument");
+                      }
+                      else
+                        i++;
+                  }
                   else
-                    fatal(fmt("unknown option `" << words[1] << "'"));
+                    fatal(fmt("unknown option `" << words[i] << "'"));
                 }
               else
                 {
