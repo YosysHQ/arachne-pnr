@@ -1,3 +1,5 @@
+# For the iCE40HX-1K iCEstick
+
 set_io D1 99
 set_io D2 98
 set_io D3 97
