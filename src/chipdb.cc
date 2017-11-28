@@ -774,7 +774,7 @@ ChipDBParser::parse_cmd_extra_cell()
     c = chipdb->add_cell(CellType::WARMBOOT, Location(t, 0));
   else if (cell_type == "PLL")
     c = chipdb->add_cell(CellType::PLL, Location(t, 3));
-  else if (cell_type == "MAC16") //TODO: should this really be using extra_cell?
+  else if (cell_type == "MAC16")
     c = chipdb->add_cell(CellType::MAC16, Location(t, z));
   else if (cell_type == "SPRAM") 
     c = chipdb->add_cell(CellType::SPRAM, Location(t, z));
@@ -786,9 +786,9 @@ ChipDBParser::parse_cmd_extra_cell()
     c = chipdb->add_cell(CellType::RGBA_DRV, Location(t, z));
   else if (cell_type == "LEDDA_IP") 
     c = chipdb->add_cell(CellType::LEDDA_IP, Location(t, z));
-  else if (cell_type == "I2C_IP") 
+  else if (cell_type == "I2C") 
     c = chipdb->add_cell(CellType::I2C_IP, Location(t, z));
-  else if (cell_type == "SPI_IP") 
+  else if (cell_type == "SPI") 
     c = chipdb->add_cell(CellType::SPI_IP, Location(t, z));
 
   else
@@ -1111,21 +1111,21 @@ cell_type_name(CellType ct)
     case CellType::HFOSC:  return "HFOSC";
     case CellType::RGBA_DRV:  return "RGBA_DRV";
     case CellType::LEDDA_IP:  return "LEDDA_IP";
-    case CellType::I2C_IP:  return "I2C_IP";
-    case CellType::SPI_IP:  return "SPI_IP";
+    case CellType::I2C_IP:  return "I2C";
+    case CellType::SPI_IP:  return "SPI";
 
     default:  abort();
     }
 }
 
 CBit
-ChipDB::extra_cell_cbit(int c, const std::string &name) const
+ChipDB::extra_cell_cbit(int c, const std::string &name, bool is_ip) const
 {
   const auto &p = cell_mfvs.at(c).at(name);
   std::string prefix = "PLL.";
   if((tile_type[p.first] == TileType::DSP0) || (tile_type[p.first] == TileType::DSP1) ||
      (tile_type[p.first] == TileType::DSP2) || (tile_type[p.first] == TileType::DSP3) ||
-     (tile_type[p.first] == TileType::IPCON))
+     (tile_type[p.first] == TileType::IPCON) || is_ip)
      prefix = "IpConfig.";
   const auto &cbits = tile_nonrouting_cbits.at(tile_type[p.first]).at(prefix + p.second);
   assert(cbits.size() == 1);

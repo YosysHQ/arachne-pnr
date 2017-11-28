@@ -150,6 +150,16 @@ Promoter::port_gc(Port *conn, bool indirect)
    }
   else if(models.is_rgba_drv(inst))
     ;
+  else if(models.is_i2c(inst) || models.is_spi(inst))
+   {
+      if(conn->name() == "SBCLKI")
+        return gc_clk;
+   }
+  else if(models.is_ledda_ip(inst))
+   {
+      if(conn->name() == "LEDDCLK")
+        return gc_clk;
+   }
   else
     {
       assert(models.is_ramX(inst));

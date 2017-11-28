@@ -725,11 +725,61 @@ Placer::valid(int t)
             }
         }
     }
+  else if(chipdb->tile_type[t] == TileType::EMPTY)
+    {
+      for(auto cell : chipdb->cell_type_cells[cell_type_idx(CellType::I2C_IP)])
+        {
+          if(chipdb->cell_location[cell].tile() == t)
+           {
+             int g = cell_gate[cell];
+             if (g)
+               {
+                 Instance *inst = gates[g];
+                 if(models.is_i2c(inst))
+                   {
+                     if((x == 0) && (y == chipdb->height-1)
+                       && (inst->get_param("BUS_ADDR74").as_string() == "0b0001"))
+                       return true;
+                     if((x == chipdb->width-1) && (y == chipdb->height-1)
+                       && (inst->get_param("BUS_ADDR74").as_string() == "0b0011"))
+                       return true;
+                     return false;
+                   }
+               }
+           }
+        }
+        for(auto cell : chipdb->cell_type_cells[cell_type_idx(CellType::SPI_IP)])
+          {
+            if(chipdb->cell_location[cell].tile() == t)
+             {
+               int g = cell_gate[cell];
+               if (g)
+                 {
+                   Instance *inst = gates[g];
+                   if(models.is_spi(inst))
+                     {
+                       if((x == 0) && (y == 0)
+                         && (inst->get_param("BUS_ADDR74").as_string() == "0b0000"))
+                         return true;
+                       // NOTE: the bus address of 0b0010 is not a typo, it appears the Technology Library (latest v3.0)
+                       // document is incorrect here
+                       if((x == chipdb->width-1) && (y == 0)
+                         && (inst->get_param("BUS_ADDR74").as_string() == "0b0010")) 
+                         return true;
+                       return false;
+                     }
+                 }
+             }
+          }
+            
+
+            
+      
+    }
   else
     assert((chipdb->tile_type[t] == TileType::RAMT) ||
            (chipdb->tile_type[t] == TileType::DSP0) ||
-           (chipdb->tile_type[t] == TileType::IPCON) ||
-           (chipdb->tile_type[t] == TileType::EMPTY));
+           (chipdb->tile_type[t] == TileType::IPCON));
   
   return true;
 }
@@ -1373,7 +1423,6 @@ Placer::configure_extra_cell(int c,
                              bool string_style)
 {
   for(auto p : params) {
-    //TODO: default value? or is this done in Verilog library?
     BitVector value;
     if(string_style) {
       //Lattice's weird string style params (as of yet untested), not sure if
@@ -1450,6 +1499,27 @@ Placer::configure()
         placement[inst] = cell;
         CBit spramen_cb = chipdb->extra_cell_cbit(cell, "SPRAM_EN");
         conf.set_cbit(spramen_cb, true);
+        continue;
+      } else if(models.is_i2c(inst)) {
+        placement[inst] = cell;
+        for(auto bits : chipdb->cell_mfvs.at(cell)) {
+          if(startswith(bits.first, "I2C_ENABLE_")) {
+            CBit i2cen_cb = chipdb->extra_cell_cbit(cell, bits.first, true);
+            conf.set_cbit(i2cen_cb, true);
+          }
+        }
+        if(inst->is_attr_set("SDA_INPUT_DELAYED", true)) { //NB INPUT_DELAYED is default on in icecube
+          CBit i2cen_cb = chipdb->extra_cell_cbit(cell, "SDA_INPUT_DELAYED", true);
+          conf.set_cbit(i2cen_cb, true);
+        }
+        if(inst->is_attr_set("SDA_OUTPUT_DELAYED", false)) { 
+          CBit i2cen_cb = chipdb->extra_cell_cbit(cell, "SDA_OUTPUT_DELAYED", true);
+          conf.set_cbit(i2cen_cb, true);
+        }
+        
+        continue; 
+      } else if(models.is_spi(inst) || models.is_ledda_ip(inst)) {
+        placement[inst] = cell;
         continue;
       }
       
