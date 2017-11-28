@@ -1348,7 +1348,6 @@ Design::create_standard_models()
   rgba_drv->set_param("RGB1_CURRENT", "0b000000");
   rgba_drv->set_param("RGB2_CURRENT", "0b000000");
   
-  //TODO: LEDDA and SPI IPs
   Model *i2c = new Model(this, "SB_I2C");
   i2c->add_port("SBCLKI", Direction::IN);
   i2c->add_port("SBRWI", Direction::IN, Value::ZERO);

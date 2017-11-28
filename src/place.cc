@@ -1423,7 +1423,6 @@ Placer::configure_extra_cell(int c,
                              bool string_style)
 {
   for(auto p : params) {
-    //TODO: default value? or is this done in Verilog library?
     BitVector value;
     if(string_style) {
       //Lattice's weird string style params (as of yet untested), not sure if

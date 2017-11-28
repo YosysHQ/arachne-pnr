@@ -774,7 +774,7 @@ ChipDBParser::parse_cmd_extra_cell()
     c = chipdb->add_cell(CellType::WARMBOOT, Location(t, 0));
   else if (cell_type == "PLL")
     c = chipdb->add_cell(CellType::PLL, Location(t, 3));
-  else if (cell_type == "MAC16") //TODO: should this really be using extra_cell?
+  else if (cell_type == "MAC16")
     c = chipdb->add_cell(CellType::MAC16, Location(t, z));
   else if (cell_type == "SPRAM") 
     c = chipdb->add_cell(CellType::SPRAM, Location(t, z));
