@@ -272,7 +272,10 @@ Promoter::promote(bool do_promote)
           Port *out = inst->find_port("GLOBAL_BUFFER_OUTPUT");
           if (out->connected())
             {
-              int g = chipdb->loc_pin_glb_num.at(chipdb->cell_location[c]);
+              auto loc = chipdb->cell_location[c];
+              if (chipdb->loc_pin_glb_num.find(loc) == chipdb->loc_pin_glb_num.end())
+                fatal(fmt("Not able to use pin " << ds.package.loc_pin.at(loc) << " for global buffer output"));
+              int g = chipdb->loc_pin_glb_num.at(loc);
               for (uint8_t gc : global_classes)
                 {
                   if (gc & (1 << g))

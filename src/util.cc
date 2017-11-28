@@ -48,6 +48,11 @@ void warning(const std::string &msg)
   std::cerr << "warning: " << msg << "\n";
 }
 
+void note(const std::string &msg)
+{
+  std::cerr << "note: " << msg << "\n";
+}
+
 std::string
 unescape(const std::string &s)
 {
@@ -162,6 +167,12 @@ std::string proc_self_dirname()
         for (i = 0; shortpath[i]; i++)
                 path += char(shortpath[i]);
         return path;
+}
+#elif defined(__EMSCRIPTEN__)
+std::string proc_self_dirname()
+{
+        // This is a fake path, but ../ will always be appended and this will still work.
+        return "/bin/";
 }
 #else
         #error Dont know how to determine process executable base path!

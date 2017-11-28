@@ -34,6 +34,10 @@
 #include <cstring>
 #include <cstdlib>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 const char *program_name;
 
 class null_streambuf : public std::streambuf
@@ -128,6 +132,16 @@ struct null_ostream : public std::ostream
 int
 main(int argc, const char **argv)
 {
+#ifdef __EMSCRIPTEN__
+  EM_ASM(
+    if (ENVIRONMENT_IS_NODE)
+    {
+      FS.mkdir('/x');
+      FS.mount(NODEFS, { root: '.' }, '/x');
+    }
+  );
+#endif
+
   program_name = argv[0];
   
   bool help = false,
