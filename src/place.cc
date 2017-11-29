@@ -1518,7 +1518,16 @@ Placer::configure()
         }
         
         continue; 
-      } else if(models.is_spi(inst) || models.is_ledda_ip(inst)) {
+      } else if(models.is_spi(inst)) {
+        placement[inst] = cell;
+        for(auto bits : chipdb->cell_mfvs.at(cell)) {
+          if(startswith(bits.first, "SPI_ENABLE_")) {
+            CBit spien_cb = chipdb->extra_cell_cbit(cell, bits.first, true);
+            conf.set_cbit(spien_cb, true);
+          }
+        }
+        continue;
+      } else if(models.is_ledda_ip(inst)) {
         placement[inst] = cell;
         continue;
       }
