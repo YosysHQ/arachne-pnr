@@ -1485,6 +1485,11 @@ Placer::configure()
           const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << driven_glb));
           conf.set_extra_cbit(ecb);
         }
+        
+        if(models.is_hfosc_trim(inst)) {
+          CBit trimen_cb = chipdb->extra_cell_cbit(cell, "TRIM_EN");
+          conf.set_cbit(trimen_cb, true);
+        }
         continue;      
       } else if(models.is_lfosc(inst)) {
         placement[inst] = cell;

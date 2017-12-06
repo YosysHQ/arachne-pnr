@@ -477,7 +477,9 @@ public:
   }
   bool is_mac16(const Instance *inst) const {return inst->instance_of()->name() == "SB_MAC16";}
   bool is_spram(const Instance *inst) const {return inst->instance_of()->name() == "SB_SPRAM256KA";}
-  bool is_hfosc(const Instance *inst) const {return inst->instance_of()->name() == "SB_HFOSC";}
+  bool is_hfosc(const Instance *inst) const {return inst->instance_of()->name() == "SB_HFOSC" || inst->instance_of()->name() == "SB_HFOSC_TRIM";}
+  bool is_hfosc_trim(const Instance *inst) const {return inst->instance_of()->name() == "SB_HFOSC_TRIM";}
+
   bool is_lfosc(const Instance *inst) const {return inst->instance_of()->name() == "SB_LFOSC";}
   bool is_rgba_drv(const Instance *inst) const {return inst->instance_of()->name() == "SB_RGBA_DRV";}
   bool is_ledda_ip(const Instance *inst) const {return inst->instance_of()->name() == "SB_LEDDA_IP";}

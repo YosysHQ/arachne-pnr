@@ -1312,6 +1312,14 @@ Design::create_standard_models()
   hfosc->add_port("CLKHF", Direction::OUT);
   hfosc->set_param("CLKHF_DIV", "0b00");
   
+  Model *hfosc_trim = new Model(this, "SB_HFOSC_TRIM");
+  hfosc_trim->add_port("CLKHFPU", Direction::IN, Value::ZERO);
+  hfosc_trim->add_port("CLKHFEN", Direction::IN, Value::ZERO);
+  for(int i = 0; i < 10; i++)
+    hfosc_trim->add_port("TRIM" + std::to_string(i), Direction::IN, Value::ZERO);
+  hfosc_trim->add_port("CLKHF", Direction::OUT);
+  hfosc_trim->set_param("CLKHF_DIV", "0b00");
+  
   Model *lfosc = new Model(this, "SB_LFOSC");
   lfosc->add_port("CLKLFPU", Direction::IN, Value::ZERO);
   lfosc->add_port("CLKLFEN", Direction::IN, Value::ZERO);
