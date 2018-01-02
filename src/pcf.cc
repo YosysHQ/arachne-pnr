@@ -48,6 +48,10 @@ PCFParser::parse()
   std::map<std::string, Location> net_pin_loc;
   std::map<Location, std::string> pin_loc_net;
   std::map<std::string, bool> net_pin_pull_up;
+  std::set<std::string> extra_ports;
+
+  for (auto p : top->ordered_ports())
+    extra_ports.insert(p->name());
   
   for (;;)
     {
@@ -61,18 +65,24 @@ PCFParser::parse()
       const std::string &cmd = words[0];
       if (cmd == "set_io")
         {
-          bool err_no_port = true;
+          bool no_warn = false;
           bool pull_up = false;
           bool pull_up_set = false;
           
           const char *net_name = nullptr,
             *pin_name = nullptr;
           for (int i = 1; i < (int)words.size(); ++i)
-            {     
+            {
               if (words[i][0] == '-')
                 {
                   if (words[i] == "--warn-no-port")
-                    err_no_port = false;
+                    {
+                      /* ignored for backward compatibility */
+                    }
+                  else if (words[i] == "-nowarn")
+                    {
+                      no_warn = true;
+                    }
                   else if (words[i] == "-pullup")
                     {
                       if (i+1 == (int)words.size())
@@ -108,16 +118,13 @@ PCFParser::parse()
           Port *p = top->find_port(net_name);
           if (!p)
             {
-              if (err_no_port)
-                fatal(fmt("no port `" << net_name << "' in top-level module `"
-                          << top->name() << "'"));
-              else
-                {
-                  warning(fmt("no port `" << net_name << "' in top-level module `"
-                              << top->name() << "', constraint ignored."));
-                  continue;
-                }
+              if (!no_warn)
+                warning(fmt("no port `" << net_name << "' in top-level module `"
+                            << top->name() << "', constraint ignored."));
+              continue;
             }
+          
+          extra_ports.erase(p->name());
           
           auto i = package.pin_loc.find(pin_name);
           if (i == package.pin_loc.end())
@@ -138,6 +145,12 @@ PCFParser::parse()
         }
       else
         fatal(fmt("unknown command `" << cmd << "'"));
+    }
+  
+  if (!extra_ports.empty())
+    {
+      const std::string &pin_name = *extra_ports.begin();
+      fatal(fmt("no set_io constraints for pin `" << pin_name << "'"));
     }
   
   constraints.net_pin_loc = net_pin_loc;
