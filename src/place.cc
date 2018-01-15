@@ -994,6 +994,14 @@ Placer::Placer(random_generator &rg_, DesignState &ds_)
           for (int t2 : t_related)
             related_tiles[t2] = t_related;
         }
+      else if(chipdb->cell_type[i] == CellType::HFOSC)
+        {
+          global_cells[chipdb->get_oscillator_glb(i, "CLKHF")].push_back(i);
+        }
+      else if(chipdb->cell_type[i] == CellType::LFOSC)
+        {
+          global_cells[chipdb->get_oscillator_glb(i, "CLKLF")].push_back(i);
+        }
     }
   
   for (int i = 0; i < chipdb->width; ++i)
@@ -1079,6 +1087,18 @@ Placer::Placer(random_generator &rg_, DesignState &ds_)
         {
           Net *n = inst->find_port("GLOBAL_BUFFER_OUTPUT")->connection();
           if (n)
+            net_global[net_idx.at(n)] = true;
+        }
+      else if (models.is_hfosc(inst))
+        {
+          Net *n = inst->find_port("CLKHF")->connection();
+          if (n && !inst->is_attr_set("ROUTE_THROUGH_FABRIC"))
+            net_global[net_idx.at(n)] = true;
+        }
+      else if (models.is_lfosc(inst))
+        {
+          Net *n = inst->find_port("CLKLF")->connection();
+          if (n && !inst->is_attr_set("ROUTE_THROUGH_FABRIC"))
             net_global[net_idx.at(n)] = true;
         }
     }

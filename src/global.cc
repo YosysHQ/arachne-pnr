@@ -517,7 +517,6 @@ Promoter::promote(bool do_promote)
             if ((gc2 & gc) == gc)
               ++gc_used[gc2];
           }
-        
         *logs << "  promoted " << n->name()
               << ", " << n_conn_promoted << " / " << n_conn << "\n";
       }
