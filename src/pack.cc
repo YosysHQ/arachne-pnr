@@ -426,6 +426,7 @@ Packer::pack_carries_from(Instance *f)
         }
       
       Instance *lc_inst = find_carry_lc(c);
+      
       if (lc_inst)
         {
           Net *clk = lc_inst->find_port("CLK")->connection(),
@@ -521,16 +522,57 @@ Packer::pack_carries_from(Instance *f)
                     lc2_inst = inst;
                 }
             }
+          bool break_chain = false;
           
+          if (lc2_inst)
+            {
+              Net *clk = lc2_inst->find_port("CLK")->connection(),
+                *cen = lc2_inst->find_port("CEN")->connection(),
+                *sr = lc2_inst->find_port("SR")->connection();
+              
+                if ((global_clk
+                     && global_clk != clk)
+                    || (global_cen
+                        && global_cen != cen)
+                    || (global_sr
+                        && global_sr != sr))
+                  {
+                    break_chain = true;
+                  }
+                  
+              if (!global_clk)
+                global_clk = clk;
+              if (!global_cen)
+                global_cen = cen;
+              if (!global_sr)
+                global_sr = sr;
+            }
+        
           if (!lc2_inst)
             {
               lc2_inst = top->add_instance(models.lc);
               carry_pass_through_lc(lc2_inst, p);
             }
           
-          chain.push_back(lc2_inst);
+          if(break_chain)
+            {
+              // break chain
+              
+              Instance *out_lc_inst = top->add_instance(models.lc);
+              
+              carry_pass_through_lc(out_lc_inst, chain.back()->find_port("COUT"));
+              chain.push_back(out_lc_inst);
+              
+              chains.chains.push_back(chain);
+              chain.clear();
+              
+              chain.push_back(lc2_inst);
+            }
+          else
+            {
+              chain.push_back(lc2_inst);
+            }
         }
-      
       c = next_c;
     }
   
