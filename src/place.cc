@@ -994,6 +994,14 @@ Placer::Placer(random_generator &rg_, DesignState &ds_)
           for (int t2 : t_related)
             related_tiles[t2] = t_related;
         }
+      else if(chipdb->cell_type[i] == CellType::HFOSC)
+        {
+          global_cells[chipdb->get_oscillator_glb(i, "CLKHF")].push_back(i);
+        }
+      else if(chipdb->cell_type[i] == CellType::LFOSC)
+        {
+          global_cells[chipdb->get_oscillator_glb(i, "CLKLF")].push_back(i);
+        }
     }
   
   for (int i = 0; i < chipdb->width; ++i)
@@ -1079,6 +1087,18 @@ Placer::Placer(random_generator &rg_, DesignState &ds_)
         {
           Net *n = inst->find_port("GLOBAL_BUFFER_OUTPUT")->connection();
           if (n)
+            net_global[net_idx.at(n)] = true;
+        }
+      else if (models.is_hfosc(inst))
+        {
+          Net *n = inst->find_port("CLKHF")->connection();
+          if (n && !inst->is_attr_set("ROUTE_THROUGH_FABRIC"))
+            net_global[net_idx.at(n)] = true;
+        }
+      else if (models.is_lfosc(inst))
+        {
+          Net *n = inst->find_port("CLKLF")->connection();
+          if (n && !inst->is_attr_set("ROUTE_THROUGH_FABRIC"))
             net_global[net_idx.at(n)] = true;
         }
     }
@@ -1485,6 +1505,11 @@ Placer::configure()
           const auto &ecb = chipdb->extra_bits.at(fmt("padin_glb_netwk." << driven_glb));
           conf.set_extra_cbit(ecb);
         }
+        
+        if(models.is_hfosc_trim(inst)) {
+          CBit trimen_cb = chipdb->extra_cell_cbit(cell, "TRIM_EN");
+          conf.set_cbit(trimen_cb, true);
+        }
         continue;      
       } else if(models.is_lfosc(inst)) {
         placement[inst] = cell;
@@ -1518,7 +1543,16 @@ Placer::configure()
         }
         
         continue; 
-      } else if(models.is_spi(inst) || models.is_ledda_ip(inst)) {
+      } else if(models.is_spi(inst)) {
+        placement[inst] = cell;
+        for(auto bits : chipdb->cell_mfvs.at(cell)) {
+          if(startswith(bits.first, "SPI_ENABLE_")) {
+            CBit spien_cb = chipdb->extra_cell_cbit(cell, bits.first, true);
+            conf.set_cbit(spien_cb, true);
+          }
+        }
+        continue;
+      } else if(models.is_ledda_ip(inst)) {
         placement[inst] = cell;
         continue;
       }
