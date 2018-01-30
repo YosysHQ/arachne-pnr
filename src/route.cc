@@ -242,7 +242,14 @@ Router::port_cnet(Instance *inst, Port *p)
             db_name += c;
         }          
       }
-
+      
+      if(models.is_mac16(inst)) {
+        if(p_name == "ACCUMCI" || p_name == "SIGNEXTIN") {
+          assert(p->connection()->is_constant() && (p->connection()->constant() == Value::ZERO));
+          return -1;
+        }
+      }
+      
       const auto &p2 = chipdb->cell_mfvs.at(cell).at(db_name);
       t = p2.first;
       tile_net_name = p2.second;
