@@ -1283,8 +1283,8 @@ Design::create_standard_models()
   mac16->add_port("OHOLDTOP", Direction::IN, Value::ZERO);
   mac16->add_port("OHOLDBOT", Direction::IN, Value::ZERO); 
   mac16->add_port("CI", Direction::IN, Value::ZERO);
-  mac16->add_port("ACCUMCI", Direction::IN);
-  mac16->add_port("SIGNEXTIN", Direction::IN);
+  mac16->add_port("ACCUMCI", Direction::IN, Value::ZERO);
+  mac16->add_port("SIGNEXTIN", Direction::IN, Value::ZERO);
 
   for(int i = 0; i < 32; i++)
     mac16->add_port("O[" + std::to_string(i) + "]", Direction::OUT);
