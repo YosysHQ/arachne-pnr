@@ -53,6 +53,8 @@ class Packer
   void pack_carries_from(Instance *f);
   void pack_carries();
   
+  int count_extra_cells(CellType ct);
+  
 public:
   Packer(DesignState &ds);
   
@@ -621,6 +623,18 @@ Packer::pack_carries()
     }
 }
 
+int
+Packer::count_extra_cells(CellType ct)
+{
+  int n = 0;
+  for (auto cell : chipdb->cell_type_cells[cell_type_idx(ct)]) {
+    if (!contains(chipdb->cell_locked_pkgs.at(cell), package.name))
+      n++;
+  }
+  return n;
+}
+
+
 void
 Packer::pack()
 {
@@ -737,23 +751,23 @@ Packer::pack()
           << "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
           << "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
           << "PLLs         " << n_pll << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n"
+          << count_extra_cells(CellType::PLL) << "\n"
           << "MAC16s       " << n_mac16 << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::MAC16)].size() << "\n"
+          << count_extra_cells(CellType::MAC16) << "\n"
           << "SPRAM256KAs  " << n_spram << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::SPRAM)].size() << "\n"
+          << count_extra_cells(CellType::SPRAM) << "\n"
           << "HFOSCs       " << n_hfosc << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::HFOSC)].size() << "\n"
+          << count_extra_cells(CellType::HFOSC) << "\n"
           << "LFOSCs       " << n_lfosc << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::LFOSC)].size() << "\n"
+          << count_extra_cells(CellType::LFOSC) << "\n"
           << "RGBA_DRVs    " << n_rgba_drv << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::RGBA_DRV)].size() << "\n"
+          << count_extra_cells(CellType::RGBA_DRV) << "\n"
           << "LEDDA_IPs    " << n_ledda_ip << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::LEDDA_IP)].size() << "\n"
+          << count_extra_cells(CellType::LEDDA_IP) << "\n"
           << "I2Cs         " << n_i2c << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::I2C_IP)].size() << "\n"
+          << count_extra_cells(CellType::I2C_IP) << "\n"
           << "SPIs         " << n_spi << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::SPI_IP)].size() << "\n\n";
+          << count_extra_cells(CellType::SPI_IP) << "\n\n";
   } else {
     *logs << "\nAfter packing:\n"
           << "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
@@ -768,7 +782,7 @@ Packer::pack()
           << "BRAMs        " << n_bram << " / " << n_ramt_tiles << "\n"
           << "WARMBOOTs    " << n_warmboot << " / " << n_warmboot_cells << "\n"
           << "PLLs         " << n_pll << " / " 
-          << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size() << "\n\n";
+          << count_extra_cells(CellType::PLL) << "\n\n";
   }
   
 }

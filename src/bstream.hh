@@ -340,7 +340,7 @@ operator>>(ibstream &ibs, std::vector<T> &v)
 }
 
 template<class T> ibstream &
-operator<<(ibstream &ibs, std::set<T> &s)
+operator>>(ibstream &ibs, std::set<T> &s)
 {
   s.clear();
   size_t n;

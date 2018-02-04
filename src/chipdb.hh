@@ -256,6 +256,7 @@ public:
   BasedVector<Location, 1> cell_location;
   std::map<int, std::map<std::string, std::pair<int, std::string>>>
     cell_mfvs;
+  std::map<int, std::set<std::string>> cell_locked_pkgs;
   
   std::vector<std::vector<int>> tile_pos_cell;
   int loc_cell(const Location &loc) const 

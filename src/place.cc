@@ -674,6 +674,9 @@ Placer::valid(int t)
       Instance *inst3 = g3 ? gates[g3] : nullptr;
       if (inst3)
         {
+          if (contains(chipdb->cell_locked_pkgs.at(cell3), package.name))
+            return false;
+          
           Port *pa = inst3->find_port("PLLOUTGLOBAL");
           if (!pa)
             pa = inst3->find_port("PLLOUTGLOBALA");
