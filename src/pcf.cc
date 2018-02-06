@@ -306,7 +306,8 @@ ConstraintsPlacer::place()
           
           c = chipdb->loc_cell(pll_loc);
           if (!c
-              || chipdb->cell_type[c] != CellType::PLL)
+              || chipdb->cell_type[c] != CellType::PLL
+              || contains(chipdb->cell_locked_pkgs.at(c), ds.package.name))
             fatal(fmt("bad constraint on `"
                       << p.first << "': no PLL at pin "
                       << ds.package.loc_pin.at(loc)));
@@ -362,7 +363,8 @@ ConstraintsPlacer::place()
             {
               if (cell_gate[c])
                 continue;
-              
+              if (contains(chipdb->cell_locked_pkgs.at(c), ds.package.name))
+                continue;
               good = true;
               for (int io_cell : ds.pll_out_io_cells(inst, c))
                 {
@@ -388,10 +390,15 @@ ConstraintsPlacer::place()
                   break;
                 }
             }
+          int n_pkg_pll = 0;
+          for (auto cell : chipdb->cell_type_cells[cell_type_idx(CellType::PLL)]) {
+            if (!contains(chipdb->cell_locked_pkgs.at(cell), ds.package.name))
+              n_pkg_pll++;
+          }
           if (!good)
             fatal(fmt("failed to place: placed " << n_pll_placed
                       << " PLLs of " << n_pll
-                      << " / " << chipdb->cell_type_cells[cell_type_idx(CellType::PLL)].size()));
+                      << " / " << n_pkg_pll));
         }
     }
 }

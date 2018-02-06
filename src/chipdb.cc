@@ -795,6 +795,7 @@ ChipDBParser::parse_cmd_extra_cell()
     fatal(fmt("unknown extra cell type `" << cell_type << "'"));
   
   std::map<std::string, std::pair<int, std::string>> mfvs;
+  std::set<std::string> locked_pkgs;
   for (;;)
     {
       read_line();
@@ -802,11 +803,16 @@ ChipDBParser::parse_cmd_extra_cell()
           || line[0] == '.')
         {
           extend(chipdb->cell_mfvs, c, mfvs);
+          extend(chipdb->cell_locked_pkgs, c, locked_pkgs);
           return;
         }
 
-      if (words.size() > 0 && words[0] == "LOCKED")
+      if (words.size() > 0 && words[0] == "LOCKED") {
+        for (size_t i = 1; i < words.size(); i++)
+          extend(locked_pkgs, words[i]);
         continue;
+      }
+
       
       if (words.size() != 4)
         fatal("invalid .extra_cell entry");
@@ -1017,6 +1023,7 @@ ChipDB::bwrite(obstream &obs) const
       << cell_type
       << cell_location
       << cell_mfvs
+      << cell_locked_pkgs
       << cell_type_cells
     // bank_cells
       << switches
@@ -1052,6 +1059,7 @@ ChipDB::bread(ibstream &ibs)
       >> cell_type
       >> cell_location
       >> cell_mfvs
+      >> cell_locked_pkgs
       >> cell_type_cells
     // bank_cells
       >> switches
