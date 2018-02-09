@@ -295,7 +295,23 @@ ConstraintsPlacer::place()
         }
       else if(models.is_rgba_drv(inst))
         {
-          //TODO: check RGBx pins
+          Port *port = top->find_port(p.first);
+          assert(port);
+          Port *p2 = port->connection_other_port();
+          std::string op = p2->name();
+          if (op == "RGB0" || op == "RGB1" || op == "RGB2")
+          {
+            int rgb_cell = chipdb->cell_type_cells[cell_type_idx(CellType::RGBA_DRV)].at(0);
+            auto op_loc = chipdb->cell_mfvs.at(rgb_cell).at(op);
+            if(loc.tile() != op_loc.first || loc.pos() != std::stoi(op_loc.second))
+            {
+              fatal(fmt("bad constraint on `"
+                        << p.first << "': pin "
+                        << ds.package.loc_pin.at(loc)
+                        << " does not correspond to RGB driver output `"
+                        << op << "'"));  
+            }
+          }
           continue;
         }
       else
