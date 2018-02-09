@@ -430,7 +430,8 @@ public:
     *ramnw,
     *ramnrnw,
     *warmboot,
-    *tbuf;
+    *tbuf,
+    *io_i3c;
   
 public:
   Models(const Design *d);
@@ -446,10 +447,13 @@ public:
   bool is_io(Instance *inst) const { return inst->instance_of() == io; }
   bool is_gb(Instance *inst) const { return inst->instance_of() == gb; }
   bool is_gb_io(const Instance *inst) const { return inst->instance_of() == gb_io; }
+  bool is_io_i3c(const Instance *inst) const { return inst->instance_of() == io_i3c; }
+
   bool is_ioX(const Instance *inst) const
   {
     return inst->instance_of() == io
-      || inst->instance_of() == gb_io;
+      || inst->instance_of() == gb_io
+      || inst->instance_of() == io_i3c;
   }
   bool is_gbX(const Instance *inst) const
   {

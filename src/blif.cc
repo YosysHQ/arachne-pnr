@@ -66,7 +66,8 @@ BlifParser::parse()
   d->create_standard_models();
   
   Model *io_model = d->find_model("SB_IO");
-  
+  Model *io_i3c_model = d->find_model("SB_IO_I3C");
+
   Model *top = nullptr;
   
   std::vector<std::pair<Net *, Net *>> unify;
@@ -352,7 +353,7 @@ BlifParser::parse()
               Port *q = p.second->connection_other_port();
               if (!q
                   || !isa<Instance>(q->node())
-                  || cast<Instance>(q->node())->instance_of() != io_model
+                  || (cast<Instance>(q->node())->instance_of() != io_model && cast<Instance>(q->node())->instance_of() != io_i3c_model)
                   || q->name() != "PACKAGE_PIN")
                 fatal(fmt("toplevel inout port '" << p.second->name ()
                           << "' not connected to SB_IO PACKAGE_PIN"));

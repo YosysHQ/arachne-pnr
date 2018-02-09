@@ -291,6 +291,27 @@ ConstraintsPlacer::place()
                       << it->second << "'"));
             }
 
+          if(models.is_io_i3c(inst))
+            {
+              bool found = false;
+              for (int icell : chipdb->cell_type_cells[cell_type_idx(CellType::IO_I3C)])
+              {
+                auto pin = chipdb->cell_mfvs.at(icell).at("PACKAGE_PIN");
+                if(loc.tile() == pin.first && loc.pos() == std::stoi(pin.second))
+                {
+                  found = true;
+                  break;
+                }
+              }
+              if(!found)
+              {
+                fatal(fmt("bad constraint on `"
+                          << p.first << "': pin "
+                          << ds.package.loc_pin.at(loc)
+                          << " is not I3C IO capable"));
+              }
+            }
+
           c = chipdb->loc_cell(loc);
         }
       else if(models.is_rgba_drv(inst))
@@ -370,6 +391,8 @@ ConstraintsPlacer::place()
       // FIXME relax
       if (models.is_gb_io(inst))
         fatal("physical constraint required for GB_IO");
+      else if(models.is_io_i3c(inst))
+        fatal("physical constraint required for IO_I3C");
       else if (models.is_pllX(inst))
         {
           ++n_pll;

@@ -953,6 +953,28 @@ Design::create_standard_models()
   gb_io->set_param("NEG_TRIGGER", BitVector(1, 0));
   gb_io->set_param("IO_STANDARD", "SB_LVCMOS");
   
+  Model *io_i3c = new Model(this, "SB_IO_I3C");
+  io_i3c->add_port("PACKAGE_PIN", Direction::INOUT);
+  io_i3c->add_port("LATCH_INPUT_VALUE", Direction::IN, Value::ZERO);
+  io_i3c->add_port("CLOCK_ENABLE", Direction::IN, Value::ONE);
+  io_i3c->add_port("INPUT_CLK", Direction::IN, Value::ZERO);
+  io_i3c->add_port("OUTPUT_CLK", Direction::IN, Value::ZERO);
+  io_i3c->add_port("OUTPUT_ENABLE", Direction::IN, Value::ZERO);
+  io_i3c->add_port("D_OUT_0", Direction::IN, Value::ZERO);
+  io_i3c->add_port("D_OUT_1", Direction::IN, Value::ZERO);
+  io_i3c->add_port("D_IN_0", Direction::OUT, Value::ZERO);
+  io_i3c->add_port("D_IN_1", Direction::OUT, Value::ZERO);
+  
+  io_i3c->add_port("PU_ENB", Direction::IN, Value::ZERO);
+  io_i3c->add_port("WEAK_PU_ENB", Direction::IN, Value::ZERO);
+
+  
+  io_i3c->set_param("PIN_TYPE", BitVector(6, 0)); // 000000
+  io_i3c->set_param("PULLUP", BitVector(1, 0));  // default NO pullup
+  io_i3c->set_param("WEAK_PULLUP", BitVector(1, 0));  // default NO pullup
+  io_i3c->set_param("NEG_TRIGGER", BitVector(1, 0));
+  io_i3c->set_param("IO_STANDARD", "SB_LVCMOS");
+  
   Model *lut = new Model(this, "SB_LUT4");
   lut->add_port("O", Direction::OUT);
   lut->add_port("I0", Direction::IN, Value::ZERO);
@@ -1478,6 +1500,8 @@ Models::Models(const Design *d)
   io = d->find_model("SB_IO");
   gb = d->find_model("SB_GB");
   gb_io = d->find_model("SB_GB_IO");
+  io_i3c = d->find_model("SB_IO_I3C");
+
   ram = d->find_model("SB_RAM40_4K");
   ramnr = d->find_model("SB_RAM40_4KNR");
   ramnw = d->find_model("SB_RAM40_4KNW");

@@ -790,7 +790,8 @@ ChipDBParser::parse_cmd_extra_cell()
     c = chipdb->add_cell(CellType::I2C_IP, Location(t, z));
   else if (cell_type == "SPI") 
     c = chipdb->add_cell(CellType::SPI_IP, Location(t, z));
-
+  else if (cell_type == "IO_I3C")
+    c = chipdb->add_cell(CellType::IO_I3C, Location(t, z));
   else
     fatal(fmt("unknown extra cell type `" << cell_type << "'"));
   
@@ -1121,6 +1122,7 @@ cell_type_name(CellType ct)
     case CellType::LEDDA_IP:  return "LEDDA_IP";
     case CellType::I2C_IP:  return "I2C";
     case CellType::SPI_IP:  return "SPI";
+    case CellType::IO_I3C:  return "IO_I3C";
 
     default:  abort();
     }

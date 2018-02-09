@@ -137,6 +137,7 @@ public:
                     bool enable_input,
                     bool enable_output,
                     bool pullup,
+                    bool weak_pullup, //I3C IO only
                     std::string pullup_strength = "100K");
   void configure();
   
@@ -1328,6 +1329,7 @@ Placer::configure_io(const Location &loc,
                      bool enable_input,
                      bool enable_output,
                      bool pullup,
+                     bool weak_pullup,
                      std::string pullup_strength)
 {
   const auto &func_cbits = chipdb->tile_nonrouting_cbits.at(TileType::IO);
@@ -1407,7 +1409,7 @@ Placer::configure_io(const Location &loc,
              pullup_strength == "6P8K" || pullup_strength == "3P3K");
       //cf_bit_35 mirrors REN_1 and cf_bit_39 mirrors REN_0 (set low to
       //enable 100k pullup)
-      bool enable_100k = pullup && (pullup_strength == "100K");
+      bool enable_100k = (pullup && (pullup_strength == "100K")) || weak_pullup;
       if (loc.pos() == 0)
         {
           conf.set_cbit(CBit(loc.tile(),
@@ -2032,6 +2034,7 @@ Placer::configure()
         bool enable_input = false;
         bool enable_output = false;
         bool pullup = true;  // default pullup
+        bool weak_pullup = false; //I3C IO
         bool is_lvds = false;
         std::string pullup_strength = "100K";
         const Location &loc = p.second;
@@ -2062,6 +2065,12 @@ Placer::configure()
                                 pin_type.get_bit(3) || pin_type.get_bit(2);
                 pullup = inst->get_param("PULLUP").get_bit(0);
                 if(chipdb->device == "5k") {
+                    if(models.is_io_i3c(inst))
+                     {
+                      //Default strong pullup for I3C IO?
+                      pullup_strength = "10K";
+                      weak_pullup = inst->get_param("WEAK_PULLUP").get_bit(0);
+                     }
                     if(inst->has_attr("PULLUP_RESISTOR"))
                        pullup_strength = inst->get_attr("PULLUP_RESISTOR").as_string();
                 }
@@ -2081,13 +2090,13 @@ Placer::configure()
           }
 
         const Location &ieren_loc = chipdb->ieren.at(loc);
-        configure_io(ieren_loc, enable_input, enable_output, pullup, pullup_strength);
+        configure_io(ieren_loc, enable_input, enable_output, pullup, weak_pullup, pullup_strength);
 
         if (is_lvds)
           {
             Location partner_loc(loc.tile(), !loc.pos());
             const Location &partner_ieren_loc = chipdb->ieren.at(partner_loc);
-            configure_io(partner_ieren_loc, enable_input, enable_output, pullup, pullup_strength);
+            configure_io(partner_ieren_loc, enable_input, enable_output, pullup, weak_pullup, pullup_strength);
           }
       }
     
@@ -2108,7 +2117,7 @@ Placer::configure()
             if (contains(ieren_image, loc))
               continue;
             
-            configure_io(loc, enable_input, enable_output, pullup);
+            configure_io(loc, enable_input, enable_output, pullup, false);
           }
       }
   }

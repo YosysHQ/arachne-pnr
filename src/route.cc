@@ -183,6 +183,26 @@ Router::port_cnet(Instance *inst, Port *p)
         tile_net_name = fmt("io_" << loc.pos() << "/D_IN_0");
       else if (p_name == "D_IN_1")
         tile_net_name = fmt("io_" << loc.pos() << "/D_IN_1");
+      else if (models.is_io_i3c(inst))
+        {
+          assert(p_name == "PU_ENB" || p_name == "WEAK_PU_ENB");
+          bool found = false;
+          int i3c_cell = -1;
+          for (int c : chipdb->cell_type_cells[cell_type_idx(CellType::IO_I3C)])
+          {
+            auto pin = chipdb->cell_mfvs.at(c).at("PACKAGE_PIN");
+            if(loc.tile() == pin.first && loc.pos() == std::stoi(pin.second))
+            {
+              found = true;
+              i3c_cell = c;
+              break;
+            }
+          }
+          assert(found);
+          const auto &p2 = chipdb->cell_mfvs.at(i3c_cell).at(p_name);
+          t = p2.first;
+          tile_net_name = p2.second;
+        }
       else
         {
           assert(models.is_gb_io(inst)
