@@ -1000,8 +1000,9 @@ ChipDB::bwrite(obstream &obs) const
           extend(tile_nets_idx[t], ni, p.second);
         }
     }
-  
-  obs << device
+
+  obs << std::string(version_str)
+      << device
       << width
       << height
     // n_tiles = width * height
@@ -1036,7 +1037,15 @@ ChipDB::bread(ibstream &ibs)
 {
   std::vector<std::string> net_names;
   std::vector<std::map<int, int>> tile_nets_idx;
-  
+  std::string dbversion;
+  ibs >> dbversion;
+  if(dbversion != version_str)
+   {
+     fatal(fmt("chipdb and arachne-pnr versions do not match (chipdb: "
+              << dbversion 
+              << ", arachne-pnr: "
+              << version_str << ")"));
+   }
   ibs >> device
       >> width
       >> height
