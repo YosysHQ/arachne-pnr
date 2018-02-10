@@ -975,6 +975,43 @@ Design::create_standard_models()
   io_i3c->set_param("NEG_TRIGGER", BitVector(1, 0));
   io_i3c->set_param("IO_STANDARD", "SB_LVCMOS");
   
+  // The official SB_IO_OD, with inconsistent net naming
+  Model *io_od = new Model(this, "SB_IO_OD");
+  io_od->add_port("PACKAGEPIN", Direction::INOUT);
+  io_od->add_port("LATCHINPUTVALUE", Direction::IN, Value::ZERO);
+  io_od->add_port("CLOCKENABLE", Direction::IN, Value::ONE);
+  io_od->add_port("INPUTCLK", Direction::IN, Value::ZERO);
+  io_od->add_port("OUTPUTCLK", Direction::IN, Value::ZERO);
+  io_od->add_port("OUTPUTENABLE", Direction::IN, Value::ZERO);
+  io_od->add_port("DOUT0", Direction::IN, Value::ZERO);
+  io_od->add_port("DOUT1", Direction::IN, Value::ZERO);
+  io_od->add_port("DIN0", Direction::OUT, Value::ZERO);
+  io_od->add_port("DIN1", Direction::OUT, Value::ZERO);
+  
+  io_od->set_param("PIN_TYPE", BitVector(6, 0)); // 000000
+  io_od->set_param("PULLUP", BitVector(1, 0));  // default NO pullup
+  io_od->set_param("NEG_TRIGGER", BitVector(1, 0));
+  io_od->set_param("IO_STANDARD", "SB_LVCMOS");
+  
+  // As above, but with normalised net naming to minimise code changes throughout
+  // arachne
+  Model *io_od_a = new Model(this, "SB_IO_OD_A");
+  io_od_a->add_port("PACKAGE_PIN", Direction::INOUT);
+  io_od_a->add_port("LATCH_INPUT_VALUE", Direction::IN, Value::ZERO);
+  io_od_a->add_port("CLOCK_ENABLE", Direction::IN, Value::ONE);
+  io_od_a->add_port("INPUT_CLK", Direction::IN, Value::ZERO);
+  io_od_a->add_port("OUTPUT_CLK", Direction::IN, Value::ZERO);
+  io_od_a->add_port("OUTPUT_ENABLE", Direction::IN, Value::ZERO);
+  io_od_a->add_port("D_OUT_0", Direction::IN, Value::ZERO);
+  io_od_a->add_port("D_OUT_1", Direction::IN, Value::ZERO);
+  io_od_a->add_port("D_IN_0", Direction::OUT, Value::ZERO);
+  io_od_a->add_port("D_IN_1", Direction::OUT, Value::ZERO);
+  
+  io_od_a->set_param("PIN_TYPE", BitVector(6, 0)); // 000000
+  io_od_a->set_param("PULLUP", BitVector(1, 0));  // default NO pullup
+  io_od_a->set_param("NEG_TRIGGER", BitVector(1, 0));
+  io_od_a->set_param("IO_STANDARD", "SB_LVCMOS");
+  
   Model *lut = new Model(this, "SB_LUT4");
   lut->add_port("O", Direction::OUT);
   lut->add_port("I0", Direction::IN, Value::ZERO);
@@ -1501,6 +1538,7 @@ Models::Models(const Design *d)
   gb = d->find_model("SB_GB");
   gb_io = d->find_model("SB_GB_IO");
   io_i3c = d->find_model("SB_IO_I3C");
+  io_od = d->find_model("SB_IO_OD_A");
 
   ram = d->find_model("SB_RAM40_4K");
   ramnr = d->find_model("SB_RAM40_4KNR");

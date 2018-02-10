@@ -670,6 +670,7 @@ Packer::pack()
     n_i2c = 0,
     n_spi = 0,
     n_io_i3c = 0,
+    n_io_od = 0,
     n_warmboot = 0;
   for (Instance *inst : top->instances())
     {
@@ -719,7 +720,9 @@ Packer::pack()
       else if (models.is_i2c(inst))
         ++n_i2c;
       else if (models.is_io_i3c(inst))
-        ++n_io_i3c;          
+        ++n_io_i3c;
+      else if (models.is_io_od(inst))
+        ++n_io_od;
       else
         { 
           assert(models.is_ramX(inst));
@@ -743,9 +746,10 @@ Packer::pack()
   if(chipdb->device == "5k") {
     *logs << "\nAfter packing:\n"
           << "IOs          " << n_io << " / " << package.pin_loc.size() << "\n"
+          << "  IO_I3Cs    " << n_io_i3c << " / " << count_extra_cells(CellType::IO_I3C) << "\n"
+          << "  IO_ODs     " << n_io_od << " / " << (3 * count_extra_cells(CellType::RGBA_DRV)) << "\n"
           << "GBs          " << n_gb << " / " << chipdb->n_global_nets << "\n"
           << "  GB_IOs     " << n_gb_io << " / " << chipdb->n_global_nets << "\n"
-          << "  IO_I3Cs    " << n_io_i3c << " / " << count_extra_cells(CellType::IO_I3C) << "\n"
           << "LCs          " << n_lc << " / " << n_logic_tiles*8 << "\n"
           << "  DFF        " << n_lc_dff << "\n"
           << "  CARRY      " << n_lc_carry << "\n"

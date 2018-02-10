@@ -311,10 +311,41 @@ ConstraintsPlacer::place()
                           << " is not I3C IO capable"));
               }
             }
-
+          else if (models.is_io_od(inst))
+            {
+              int rgb_cell = chipdb->cell_type_cells[cell_type_idx(CellType::RGBA_DRV)].at(0);
+              bool found = false;
+              for (int i = 0; i <= 2; i++)
+              {
+                std::string op = "RGB" + std::to_string(i);
+                auto op_loc = chipdb->cell_mfvs.at(rgb_cell).at(op);
+                if(loc.tile() == op_loc.first && loc.pos() == std::stoi(op_loc.second))
+                {
+                  for(auto rinst : top->instances())
+                  {
+                    if(models.is_rgba_drv(rinst))
+                    {
+                      if(rinst->get_param(op + "_CURRENT").as_string() != "0b000000")
+                        fatal(fmt("bad constraint on `"
+                                  << p.first << "': IO_OD on pin "
+                                  << ds.package.loc_pin.at(loc)
+                                  << " conflicts with RGBA_DRV output "
+                                  << op << " (set " << op << "_CURRENT to 0b000000 to use IO_OD)"));
+                    }
+                  }
+                  found = true;
+                  break;
+                }
+              }
+              if(!found)
+                fatal(fmt("bad constraint on `"
+                          << p.first << "': pin "
+                          << ds.package.loc_pin.at(loc)
+                          << " is not an IO_OD location"));
+            }
           c = chipdb->loc_cell(loc);
         }
-      else if(models.is_rgba_drv(inst))
+      else if (models.is_rgba_drv(inst))
         {
           Port *port = top->find_port(p.first);
           assert(port);
@@ -330,7 +361,7 @@ ConstraintsPlacer::place()
                         << p.first << "': pin "
                         << ds.package.loc_pin.at(loc)
                         << " does not correspond to RGB driver output `"
-                        << op << "'"));  
+                        << op << "'"));
             }
           }
           continue;
@@ -393,6 +424,8 @@ ConstraintsPlacer::place()
         fatal("physical constraint required for GB_IO");
       else if(models.is_io_i3c(inst))
         fatal("physical constraint required for IO_I3C");
+      else if(models.is_io_od(inst))
+        fatal("physical constraint required for IO_OD");
       else if (models.is_pllX(inst))
         {
           ++n_pll;
