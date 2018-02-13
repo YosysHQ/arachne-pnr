@@ -66,7 +66,10 @@ BlifParser::parse()
   d->create_standard_models();
   
   Model *io_model = d->find_model("SB_IO");
-  
+  Model *io_i3c_model = d->find_model("SB_IO_I3C");
+  Model *io_od_model = d->find_model("SB_IO_OD");
+  Model *io_od_a_model = d->find_model("SB_IO_OD_A");
+
   Model *top = nullptr;
   
   std::vector<std::pair<Net *, Net *>> unify;
@@ -342,6 +345,35 @@ BlifParser::parse()
       delete n;
     }
   
+  // Replace SB_IO_ODs with inconsistent naming with SB_IO_OD_As with sensible
+  // naming for internal use
+  std::vector<Instance *> io_od_to_rep;
+  
+  for (auto od_i : top->instances())
+    {
+      if(od_i->instance_of() == io_od_model)
+        io_od_to_rep.push_back(od_i);
+    }
+  
+  for (auto od_i : io_od_to_rep)
+    {
+      Instance *od_a_inst = top->add_instance(io_od_a_model);
+      for (auto port : od_a_inst->ports())
+        {
+          std::string sb_name;
+          for (auto chr : port.first)
+            if (chr != '_')
+               sb_name += chr;
+          od_a_inst->find_port(port.first)->connect(od_i->find_port(sb_name)->connection());
+        }
+      for (auto param : od_a_inst->params())
+        {
+          od_a_inst->set_param(param.first, od_i->get_param(param.first));
+        }
+      od_i->remove();
+      delete od_i;
+    }
+  
   for (const auto &p : top->ports())
     {
       if (p.second->is_bidir())
@@ -352,7 +384,7 @@ BlifParser::parse()
               Port *q = p.second->connection_other_port();
               if (!q
                   || !isa<Instance>(q->node())
-                  || cast<Instance>(q->node())->instance_of() != io_model
+                  || (cast<Instance>(q->node())->instance_of() != io_model && cast<Instance>(q->node())->instance_of() != io_i3c_model && cast<Instance>(q->node())->instance_of() != io_od_a_model)
                   || q->name() != "PACKAGE_PIN")
                 fatal(fmt("toplevel inout port '" << p.second->name ()
                           << "' not connected to SB_IO PACKAGE_PIN"));

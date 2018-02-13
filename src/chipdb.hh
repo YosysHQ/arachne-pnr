@@ -134,7 +134,7 @@ enum class TileType : int {
 };
 
 enum class CellType : int {
-  LOGIC, IO, GB, RAM, WARMBOOT, PLL, MAC16, SPRAM, LFOSC, HFOSC, RGBA_DRV, LEDDA_IP, I2C_IP, SPI_IP
+  LOGIC, IO, GB, RAM, WARMBOOT, PLL, MAC16, SPRAM, LFOSC, HFOSC, RGBA_DRV, LEDDA_IP, I2C_IP, SPI_IP, IO_I3C
 };
 
 std::string cell_type_name(CellType ct);
@@ -157,7 +157,7 @@ constexpr int cell_type_idx(CellType type)
   return static_cast<int>(type);
 }
 
-static const int n_cell_types = cell_type_idx(CellType::SPI_IP) + 1;
+static const int n_cell_types = cell_type_idx(CellType::IO_I3C) + 1;
 
 inline obstream &operator<<(obstream &obs, CellType t)
 {
