@@ -1,15 +1,15 @@
 /* Copyright (C) 2015 Cotton Seed
-   
+
    This file is part of arachne-pnr.  Arachne-pnr is free software;
    you can redistribute it and/or modify it under the terms of the GNU
    General Public License version 2 as published by the Free Software
    Foundation.
-   
+
    This program is distributed in the hope that it will be useful, but
    WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
@@ -63,7 +63,7 @@ unescape(const std::string &s)
         {
           ++i;
           assert(i != s.end());
-          
+
           switch(*i)
             {
             case '\'':
@@ -182,7 +182,7 @@ std::string
 expand_filename(const std::string &file)
 {
   if (file[0] == '+')
-#ifdef _WIN32
+#if defined(_WIN32) && defined(MXE_DIR_STRUCTURE)
     return (proc_self_dirname()
             + std::string(file.begin() + 2,
                           file.end()));

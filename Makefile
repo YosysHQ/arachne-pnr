@@ -137,7 +137,7 @@ mxebin:
 	mv share/arachne-pnr/chipdb-8k.bin arachne-pnr-win32/
 	mv share/arachne-pnr/chipdb-5k.bin arachne-pnr-win32/
 	$(MAKE) clean
-	$(MAKE) CC=/usr/local/src/mxe/usr/bin/i686-w64-mingw32.static-gcc CXX=/usr/local/src/mxe/usr/bin/i686-w64-mingw32.static-g++ bin/arachne-pnr
+	$(MAKE) CC=/usr/local/src/mxe/usr/bin/i686-w64-mingw32.static-gcc CXX=/usr/local/src/mxe/usr/bin/i686-w64-mingw32.static-g++ CXXFLAGS="$(CXXFLAGS) -DMXE_DIR_STRUCTURE" bin/arachne-pnr
 	mv bin/arachne-pnr arachne-pnr-win32/arachne-pnr.exe
 	zip -r arachne-pnr-win32.zip arachne-pnr-win32/
 	rm -rf arachne-pnr-win32
