@@ -247,7 +247,7 @@ ConstraintsPlacer::place()
               if (b != 3)
                 fatal(fmt("pcf error: LVDS port `" << p.first << "' not in bank 3\n"));
               if (loc.pos() != 0)
-                fatal(fmt("pcf error: LVDS port `" << p.first << "' not a DPxxA input\n"));
+                fatal(fmt("pcf error: LVDS port `" << p.first << "' not a DPxxB input\n"));
             }
           
           Location loc_other(t,
