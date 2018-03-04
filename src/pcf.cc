@@ -260,24 +260,32 @@ ConstraintsPlacer::place()
                   if (inst->get_param("NEG_TRIGGER").get_bit(0)
                       != inst_other->get_param("NEG_TRIGGER").get_bit(0))
                     fatal(fmt("pcf error: incompatible NEG_TRIGGER parameters in PIO at (" 
+                              << inst->find_port("PACKAGE_PIN")->connection()->name() << ","
+                              << inst_other->find_port("PACKAGE_PIN")->connection()->name() << ") at ("
                               << x << ", " << y << ")"));
                   
                   Net *cen = inst->find_port("CLOCK_ENABLE")->connection(),
                     *cen_other = inst_other->find_port("CLOCK_ENABLE")->connection();
                   if (cen && cen_other && cen != cen_other)
                     fatal(fmt("pcf error: multiple CLOCK_ENABLE drivers in PIO at ("
+                              << inst->find_port("PACKAGE_PIN")->connection()->name() << ","
+                              << inst_other->find_port("PACKAGE_PIN")->connection()->name() << ") at ("
                               << x << ", " << y << ")"));
                   
                   Net *inclk = inst->find_port("INPUT_CLK")->connection(),
                     *inclk_other = inst_other->find_port("INPUT_CLK")->connection();
                   if (inclk && inclk_other && inclk != inclk_other)
                     fatal(fmt("pcf error: multiple INPUT_CLK drivers in PIO at ("
+                              << inst->find_port("PACKAGE_PIN")->connection()->name() << ","
+                              << inst_other->find_port("PACKAGE_PIN")->connection()->name() << ") at ("
                               << x << ", " << y << ")"));
                   
                   Net *outclk = inst->find_port("OUTPUT_CLK")->connection(),
                     *outclk_other = inst_other->find_port("OUTPUT_CLK")->connection();
                   if (outclk && outclk_other && outclk != outclk_other)
                     fatal(fmt("pcf error: multiple OUTPUT_CLK drivers in PIO at ("
+                              << inst->find_port("PACKAGE_PIN")->connection()->name() << ","
+                              << inst_other->find_port("PACKAGE_PIN")->connection()->name() << ") at ("
                               << x << ", " << y << ")"));
                 }
             }
