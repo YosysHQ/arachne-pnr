@@ -241,10 +241,14 @@ ConstraintsPlacer::place()
               else
                 bank_latch[b] = latch;
             }
-          
-          if (inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT"
-              && b != 3)
-            fatal(fmt("pcf error: LVDS port `" << p.first << "' not in bank 3\n"));
+
+          if (inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
+            {
+              if (b != 3)
+                fatal(fmt("pcf error: LVDS port `" << p.first << "' not in bank 3\n"));
+              if (loc.pos() != 0)
+                fatal(fmt("pcf error: LVDS port `" << p.first << "' not a DPxxB input\n"));
+            }
           
           Location loc_other(t,
                              loc.pos() ? 0 : 1);
