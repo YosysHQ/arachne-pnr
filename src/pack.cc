@@ -52,6 +52,8 @@ class Packer
   void pack_luts();
   void pack_carries_from(Instance *f);
   void pack_carries();
+
+  void optimize_luts();
   
   int count_extra_cells(CellType ct);
   
@@ -101,6 +103,51 @@ Packer::Packer(DesignState &ds)
       const1 = top->add_net("$true");
       const1->set_is_constant(true);
       const1->set_constant(Value::ONE);
+    }
+}
+
+void Packer::optimize_luts()
+{
+  const auto &instances = top->instances();
+
+  for (auto i = instances.begin(); i != instances.end(); ++i)
+    {
+      Instance *lut_inst = *i;
+
+      if (models.is_lut4(lut_inst))
+        {
+          if (!lut_inst->self_has_param("LUT_INIT"))
+            continue;
+
+          Const lut_init = lut_inst->self_get_param("LUT_INIT");
+          BitVector lut_bits = lut_init.as_bits();
+
+          if (lut_bits.size() != 16)
+            continue;
+
+          std::vector<Port *> ports;
+          ports.push_back(lut_inst->find_port("I0"));
+          ports.push_back(lut_inst->find_port("I1"));
+          ports.push_back(lut_inst->find_port("I2"));
+          ports.push_back(lut_inst->find_port("I3"));
+
+          int bit_nr = 0;
+          for(Port *pi: ports)
+            {
+              if (pi
+                  && pi->connection()
+                  && pi->connection()->is_constant()
+                  && pi->connection()->constant() == Value::ONE)
+                {
+                  for(int lut_entry=0; lut_entry<16; ++lut_entry)
+                    if (lut_entry & (1<<bit_nr))
+                      lut_bits[lut_entry & ~(1<<bit_nr)] = (bool)(lut_bits[lut_entry]);
+                  pi->connect(const0);
+                }
+              ++bit_nr;
+            }
+          lut_inst->set_param("LUT_INIT", lut_bits);
+        }
     }
 }
 
@@ -638,6 +685,7 @@ Packer::count_extra_cells(CellType ct)
 void
 Packer::pack()
 {
+  optimize_luts();
   pack_dffs();
   pack_luts();
   pack_carries();
