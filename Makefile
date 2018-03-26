@@ -63,19 +63,19 @@ endif
 
 share/arachne-pnr/chipdb-384.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-384.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr-host -d 384 -c $(ICEBOX)/chipdb-384.txt --write-binary-chipdb share/arachne-pnr/chipdb-384.bin
+	./bin/arachne-pnr-host -d 384 -c $(ICEBOX)/chipdb-384.txt --write-binary-chipdb share/arachne-pnr/chipdb-384.bin
 
 share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-1k.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr-host -d 1k -c $(ICEBOX)/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
+	./bin/arachne-pnr-host -d 1k -c $(ICEBOX)/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
 
 share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-8k.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr-host -d 8k -c $(ICEBOX)/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
+	./bin/arachne-pnr-host -d 8k -c $(ICEBOX)/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
 
 share/arachne-pnr/chipdb-5k.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-5k.txt
 	mkdir -p share/arachne-pnr
-	bin/arachne-pnr-host -d 8k -c $(ICEBOX)/chipdb-5k.txt --write-binary-chipdb share/arachne-pnr/chipdb-5k.bin
+	./bin/arachne-pnr-host -d 8k -c $(ICEBOX)/chipdb-5k.txt --write-binary-chipdb share/arachne-pnr/chipdb-5k.bin
 
 tests/test_bv: tests/test_bv.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
