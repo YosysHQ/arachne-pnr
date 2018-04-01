@@ -136,8 +136,10 @@ main(int argc, const char **argv)
   EM_ASM(
     if (ENVIRONMENT_IS_NODE)
     {
-      FS.mkdir('/x');
-      FS.mount(NODEFS, { root: '.' }, '/x');
+      FS.mkdir('/hostcwd');
+      FS.mount(NODEFS, { root: '.' }, '/hostcwd');
+      FS.mkdir('/hostfs');
+      FS.mount(NODEFS, { root: '/' }, '/hostfs');
     }
   );
 #endif
