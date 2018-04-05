@@ -21,6 +21,7 @@
 #include "designstate.hh"
 #include "casting.hh"
 
+#include <stdlib.h>
 #include <cstring>
 #include <istream>
 #include <fstream>
@@ -41,6 +42,50 @@ public:
   
   void parse();
 };
+
+namespace
+{
+// Extract integer ranges that don't have holes.
+std::vector<std::pair<int, int>> extract_ranges(const std::set<int> &full_set)
+{
+  using ReturnType = std::vector<std::pair<int, int>>;
+  ReturnType result;
+  ReturnType::iterator current;
+  int last = -2;
+  for (const int bit : full_set)
+    {
+      if (bit > last+1) {
+        result.push_back({bit, bit});
+        current = result.end()-1;
+      }
+      current->second = bit;
+      last = bit;
+    }
+  return result;
+}
+
+// Given a field prefix and a set of bit-positions, print a compact
+// representation. Resets the given fields.
+void print_coalesced_field_range(std::string *last_prefix,
+                                 std::set<int> *missing_bits)
+{
+  if (last_prefix->empty()) return;
+  for (auto range : extract_ranges(*missing_bits)) {
+    if (range.first != range.second) {
+      note(fmt("no set_io constraints for pins `"
+               << *last_prefix << "[" << range.first << ".."
+               << range.second << "]'"));
+    } else {
+      note(fmt("no set_io constraints for pin `" << *last_prefix
+               << "[" << range.first << "]'"));
+    }
+  }
+
+  last_prefix->clear();
+  missing_bits->clear();
+}
+
+}  // namespace
 
 void
 PCFParser::parse()
@@ -149,8 +194,30 @@ PCFParser::parse()
   
   if (!extra_ports.empty())
     {
-      const std::string &pin_name = *extra_ports.begin();
-      fatal(fmt("no set_io constraints for pin `" << pin_name << "'"));
+      // Print some somewhat compact list of all missing constraints,
+      // coalescing bit numbers.
+      std::string last_prefix;
+      std::set<int> missing_bits;
+      for (const std::string &pin_name : extra_ports)
+        {
+          auto bracket = pin_name.find_first_of('[');
+          if (bracket != std::string::npos)
+            {
+              std::string prefix = pin_name.substr(0, bracket);
+              if (prefix != last_prefix)
+                {
+                  print_coalesced_field_range(&last_prefix, &missing_bits);
+                  last_prefix = prefix;
+                }
+              missing_bits.insert(atoi(pin_name.substr(bracket+1).c_str()));
+            }
+          else
+            {
+              print_coalesced_field_range(&last_prefix, &missing_bits);
+              note(fmt("no set_io constraints for pin `" << pin_name << "'"));
+            }
+        }
+      fatal(fmt("Missing " << extra_ports.size() << " set_io constraints"));
     }
   
   constraints.net_pin_loc = net_pin_loc;
