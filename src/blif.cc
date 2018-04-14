@@ -366,7 +366,7 @@ BlifParser::parse()
                sb_name += chr;
           od_a_inst->find_port(port.first)->connect(od_i->find_port(sb_name)->connection());
         }
-      for (auto param : od_a_inst->params())
+      for (auto param : od_i->params())
         {
           od_a_inst->set_param(param.first, od_i->get_param(param.first));
         }
