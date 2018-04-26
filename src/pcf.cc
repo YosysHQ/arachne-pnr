@@ -438,6 +438,36 @@ ConstraintsPlacer::place()
         fatal("physical constraint required for IO_I3C");
       else if(models.is_io_od(inst))
         fatal("physical constraint required for IO_OD");
+      else if (models.is_lfosc(inst))
+        {
+          bool good = false;
+          for (int c : chipdb->cell_type_cells[cell_type_idx(CellType::LFOSC)])
+            {
+              if (cell_gate[c])
+                continue;
+              good = true;
+              cell_gate[c] = inst;
+              extend(ds.placement, inst, c);
+              break;
+            }
+          if (!good)
+            fatal("failed to place LFOSC");
+        }
+      else if (models.is_hfosc(inst))
+        {
+          bool good = false;
+          for (int c : chipdb->cell_type_cells[cell_type_idx(CellType::HFOSC)])
+            {
+              if (cell_gate[c])
+                continue;
+              good = true;
+              cell_gate[c] = inst;
+              extend(ds.placement, inst, c);
+              break;
+            }
+          if (!good)
+            fatal("failed to place HFOSC");
+        }
       else if (models.is_pllX(inst))
         {
           ++n_pll;
