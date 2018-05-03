@@ -66,7 +66,6 @@ BlifParser::parse()
   d->create_standard_models();
   
   Model *io_model = d->find_model("SB_IO");
-  Model *io_i3c_model = d->find_model("SB_IO_I3C");
   Model *io_od_model = d->find_model("SB_IO_OD");
   Model *io_od_a_model = d->find_model("SB_IO_OD_A");
 
@@ -374,6 +373,8 @@ BlifParser::parse()
       delete od_i;
     }
   
+  Models models(d);
+  std::map<Port *, Direction> inout_redir;
   for (const auto &p : top->ports())
     {
       if (p.second->is_bidir())
@@ -381,16 +382,52 @@ BlifParser::parse()
           Net *n = p.second->connection();
           if (n)
             {
-              Port *q = p.second->connection_other_port();
-              if (!q
-                  || !isa<Instance>(q->node())
-                  || (cast<Instance>(q->node())->instance_of() != io_model && cast<Instance>(q->node())->instance_of() != io_i3c_model && cast<Instance>(q->node())->instance_of() != io_od_a_model)
-                  || q->name() != "PACKAGE_PIN")
-                fatal(fmt("toplevel inout port '" << p.second->name ()
-                          << "' not connected to SB_IO PACKAGE_PIN"));
+              bool has_input = false, has_output = false, has_tristate = false;
+              for (const auto &q : n->connections())
+                {
+                  if (q == p.second)
+                    continue;
+
+                  if (q->is_input())
+                    has_input = true;
+
+                  if (q->is_output())
+                    has_output = true;
+
+                  if (isa<Instance>(q->node())
+                      && ((models.is_tbuf(cast<Instance>(q->node()))
+                          && q->name() == "Y")
+                      || (models.is_ioX(cast<Instance>(q->node()))
+                          && q->name() == "PACKAGE_PIN")
+                      || (models.is_pllX(cast<Instance>(q->node()))
+                          && q->name() == "PACKAGEPIN")
+                      || (models.is_rgba_drv(cast<Instance>(q->node())) 
+                        &&  (q->name() == "RGB0" || q->name() == "RGB1" || q->name() == "RGB2"))))
+                    has_tristate = true;
+                }
+
+              // inout net has a tristate driver and used as an input, illegal
+              if (has_input && has_tristate)
+                  fatal(fmt("toplevel inout port '" << p.second->name()
+                            << "' connected to tristate buffer and driving a net"));
+
+              // inout net used as output
+              else if (has_output && !has_tristate)
+                inout_redir[p.second] = Direction::OUT;
+
+              // inout net used as input
+              else if (!has_output)
+                inout_redir[p.second] = Direction::IN;
+
+              // inout net unused
+              else if (n->connections().size() == 1)
+                inout_redir[p.second] = Direction::IN;
             }
         }
     }
+
+  for (const auto &p : inout_redir)
+    p.first->set_direction(p.second);
   
   std::set<Net *, IdLess> boundary_nets;
   for (Instance *inst2 : top->instances())

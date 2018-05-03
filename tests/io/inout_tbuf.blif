@@ -1,0 +1,9 @@
+.model top
+.inputs y a e
+.outputs y
+.names $false
+.names $true
+1
+.names $undef
+.gate $_TBUF_ A=a E=e Y=y
+.end

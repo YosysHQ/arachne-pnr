@@ -88,6 +88,7 @@ simpletest: all tests/test_bv tests/test_us
 	./tests/test_bv
 	./tests/test_us
 	cd tests/simple && ICEBOX=$(ICEBOX) bash run-test.sh
+	cd tests/io && bash run-test.sh
 	cd tests/regression && bash run-test.sh
 	cd tests/blif && bash run-test.sh
 	cd tests/error && bash run-test.sh
@@ -101,6 +102,7 @@ test: all tests/test_bv ./tests/test_us
 	./tests/test_us
 	make -C examples/rot clean && make -C examples/rot
 	cd tests/simple && ICEBOX=$(ICEBOX) bash run-test.sh
+	cd tests/io && bash run-test.sh
 	cd tests/regression && bash run-test.sh
 	cd tests/blif && bash run-test.sh
 	cd tests/error && bash run-test.sh

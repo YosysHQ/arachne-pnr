@@ -1,0 +1,10 @@
+.model top
+.inputs a b
+.outputs a
+.names $false
+.names $true
+1
+.names $undef
+.names b a
+1 1
+.end
