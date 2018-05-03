@@ -3,11 +3,20 @@
 set -x
 
 arachne_pnr=../../bin/arachne-pnr
+pass='attr-with-quoted-numeric-escape'
+fail='conflicting-names-outputs empty escape-test 
+multiple-models names-without-model sb-dff-model'
 
-for blif in *.blif; do
-  $arachne_pnr -p test.pcf $blif -o /dev/null
-  if [ x"$?" != x"1" ]; then
-      echo "error, stopping."
-      exit 1
+for t in $pass; do
+  if ! $arachne_pnr -p test.pcf $t.blif -o /dev/null; then
+    echo "$t failed, expected pass"
+    exit 1
+  fi
+done
+
+for t in $fail; do
+  if $arachne_pnr -p test.pcf $t.blif -o /dev/null; then
+    echo "$t passed, expected fail"
+    exit 1
   fi
 done
