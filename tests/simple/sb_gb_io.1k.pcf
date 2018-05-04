@@ -1,1 +1,6 @@
 set_io inclk 50
+set_io out[0] 52
+set_io out[1] 56
+set_io out[2] 58
+set_io out[3] 60
+set_io outclk 61

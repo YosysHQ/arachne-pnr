@@ -1,1 +1,6 @@
 set_io inclk F7
+set_io out[0] B9
+set_io out[1] D8
+set_io out[2] B8
+set_io out[3] A7
+set_io outclk C7
