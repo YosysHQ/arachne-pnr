@@ -51,9 +51,9 @@ public:
 class IdLess
 {
 public:
-  bool operator()(const Identified *lhs, const Identified *rhs) const
+  template<typename T> bool operator()(const T *lhs, const T *rhs) const
   {
-    return lhs->id < rhs->id;
+    return static_cast<const Identified*>(lhs)->id < static_cast<const Identified*>(rhs)->id;
   }
 };
 
