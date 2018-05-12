@@ -443,7 +443,7 @@ Router::Router(DesignState &ds, int max_passes_v)
                std::make_pair(fmt("ram/MASK_" << i), true));
 
     }  
-  else if (chipdb->device == "5k")
+  else if (chipdb->device == "5k" || chipdb->device == "lm4k")
     {
       for (int i = 0; i <= 7; ++i)
         extend(ram_gate_chip,
