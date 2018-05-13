@@ -31,7 +31,7 @@ def random_term(variables):
     return term
 
 for idx in range(25):
-    with file('temp/uut_%05d.v' % idx, 'w') as f:
+    with open('temp/uut_%05d.v' % idx, 'w') as f:
         with redirect_stdout(f):
             pins = 96
             
@@ -88,7 +88,7 @@ for idx in range(25):
                 print('  assign o%d = %s;' % (i, term))
             
             print('endmodule')
-    with file('temp/uut_%05d.ys' % idx, 'w') as f:
+    with open('temp/uut_%05d.ys' % idx, 'w') as f:
         with redirect_stdout(f):
             print('rename uut_%05d gate' % idx)
             print('read_verilog temp/uut_%05d.v' % idx)
@@ -96,7 +96,7 @@ for idx in range(25):
             print('hierarchy; proc;;')
             print('miter -equiv -flatten -ignore_gold_x -make_outputs -make_outcmp gold gate miter')
             print('sat -verify-no-timeout -timeout 20 -prove trigger 0 -show-inputs -show-outputs miter')
-    with file('temp/uut_%05d_pp.ys' % idx, 'w') as f:
+    with open('temp/uut_%05d_pp.ys' % idx, 'w') as f:
         with redirect_stdout(f):
             print('rename uut_%05d gate' % idx)
             print('read_verilog temp/uut_%05d.v' % idx)

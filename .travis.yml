@@ -1,6 +1,6 @@
 sudo: required
 dist: trusty
-script: make ICEBOX=/usr/share/fpga-icestorm/chipdb test
+script: make test
 language: cpp
 addons:
   apt:
@@ -15,7 +15,11 @@ addons:
 before_install:
   - sudo add-apt-repository -y ppa:saltmakrell/ppa
   - sudo apt-get -y update
-  - sudo apt-get -y install yosys fpga-icestorm
+  - sudo apt-get -y install yosys
+  - git clone https://github.com/cliffordwolf/icestorm /tmp/icestorm
+  - pushd /tmp/icestorm
+  - make -j2 && sudo make install
+  - popd
 os: linux
 compiler:
   - gcc
