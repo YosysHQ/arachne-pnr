@@ -45,7 +45,7 @@ def random_expr(variables):
     raise AssertionError
 
 for idx in range(25):
-    with file('temp/uut_%05d.v' % idx, 'w') as f:
+    with open('temp/uut_%05d.v' % idx, 'w') as f:
         with redirect_stdout(f):
             rst2 = random.choice([False, True])
             if rst2:
@@ -125,7 +125,7 @@ for idx in range(25):
             print('    end')
             print('  end')
             print('endmodule')
-    with file('temp/uut_%05d.ys' % idx, 'w') as f:
+    with open('temp/uut_%05d.ys' % idx, 'w') as f:
         with redirect_stdout(f):
             print('rename uut_%05d gate' % idx)
             print('read_verilog temp/uut_%05d.v' % idx)
@@ -133,7 +133,7 @@ for idx in range(25):
             print('hierarchy; proc;;')
             print('miter -equiv -flatten -ignore_gold_x -make_outputs -make_outcmp gold gate miter')
             print('sat -verify-no-timeout -timeout 20 -seq 5 -set-at 1 %s_rst 1 -prove trigger 0 -prove-skip 1 -show-inputs -show-outputs miter' % ('gold' if rst2 else 'in'))
-    with file('temp/uut_%05d_pp.ys' % idx, 'w') as f:
+    with open('temp/uut_%05d_pp.ys' % idx, 'w') as f:
         with redirect_stdout(f):
             print('rename uut_%05d gate' % idx)
             print('read_verilog temp/uut_%05d.v' % idx)

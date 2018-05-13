@@ -48,7 +48,4 @@ for d in $devices; do
         icepack $d/$pll.txt $d/$pll.bin
     done
     
-    $arachne_pnr -d $d tri.blif -o $d/tri.txt
-    shasum $d/tri.txt >> txt.sum
-    icepack $d/tri.txt $d/tri.bin
 done
