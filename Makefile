@@ -32,7 +32,7 @@ ifneq ($(CXX),$(HOST_CXX))
 endif
 
 .PHONY: all
-all: bin/arachne-pnr$(EXE) share/arachne-pnr/chipdb-384.bin share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin share/arachne-pnr/chipdb-5k.bin
+all: bin/arachne-pnr$(EXE) share/arachne-pnr/chipdb-384.bin share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin share/arachne-pnr/chipdb-5k.bin share/arachne-pnr/chipdb-lm4k.bin
 
 ARACHNE_VER = 0.1+$(shell test -e .git && echo `git log --oneline | wc -l`+`git diff --name-only HEAD | wc -l`)
 GIT_REV = $(shell git rev-parse --verify --short HEAD 2>/dev/null || echo UNKNOWN)
@@ -76,6 +76,10 @@ share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-8k.txt
 share/arachne-pnr/chipdb-5k.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-5k.txt
 	mkdir -p share/arachne-pnr
 	./bin/arachne-pnr-host -d 8k -c $(ICEBOX)/chipdb-5k.txt --write-binary-chipdb share/arachne-pnr/chipdb-5k.bin
+
+share/arachne-pnr/chipdb-lm4k.bin: bin/arachne-pnr-host $(ICEBOX)/chipdb-lm4k.txt
+	mkdir -p share/arachne-pnr
+	./bin/arachne-pnr-host -d 8k -c $(ICEBOX)/chipdb-lm4k.txt --write-binary-chipdb share/arachne-pnr/chipdb-lm4k.bin
 
 tests/test_bv: tests/test_bv.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
@@ -138,6 +142,7 @@ mxebin:
 	mv share/arachne-pnr/chipdb-1k.bin arachne-pnr-win32/
 	mv share/arachne-pnr/chipdb-8k.bin arachne-pnr-win32/
 	mv share/arachne-pnr/chipdb-5k.bin arachne-pnr-win32/
+	mv share/arachne-pnr/chipdb-lm4k.bin arachne-pnr-win32/
 	$(MAKE) clean
 	$(MAKE) CC=/usr/local/src/mxe/usr/bin/i686-w64-mingw32.static-gcc CXX=/usr/local/src/mxe/usr/bin/i686-w64-mingw32.static-g++ CXXFLAGS="$(CXXFLAGS) -DMXE_DIR_STRUCTURE" bin/arachne-pnr
 	mv bin/arachne-pnr arachne-pnr-win32/arachne-pnr.exe
@@ -154,6 +159,7 @@ install: all
 	cp share/arachne-pnr/chipdb-1k.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-1k.bin
 	cp share/arachne-pnr/chipdb-8k.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-8k.bin
 	cp share/arachne-pnr/chipdb-5k.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-5k.bin
+	cp share/arachne-pnr/chipdb-lm4k.bin $(DESTDIR)$(PREFIX)/share/arachne-pnr/chipdb-lm4k.bin
 
 .PHONY: uninstall
 uninstall:

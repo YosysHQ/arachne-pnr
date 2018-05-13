@@ -1133,7 +1133,7 @@ Placer::place_initial()
           logic_column_free[i] = 2;
           logic_column_last[i] = 31;
         }
-    else if (chipdb->device == "5k"
+    else if ((chipdb->device == "5k" || chipdb->device == "lm4k")
              && (logic_columns[i] == 1 
                  || logic_columns[i] == 24)) // FIXME(daveshah1): check this
       {
