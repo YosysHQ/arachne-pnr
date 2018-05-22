@@ -535,17 +535,7 @@ Model::boundary_nets(const Design *d) const
       if (n)
         {
           Port *q = p->connection_other_port();
-          if (q
-              && isa<Instance>(q->node())
-              && ((models.is_tbuf(cast<Instance>(q->node()))
-                      && q->name() == "Y")
-                  || (models.is_ioX(cast<Instance>(q->node()))
-                      && q->name() == "PACKAGE_PIN")
-                  || (models.is_pllX(cast<Instance>(q->node()))
-                      && q->name() == "PACKAGEPIN")
-                  || (models.is_rgba_drv(cast<Instance>(q->node()))
-                      && (q->name() == "RGB0" || q->name() == "RGB1" || q->name() == "RGB2")
-                  )))
+          if (is_physical_port(models, q))
             extend(bnets, n);
         }
     }
@@ -689,16 +679,7 @@ Model::check(const Design *d) const
           if (n)
             {
               Port *q = p->connection_other_port();
-              assert (q
-                      && isa<Instance>(q->node())
-                      && ((models.is_tbuf(cast<Instance>(q->node()))
-                              && q->name() == "Y")
-                          || (models.is_ioX(cast<Instance>(q->node()))
-                              && q->name() == "PACKAGE_PIN")
-                          || (models.is_pllX(cast<Instance>(q->node()))
-                              && q->name() == "PACKAGEPIN")
-                          || (models.is_rgba_drv(cast<Instance>(q->node())) 
-                            &&  (q->name() == "RGB0" || q->name() == "RGB1" || q->name() == "RGB2"))));
+              assert(is_physical_port(models, q));
             }
         }
     }
