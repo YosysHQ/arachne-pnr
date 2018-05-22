@@ -30,6 +30,7 @@ class Port;
 class Node;
 class Instance;
 class Model;
+class Models;
 class Design;
 
 class Identified
@@ -369,6 +370,8 @@ public:
   
   bool has_param(const std::string &pn) { return contains_key(m_params, pn); }
   
+  bool is_physical_port(Models &models, const Port *p) const;
+  void check_boundary_nets(const Design *d) const;
   std::set<Net *, IdLess> boundary_nets(const Design *d) const;
   std::pair<std::vector<Net *>, std::map<Net *, int, IdLess>>
     index_nets() const;
@@ -411,6 +414,7 @@ public:
   void write_verilog(std::ostream &s) const;
   void write_blif(std::ostream &s) const;
   void dump() const;
+  void check_boundary_nets() const;
 #ifndef NDEBUG
   void check() const;
 #endif

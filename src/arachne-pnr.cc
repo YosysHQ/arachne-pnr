@@ -486,6 +486,7 @@ main(int argc, const char **argv)
 
   *logs << "prune...\n";
   d->prune();
+  d->check_boundary_nets();
 #ifndef NDEBUG
   d->check();
 #endif
