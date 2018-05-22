@@ -498,7 +498,7 @@ Model::check_boundary_nets(const Design *d) const
         continue;
 
       bool is_boundary_net = false;
-      Port * physical_port;
+      Port *physical_port = nullptr;
 
       for(auto i = n->connections().begin(); i != n->connections().end(); ++i)
         {
