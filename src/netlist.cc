@@ -469,7 +469,7 @@ Model::add_instance(Model *inst_of)
 
 bool Model::is_physical_port(Models &models, const Port *p) const
 {
-  bool is_physical_port = p
+  bool is_phys_port = p
                          && isa<Instance>(p->node())
                          && ((models.is_tbuf(cast<Instance>(p->node()))
                                 && p->name() == "Y")
@@ -481,7 +481,7 @@ bool Model::is_physical_port(Models &models, const Port *p) const
                                 && (p->name() == "RGB0" || p->name() == "RGB1" || p->name() == "RGB2"))
                             );
 
-  return is_physical_port;
+  return is_phys_port;
 }
 
 // Check that ports which are connected to physical port are
