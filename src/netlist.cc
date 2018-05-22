@@ -1508,10 +1508,8 @@ Design::prune()
 void
 Design::check() const
 {
-  for (const auto &p : m_models)
-    p.second->check(this);
+   m_top->check(this);
 }
-#endif
 
 void
 Design::write_blif(std::ostream &s) const
