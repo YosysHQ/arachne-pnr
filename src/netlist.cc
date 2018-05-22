@@ -1510,6 +1510,7 @@ Design::check() const
 {
    m_top->check(this);
 }
+#endif
 
 void
 Design::write_blif(std::ostream &s) const
