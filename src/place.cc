@@ -597,7 +597,7 @@ Placer::valid(int t)
           Instance *inst0 = gates[g0];
           if (inst0->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
             {
-              if (b != 3)
+              if (b != 3 && chipdb->device != "5k")
                 return false;
               if (g1)
                 return false;
@@ -2096,7 +2096,8 @@ Placer::configure()
           {
             Location partner_loc(loc.tile(), !loc.pos());
             const Location &partner_ieren_loc = chipdb->ieren.at(partner_loc);
-            configure_io(partner_ieren_loc, enable_input, enable_output, pullup, weak_pullup, pullup_strength);
+            // Set enable_output here to true to disable padeb to match icecu
+            configure_io(partner_ieren_loc, enable_input, true, pullup, weak_pullup, pullup_strength);
           }
       }
     
