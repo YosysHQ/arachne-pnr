@@ -9,9 +9,20 @@
 OPTDEBUGFLAGS ?= -MD -O2
 SRC = src
 
+ifeq ($(OS),Windows_NT)
+    detected_OS := Windows
+else
+    detected_OS := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+endif
+
 # clang only: -Wglobal-constructors
 CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
-LIBS = -lm
+
+ifeq ($(detected_OS),GNU)           # GNU Hurd
+	LIBS = -lm -ldl
+else
+	LIBS = -lm
+endif
 
 DESTDIR ?=
 PREFIX ?= /usr/local
