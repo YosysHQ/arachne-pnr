@@ -29,6 +29,9 @@
 #elif defined(__APPLE__)
 #  include <mach-o/dyld.h>
 #  include <unistd.h>
+#elif defined(__FreeBSD__)
+#  include <sys/sysctl.h>
+#  include <unistd.h>   // TODO 180528: remove this
 #else
 #  include <unistd.h>
 #endif
@@ -137,12 +140,15 @@ std::string proc_self_dirname()
 std::string proc_self_dirname()
 {
         char path[PATH_MAX];
-        ssize_t buflen = readlink("/proc/curproc/file", path, sizeof(path));
-        if (buflen < 0) {
-                fatal(fmt("readlink(\"/proc/curproc/file\") failed: " << strerror(errno)));
+        int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
+        size_t buflen = sizeof(path);
+        int ret = sysctl(mib, 4, path, &buflen, NULL, 0);
+        if (buflen >= 1024) {
+            printf("Sysctl error (return: %d), wrong buflen: %zu\n", ret, buflen);
         }
         while (buflen > 0 && path[buflen-1] != '/')
                 buflen--;
+        path[buflen] = '\0';
         return std::string(path, buflen);
 }
 #elif defined(__APPLE__)
