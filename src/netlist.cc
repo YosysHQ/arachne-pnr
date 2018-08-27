@@ -467,6 +467,63 @@ Model::add_instance(Model *inst_of)
   return new_inst;
 }
 
+bool Model::is_physical_port(Models &models, const Port *p) const
+{
+  bool is_phys_port = p
+                         && isa<Instance>(p->node())
+                         && ((models.is_tbuf(cast<Instance>(p->node()))
+                                && p->name() == "Y")
+                             || (models.is_ioX(cast<Instance>(p->node()))
+                                && p->name() == "PACKAGE_PIN")
+                             || (models.is_pllX(cast<Instance>(p->node()))
+                                && p->name() == "PACKAGEPIN")
+                             || (models.is_rgba_drv(cast<Instance>(p->node()))
+                                && (p->name() == "RGB0" || p->name() == "RGB1" || p->name() == "RGB2"))
+                            );
+
+  return is_phys_port;
+}
+
+// Check that ports which are connected to physical port are
+// connected to that port only
+void
+Model::check_boundary_nets(const Design *d) const
+{
+  Models models(d);
+
+  for (Port *p : m_ordered_ports)
+    {
+      Net *n = p->connection();
+      if (!n)
+        continue;
+
+      bool is_boundary_net = false;
+      Port *physical_port = nullptr;
+
+      for(auto i = n->connections().begin(); i != n->connections().end(); ++i)
+        {
+          Port *q = *i;
+          if (p == q)
+            continue;
+
+          if (is_physical_port(models, q))
+            {
+              if (is_boundary_net)
+                fatal(fmt("Top level port '" << p->name() << "' assigned to multiple IO pads: '" <<
+                          physical_port->name() << "' and '" << q->name() << "'"));
+
+              is_boundary_net = true;
+              physical_port = q;
+            }
+        }
+
+      if (is_boundary_net && n->connections().size() != 2)
+        fatal(fmt("Top level port '" << p->name() << "' assigned to an IO pad '" << physical_port->name() << 
+                  "' and internal nodes"));
+
+    }
+}
+
 std::set<Net *, IdLess>
 Model::boundary_nets(const Design *d) const
 {
@@ -478,17 +535,7 @@ Model::boundary_nets(const Design *d) const
       if (n)
         {
           Port *q = p->connection_other_port();
-          if (q
-              && isa<Instance>(q->node())
-              && ((models.is_tbuf(cast<Instance>(q->node()))
-                      && q->name() == "Y")
-                  || (models.is_ioX(cast<Instance>(q->node()))
-                      && q->name() == "PACKAGE_PIN")
-                  || (models.is_pllX(cast<Instance>(q->node()))
-                      && q->name() == "PACKAGEPIN")
-                  || (models.is_rgba_drv(cast<Instance>(q->node()))
-                      && (q->name() == "RGB0" || q->name() == "RGB1" || q->name() == "RGB2")
-                  )))
+          if (is_physical_port(models, q))
             extend(bnets, n);
         }
     }
@@ -632,16 +679,7 @@ Model::check(const Design *d) const
           if (n)
             {
               Port *q = p->connection_other_port();
-              assert (q
-                      && isa<Instance>(q->node())
-                      && ((models.is_tbuf(cast<Instance>(q->node()))
-                              && q->name() == "Y")
-                          || (models.is_ioX(cast<Instance>(q->node()))
-                              && q->name() == "PACKAGE_PIN")
-                          || (models.is_pllX(cast<Instance>(q->node()))
-                              && q->name() == "PACKAGEPIN")
-                          || (models.is_rgba_drv(cast<Instance>(q->node())) 
-                            &&  (q->name() == "RGB0" || q->name() == "RGB1" || q->name() == "RGB2"))));
+              assert(is_physical_port(models, q));
             }
         }
     }
@@ -1504,12 +1542,17 @@ Design::prune()
     p.second->prune();
 }
 
+void
+Design::check_boundary_nets() const
+{
+  m_top->check_boundary_nets(this);
+}
+
 #ifndef NDEBUG
 void
 Design::check() const
 {
-  for (const auto &p : m_models)
-    p.second->check(this);
+  m_top->check(this);
 }
 #endif
 
