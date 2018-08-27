@@ -37,6 +37,9 @@
 #endif
 
 #include <limits.h>
+#if defined(__GNU__)
+#include <dlfcn.h>
+#endif
 
 std::ostream *logs;
 
@@ -136,7 +139,7 @@ std::string proc_self_dirname()
                 buflen--;
         return std::string(path, buflen);
 }
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 std::string proc_self_dirname()
 {
         char path[PATH_MAX];
@@ -185,6 +188,24 @@ std::string proc_self_dirname()
         for (i = 0; shortpath[i]; i++)
                 path += char(shortpath[i]);
         return path;
+}
+#elif defined(__GNU__)
+std::string proc_self_dirname()
+{
+        Dl_info DLInfo;
+
+        int err = dladdr((const void*)&proc_self_dirname, &DLInfo);
+        if (err != 0) {
+                //printf("%s\n", DLInfo.dli_fname);
+                ssize_t buflen = strlen(DLInfo.dli_fname);
+                while (buflen > 0 && DLInfo.dli_fname[buflen-1] != '/')
+                        buflen--;
+                return std::string(DLInfo.dli_fname, buflen);
+        }
+        else {
+                printf("Failed finding dirname : %d\n", err);
+                return "";
+        }
 }
 #elif defined(__EMSCRIPTEN__)
 std::string proc_self_dirname()
