@@ -311,7 +311,7 @@ ConstraintsPlacer::place()
 
           if (inst->get_param("IO_STANDARD").as_string() == "SB_LVDS_INPUT")
             {
-              if (b != 3)
+              if (b != 3 && ds.chipdb->device != "5k")
                 fatal(fmt("pcf error: LVDS port `" << p.first << "' not in bank 3\n"));
               if (loc.pos() != 0)
                 fatal(fmt("pcf error: LVDS port `" << p.first << "' not a DPxxB input\n"));
