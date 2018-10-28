@@ -21,7 +21,6 @@
 #include "configuration.hh"
 #include "bitvector.hh"
 #include "ullmanset.hh"
-#include "priorityq.hh"
 #include "designstate.hh"
 
 #include <cassert>
@@ -33,6 +32,7 @@
 #include <map>
 #include <vector>
 #include <ctime>
+#include <queue>
 
 class Router;
 
@@ -94,7 +94,9 @@ class Router
   
   UllmanSet frontier;
   // cn, cost[cn]
-  PriorityQ<std::pair<int, int>, Comp> frontierq;
+  std::priority_queue<std::pair<int, int>,
+		      std::vector<std::pair<int, int>>,
+		      Comp> frontierq;
   
   std::vector<int> backptr;
   std::vector<int> cost;
@@ -533,7 +535,7 @@ Router::start(int net)
   visited.clear();
   
   frontier.clear();
-  frontierq.clear();
+  frontierq = decltype(frontierq) ();
   
   int source = net_source[net];
   cost[source] = 0;
@@ -609,7 +611,8 @@ Router::pop()
  L:
   assert(!frontierq.empty());
   int cn, cn_cost;
-  std::tie(cn, cn_cost) = frontierq.pop();
+  std::tie(cn, cn_cost) = frontierq.top();
+  frontierq.pop();
   if (!frontier.contains(cn))
     goto L;
   
