@@ -588,7 +588,7 @@ Router::visit(int cn)
 #endif
               cost[cn2] = new_cost;
               backptr[cn2] = cn;
-              frontierq.push(std::make_pair(cn2, new_cost));
+              frontierq.emplace(cn2, new_cost);
             }
         }
       else
@@ -600,7 +600,7 @@ Router::visit(int cn)
                     << " cost " << new_cost << "\n";
 #endif
           frontier.insert(cn2);
-          frontierq.push(std::make_pair(cn2, new_cost));
+          frontierq.emplace(cn2, new_cost);
         }
     }
 }
