@@ -16,7 +16,7 @@ else
 endif
 
 # clang only: -Wglobal-constructors
-CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
+CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare
 
 ifeq ($(detected_OS),GNU)           # GNU Hurd
 	LIBS = -lm -ldl
@@ -31,7 +31,7 @@ ICEBOX ?= $(PREFIX)/share/icebox
 # Cross-compile logic
 HOST_CC ?= $(CC)
 HOST_CXX ?= $(CXX)
-HOST_CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare -Werror
+HOST_CXXFLAGS += -I$(SRC) -std=c++11 $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compare
 HOST_LIBS ?= $(LIBS)
 
 IS_CROSS_COMPILING = no
