@@ -1,5 +1,7 @@
 # Arachne-pnr
 
+**Arachne-pnr is not maintained anymore; use [nextpnr](https://github.com/YosysHQ/nextpnr) instead, which is a complete functional replacement with major improvements.**
+
 ## Updates
 
 2015-08-06: Interface change: Default seed is 1, can be randomized with `-r` option.
